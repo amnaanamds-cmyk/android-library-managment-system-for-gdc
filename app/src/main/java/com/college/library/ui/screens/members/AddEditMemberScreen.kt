@@ -30,7 +30,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.MemberDao
 import com.college.library.data.model.Member
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -113,7 +112,7 @@ fun AddEditMemberScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -291,7 +290,7 @@ fun AddEditMemberScreen(
             Button(
                 onClick = { viewModel.saveMember(onNavigateBack) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(if (memberId == 0L) "Save Member" else "Update Member", fontSize = 16.sp)
             }

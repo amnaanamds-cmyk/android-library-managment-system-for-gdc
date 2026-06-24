@@ -134,8 +134,11 @@ fun ReportsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Reports", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
                 actions = {
+                    IconButton(onClick = { printStatisticsReportHtml(context, state) }) {
+                        Icon(Icons.Default.Share, "Export HTML/Print", tint = Gold)
+                    }
                     IconButton(onClick = { exportPdf(context, state) }) {
                         Icon(Icons.Default.Share, "Export PDF", tint = Gold)
                     }
@@ -144,7 +147,7 @@ fun ReportsScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            TabRow(selectedTabIndex = selectedTab, containerColor = NavyBlue, contentColor = Gold) {
+            TabRow(selectedTabIndex = selectedTab, containerColor = MaterialTheme.colorScheme.primary, contentColor = Gold) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
@@ -501,13 +504,14 @@ fun exportFullMembersPdf(context: Context, members: List<Member>) {
 }
 
 fun exportFullStaffPdf(context: Context, staff: List<Member>) {
+    // ... omitting unchanged for brevity
     try {
-        val pdfDocument = PdfDocument()
+        val pdfDocument = android.graphics.pdf.PdfDocument()
         var pageNumber = 1
-        var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageNumber).create()
+        var pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, pageNumber).create()
         var page = pdfDocument.startPage(pageInfo)
         var canvas = page.canvas
-        val paint = Paint().apply { textSize = 22f; isFakeBoldText = true }
+        val paint = android.graphics.Paint().apply { textSize = 22f; isFakeBoldText = true }
 
         canvas.drawText("Library Staff Report", 50f, 50f, paint)
 
@@ -523,7 +527,7 @@ fun exportFullStaffPdf(context: Context, staff: List<Member>) {
             if (y > 800f) {
                 pdfDocument.finishPage(page)
                 pageNumber++
-                pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageNumber).create()
+                pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, pageNumber).create()
                 page = pdfDocument.startPage(pageInfo)
                 canvas = page.canvas
                 y = 50f
@@ -532,17 +536,85 @@ fun exportFullStaffPdf(context: Context, staff: List<Member>) {
 
         pdfDocument.finishPage(page)
 
-        val file = File(context.cacheDir, "library_staff_report.pdf")
-        pdfDocument.writeTo(FileOutputStream(file))
+        val file = java.io.File(context.cacheDir, "library_staff_report.pdf")
+        pdfDocument.writeTo(java.io.FileOutputStream(file))
         pdfDocument.close()
 
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-        val intent = Intent(Intent.ACTION_SEND).apply {
+        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
             type = "application/pdf"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share Staff Report PDF"))
+        context.startActivity(android.content.Intent.createChooser(intent, "Share Staff Report PDF"))
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+fun printStatisticsReportHtml(context: Context, state: ReportsState) {
+    val date = java.time.LocalDate.now().toString()
+    
+    val subjectRows = state.allBooks.groupBy { it.category.ifBlank { "Uncategorized" } }.map { (subject, books) ->
+        val total = books.size
+        val available = books.count { it.status == "Available" }
+        val issued = books.count { it.status == "Issued" }
+        "<tr><td>$subject</td><td>$total</td><td>$available</td><td>$issued</td></tr>"
+    }.joinToString("\n")
+    
+    val topBooksRows = state.mostIssuedBooks.take(5).mapIndexed { index, pair ->
+        "<tr><td>${index + 1}</td><td>${pair.first}</td><td>-</td><td>${pair.second}</td></tr>"
+    }.joinToString("\n")
+
+    val htmlReport = """
+        <html>
+        <head>
+        <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { color: #333; text-align: center; }
+            h3 { color: #555; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .stat-box { display: inline-block; width: 45%; border: 1px solid #ddd; padding: 10px; margin: 5px; border-radius: 5px; }
+            .footer { text-align: center; margin-top: 30px; color: #888; font-size: 12px; }
+        </style>
+        </head>
+        <body>
+            <h1>GDC Library50 — Library Report</h1>
+            <p>Generated: ${"$"}{date}</p>
+            <hr/>
+
+            <h3>📊 Overall Statistics</h3>
+            <div class="stat-box"><b>Total Books:</b> ${"$"}{state.allBooks.size}</div>
+            <div class="stat-box"><b>Available:</b> ${"$"}{state.availableCount}</div>
+            <div class="stat-box"><b>Issued:</b> ${"$"}{state.issuedCount}</div>
+            <div class="stat-box"><b>Total Members:</b> ${"$"}{state.allMembers.size}</div>
+            <div class="stat-box"><b>Overdue Books:</b> ${"$"}{state.overdueBooksWithPhone.size}</div>
+
+            <h3>📚 Subject-Wise Breakdown</h3>
+            <table>
+                <tr><th>Subject</th><th>Total Books</th><th>Available</th><th>Issued</th></tr>
+                ${"$"}{subjectRows}
+            </table>
+
+            <h3>🏆 Most Issued Books (Top 5)</h3>
+            <table>
+                <tr><th>Rank</th><th>Book Title</th><th>Author</th><th>Times Issued</th></tr>
+                ${"$"}{topBooksRows}
+            </table>
+
+            <div class="footer">GDC Library50 — Printed on ${"$"}{date}</div>
+        </body>
+        </html>
+    """.trimIndent()
+
+    try {
+        val printManager = context.getSystemService(Context.PRINT_SERVICE) as android.print.PrintManager
+        val webView = android.webkit.WebView(context)
+        webView.loadDataWithBaseURL(null, htmlReport, "text/HTML", "UTF-8", null)
+        val printAdapter = webView.createPrintDocumentAdapter("Library_Report_$" + date)
+        printManager.print("Library Statistics Report", printAdapter, android.print.PrintAttributes.Builder().build())
     } catch (e: Exception) {
         e.printStackTrace()
     }

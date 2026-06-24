@@ -21,6 +21,7 @@ class LibraryApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        com.college.library.utils.CrashBackupHandler.init(this)
         // Create notification channels (safe to call multiple times)
         OverdueNotificationHelper.createChannels(this)
         // Schedule the periodic overdue background check (every 12 hours)

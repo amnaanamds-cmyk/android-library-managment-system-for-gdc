@@ -25,7 +25,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.BookDao
 import com.college.library.data.model.Book
-import com.college.library.ui.theme.NavyBlue
 import com.college.library.utils.BarcodeGenerator
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
@@ -39,7 +38,7 @@ import javax.inject.Inject
 class AddEditBookViewModel @Inject constructor(
     private val bookDao: BookDao
 ) : ViewModel() {
-    private val _bookState = MutableStateFlow(Book(0, "", "", "", "", "", "", "", "", 0, "", "", 0.0, "Available", false, null))
+    private val _bookState = MutableStateFlow(Book(0, "", "", "", "", "", "", "", "", 0, "", "", 0.0, "Available", false, null, "Uncategorized"))
     val bookState = _bookState.asStateFlow()
 
     fun loadBook(id: Long) {
@@ -154,7 +153,7 @@ fun AddEditBookScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -232,6 +231,12 @@ fun AddEditBookScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
+                value = book.category,
+                onValueChange = { viewModel.updateField { b -> b.copy(category = it) } },
+                label = { Text("Category/Subject") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
                 value = book.publisherPlace,
                 onValueChange = { viewModel.updateField { b -> b.copy(publisherPlace = it) } },
                 label = { Text("Publisher Place") },
@@ -283,7 +288,7 @@ fun AddEditBookScreen(
                 Switch(
                     checked = book.isDigital,
                     onCheckedChange = { viewModel.updateField { b -> b.copy(isDigital = it) } },
-                    colors = SwitchDefaults.colors(checkedThumbColor = NavyBlue)
+                    colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
                 )
             }
             if (book.isDigital) {
@@ -300,7 +305,7 @@ fun AddEditBookScreen(
             Button(
                 onClick = { viewModel.saveBook(onNavigateBack) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text(if (bookId == 0L) "Save Book" else "Update Book", fontSize = 16.sp)
             }

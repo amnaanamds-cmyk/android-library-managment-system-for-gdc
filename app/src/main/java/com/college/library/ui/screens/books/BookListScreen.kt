@@ -26,7 +26,6 @@ import com.college.library.data.db.BookDao
 import com.college.library.data.model.Book
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -111,12 +110,12 @@ fun BookListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Books", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
         floatingActionButton = {
             if (canEdit) {
-                FloatingActionButton(onClick = onNavigateToAddBook, containerColor = NavyBlue, contentColor = Color.White) {
+                FloatingActionButton(onClick = onNavigateToAddBook, containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White) {
                     Icon(Icons.Default.Add, contentDescription = "Add Book")
                 }
             }
@@ -222,13 +221,13 @@ fun BookCard(book: Book, onClick: () -> Unit, onLongClick: () -> Unit) {
                 }
                 if (book.isDigital) {
                     Surface(
-                        color = NavyBlue.copy(alpha = 0.2f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
                     ) {
                         Text(
                             text = "Digital",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = NavyBlue,
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )

@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.college.library.ui.theme.CardGreen
-import com.college.library.ui.theme.NavyBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +27,7 @@ fun IssueReturnHubScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Transactions", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -39,13 +38,13 @@ fun IssueReturnHubScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().height(150.dp).clickable { onNavigateToIssue() },
-                colors = CardDefaults.cardColors(containerColor = NavyBlue.copy(alpha = 0.1f)),
-                border = androidx.compose.foundation.BorderStroke(2.dp, NavyBlue)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
             ) {
                 Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Send, contentDescription = "Issue Book", tint = NavyBlue, modifier = Modifier.size(48.dp))
+                    Icon(Icons.Default.Send, contentDescription = "Issue Book", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Issue a Book", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+                    Text("Issue a Book", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))

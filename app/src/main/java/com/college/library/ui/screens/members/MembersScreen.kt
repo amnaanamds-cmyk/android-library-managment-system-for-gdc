@@ -66,12 +66,12 @@ fun MembersScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Members", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
         floatingActionButton = {
             if (canEdit) {
-                FloatingActionButton(onClick = onNavigateToAddMember, containerColor = NavyBlue, contentColor = Color.White) {
+                FloatingActionButton(onClick = onNavigateToAddMember, containerColor = MaterialTheme.colorScheme.primary, contentColor = Color.White) {
                     Icon(Icons.Default.Add, contentDescription = "Add Member")
                 }
             }
@@ -123,7 +123,7 @@ fun MemberCard(member: Member, onClick: () -> Unit) {
                 Text("Dept: ${member.department}", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     Surface(color = LightNavy.copy(alpha = 0.1f), shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)) {
-                        Text(member.memberId, modifier = Modifier.padding(4.dp), color = NavyBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(member.memberId, modifier = Modifier.padding(4.dp), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(color = CardPurple.copy(alpha = 0.1f), shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)) {

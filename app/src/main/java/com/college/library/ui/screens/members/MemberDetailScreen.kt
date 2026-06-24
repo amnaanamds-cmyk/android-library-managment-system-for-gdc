@@ -32,7 +32,6 @@ import com.college.library.data.model.Member
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.CardOrange
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -104,7 +103,7 @@ fun MemberDetailScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->

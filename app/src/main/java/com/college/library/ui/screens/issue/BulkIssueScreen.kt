@@ -24,7 +24,6 @@ import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import androidx.compose.ui.platform.LocalContext
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -44,7 +43,7 @@ fun BulkIssueScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -88,7 +87,7 @@ fun BulkIssueScreen(
                             onClick = { viewModel.nextStep() },
                             enabled = (currentStep == 1 && viewModel.selectedMember.collectAsState().value != null) ||
                                       (currentStep == 2 && viewModel.selectedBooks.collectAsState().value.isNotEmpty()),
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) { Text("Next") }
                     }
                 }
@@ -111,7 +110,7 @@ fun BulkStep1SelectMember(viewModel: BulkIssueViewModel) {
     val scanner = remember { GmsBarcodeScanning.getClient(context, scannerOptions) }
 
     Column {
-        Text("Select a Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Select a Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = searchQuery,
@@ -131,7 +130,7 @@ fun BulkStep1SelectMember(viewModel: BulkIssueViewModel) {
                 },
                 modifier = Modifier.padding(start = 8.dp)
             ) {
-                Icon(Icons.Default.CameraAlt, "Scan ID", tint = NavyBlue, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.CameraAlt, "Scan ID", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -155,7 +154,7 @@ fun BulkStep1SelectMember(viewModel: BulkIssueViewModel) {
             items(members, key = { it.id }) { member ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectMember(member) },
-                    colors = CardDefaults.cardColors(containerColor = if (selectedMember == member) NavyBlue.copy(alpha=0.1f) else Color.White)
+                    colors = CardDefaults.cardColors(containerColor = if (selectedMember == member) MaterialTheme.colorScheme.primary.copy(alpha=0.1f) else Color.White)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(member.name, fontWeight = FontWeight.Bold)
@@ -184,7 +183,7 @@ fun BulkStep2SelectBooks(viewModel: BulkIssueViewModel) {
     val scanner = remember { GmsBarcodeScanning.getClient(context, scannerOptions) }
 
     Column {
-        Text("Select Books", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Select Books", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Text("Selected: ${selectedBooks.size}", color = Color.Gray)
 
         if (errorMsg != null) {
@@ -223,7 +222,7 @@ fun BulkStep2SelectBooks(viewModel: BulkIssueViewModel) {
                 },
                 modifier = Modifier.padding(start = 8.dp)
             ) {
-                Icon(Icons.Default.CameraAlt, "Scan ISBN", tint = NavyBlue, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.CameraAlt, "Scan ISBN", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
             }
         }
 
@@ -234,7 +233,7 @@ fun BulkStep2SelectBooks(viewModel: BulkIssueViewModel) {
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { 
                         if (isSelected) viewModel.removeBook(book) else viewModel.addBook(book) 
                     },
-                    colors = CardDefaults.cardColors(containerColor = if (isSelected) NavyBlue.copy(alpha=0.1f) else Color.White)
+                    colors = CardDefaults.cardColors(containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha=0.1f) else Color.White)
                 ) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -262,7 +261,7 @@ fun BulkStep3Confirm(viewModel: BulkIssueViewModel) {
     val errorMsg by viewModel.errorMessage.collectAsState()
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("Confirm Bulk Issue", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Confirm Bulk Issue", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
         
         Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color.White)) {
@@ -318,7 +317,7 @@ fun BulkSuccessReceipt(selectedBooks: List<Book>, member: Member, onFinish: () -
         Spacer(modifier = Modifier.height(16.dp))
         Text("to ${member.name}", fontWeight = FontWeight.Medium, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)) {
+        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
             Text("Done")
         }
     }

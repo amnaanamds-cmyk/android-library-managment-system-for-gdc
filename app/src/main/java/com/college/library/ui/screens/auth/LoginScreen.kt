@@ -32,7 +32,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.R
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +99,7 @@ fun LoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NavyBlue)
+            .background(MaterialTheme.colorScheme.primary)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -150,8 +149,8 @@ fun LoginScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NavyBlue,
-                        focusedLabelColor = NavyBlue
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
                     )
                 )
 
@@ -172,7 +171,7 @@ fun LoginScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = NavyBlue),
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Secure Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -183,7 +182,7 @@ fun LoginScreen(
                     OutlinedButton(
                         onClick = showBiometricPrompt,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = NavyBlue),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Icon(Icons.Default.Fingerprint, contentDescription = "Biometric Login")
@@ -197,7 +196,7 @@ fun LoginScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 TextButton(onClick = onNavigateToOpac) {
-                    Text("Access OPAC Student Portal", color = NavyBlue, fontWeight = FontWeight.Bold)
+                    Text("Access OPAC Student Portal", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -40,6 +40,7 @@ fun DashboardScreen(
     onNavigateToIssue: () -> Unit,
     onNavigateToReturn: () -> Unit,
     onNavigateToAddMember: () -> Unit,
+    onNavigateToSubjects: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -68,7 +69,7 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = { Text("College Library", color = Gold, fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
                 actions = {
                     IconButton(onClick = onNavigateToAiHub) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "AI Hub", tint = Gold)
@@ -77,6 +78,9 @@ fun DashboardScreen(
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Gold)
                         }
+                    }
+                    IconButton(onClick = onNavigateToSubjects) {
+                        Icon(Icons.Default.Category, contentDescription = "Browse Subjects", tint = Gold)
                     }
                 }
             )
@@ -112,7 +116,7 @@ fun DashboardScreen(
                 FloatingActionButton(
                     onClick = { showFabMenu = !showFabMenu },
                     containerColor = Gold,
-                    contentColor = NavyBlue
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(if (showFabMenu) Icons.Default.Close else Icons.Default.Add, "Quick Actions")
                 }

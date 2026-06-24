@@ -31,7 +31,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import com.college.library.data.model.Member
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Random
@@ -81,7 +80,7 @@ fun DigitalCardDialog(
                         text = "Digital Library Card",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NavyBlue
+                        color = MaterialTheme.colorScheme.primary
                     )
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
@@ -97,7 +96,7 @@ fun DigitalCardDialog(
                         .height(220.dp)
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(NavyBlue, Color(0xFF0F1E3D), Color(0xFF070B19))
+                                colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF0F1E3D), Color(0xFF070B19))
                             ),
                             shape = RoundedCornerShape(16.dp)
                         )
@@ -237,7 +236,7 @@ fun DigitalCardDialog(
                 ) {
                     Button(
                         onClick = { shareCardPdf(context, member) },
-                        colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(Icons.Default.Share, contentDescription = "Share", tint = Gold)
@@ -250,7 +249,7 @@ fun DigitalCardDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Gold),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Print Card", color = NavyBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("Print Card", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }

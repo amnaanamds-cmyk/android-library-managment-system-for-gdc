@@ -27,7 +27,6 @@ import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.MemberDao
 import com.college.library.data.model.Member
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -68,7 +67,7 @@ fun OpacLoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(NavyBlue, Color(0xFF1A3A6B), Color(0xFF0A1A3D))))
+            .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, Color(0xFF1A3A6B), Color(0xFF0A1A3D))))
     ) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -154,11 +153,11 @@ fun OpacLoginScreen(
                         enabled = !viewModel.isLoading
                     ) {
                         if (viewModel.isLoading) {
-                            CircularProgressIndicator(color = NavyBlue, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Default.Login, contentDescription = null, tint = NavyBlue)
+                            Icon(Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+                            Text("Login", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }

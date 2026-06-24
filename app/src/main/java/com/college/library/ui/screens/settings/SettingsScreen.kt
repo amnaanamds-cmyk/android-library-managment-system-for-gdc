@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import com.college.library.utils.AppLanguage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +102,7 @@ fun SettingsScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -132,7 +131,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Language, contentDescription = null, tint = NavyBlue, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Language, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -151,7 +150,7 @@ fun SettingsScreen(
                             onCheckedChange = { isHindi ->
                                 viewModel.setLanguage(if (isHindi) AppLanguage.HINDI else AppLanguage.ENGLISH)
                             },
-                            colors = SwitchDefaults.colors(checkedThumbColor = NavyBlue, checkedTrackColor = NavyBlue.copy(alpha = 0.5f))
+                            colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                         )
                     }
                 }
@@ -207,7 +206,7 @@ fun SettingsScreen(
                             Switch(
                                 checked = state.darkModeEnabled,
                                 onCheckedChange = { viewModel.setDarkMode(it) },
-                                colors = SwitchDefaults.colors(checkedThumbColor = NavyBlue)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -221,7 +220,7 @@ fun SettingsScreen(
                                 onValueChange = { viewModel.setFontScale(it) },
                                 valueRange = 0.8f..1.5f,
                                 steps = 7,
-                                colors = SliderDefaults.colors(thumbColor = NavyBlue)
+                                colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.primary)
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -245,7 +244,7 @@ fun SettingsScreen(
                                 viewModel.saveSettings(fine, duration, max)
                                 Toast.makeText(context, "Preferences saved!", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Save, contentDescription = null)
@@ -295,7 +294,7 @@ fun SettingsScreen(
                                     // Launch to pick any file type (filters for CSV/Excel are handled inside file chooser or viewmodel)
                                     filePickerLauncher.launch("*/*") 
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text("Import Books (CSV / Excel)", color = Color.White)
@@ -345,6 +344,81 @@ fun SettingsScreen(
 
             item {
                 Text(
+                    text = "Backup & Recovery",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Automatic Crash Backup is ENABLED. If the app stops working unexpectedly, it will automatically save a secure backup of your database to your local Documents folder and prompt you to upload it to Google Drive on next launch.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Button(
+                            onClick = { 
+                                android.widget.Toast.makeText(context, "Simulating App Crash...", android.widget.Toast.LENGTH_SHORT).show()
+                                throw RuntimeException("Simulated Crash to test Backup Feature!")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Simulate App Crash (Test Backup)", color = Color.White)
+                        }
+
+                        Button(
+                            onClick = { 
+                                try {
+                                    val dbFile = context.getDatabasePath("library_db")
+                                    if (dbFile.exists()) {
+                                        val backupDir = java.io.File(context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOCUMENTS), "LibraryBackups")
+                                        if (!backupDir.exists()) backupDir.mkdirs()
+                                        val backupFile = java.io.File(backupDir, "library_db_manual_backup.sqlite")
+                                        java.io.FileInputStream(dbFile).use { input ->
+                                            java.io.FileOutputStream(backupFile).use { output ->
+                                                input.copyTo(output)
+                                            }
+                                        }
+                                        android.widget.Toast.makeText(context, "Backup saved to Documents/LibraryBackups", android.widget.Toast.LENGTH_LONG).show()
+                                        
+                                        // Upload to Google Drive
+                                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", backupFile)
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                            type = "application/x-sqlite3"
+                                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(android.content.Intent.createChooser(intent, "Upload Backup to Google Drive"))
+                                    }
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "Backup failed", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Manual Backup to Local & Drive", color = Color.White)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Text(
                     text = "App Information",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
@@ -362,7 +436,7 @@ fun SettingsScreen(
                     ) {
                         Button(
                             onClick = onNavigateToAbout,
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(Icons.Default.Info, contentDescription = null)
@@ -375,9 +449,9 @@ fun SettingsScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = Gold),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, tint = NavyBlue)
+                            Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Share App (.apk)", color = NavyBlue, fontWeight = FontWeight.Bold)
+                            Text("Share App (.apk)", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -385,7 +459,10 @@ fun SettingsScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(
-                    onClick = { authViewModel.logout() },
+                    onClick = { 
+                        android.widget.Toast.makeText(context, "Logged out successfully!", android.widget.Toast.LENGTH_SHORT).show()
+                        authViewModel.logout() 
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
                 ) {

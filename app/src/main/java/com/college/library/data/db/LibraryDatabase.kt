@@ -38,9 +38,15 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE books ADD COLUMN category TEXT NOT NULL DEFAULT 'Uncategorized'")
+    }
+}
+
 @Database(
     entities = [Book::class, Member::class, IssuedBook::class],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class LibraryDatabase : RoomDatabase() {

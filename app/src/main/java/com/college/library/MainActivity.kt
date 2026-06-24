@@ -27,6 +27,7 @@ import androidx.navigation.navArgument
 import com.college.library.ui.screens.books.AddEditBookScreen
 import com.college.library.ui.screens.books.BookDetailScreen
 import com.college.library.ui.screens.books.BookListScreen
+import com.college.library.ui.screens.books.SubjectBrowseScreen
 import com.college.library.ui.screens.dashboard.DashboardScreen
 import com.college.library.ui.screens.issue.BulkIssueScreen
 import com.college.library.ui.screens.issue.IssueBookScreen
@@ -47,6 +48,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.college.library.license.LicenseScreen
+import com.college.library.license.LicenseViewModel
 import com.college.library.ui.screens.auth.AuthViewModel
 import com.college.library.ui.screens.auth.LoginScreen
 
@@ -72,19 +75,72 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var showBackupDialog by remember { mutableStateOf(false) }
+            var pendingBackupFile by remember { mutableStateOf<java.io.File?>(null) }
+
+            LaunchedEffect(Unit) {
+                val prefs = context.getSharedPreferences("library_prefs", android.content.Context.MODE_PRIVATE)
+                val path = prefs.getString("pending_backup_file", null)
+                if (path != null) {
+                    val file = java.io.File(path)
+                    if (file.exists()) {
+                        pendingBackupFile = file
+                        showBackupDialog = true
+                    }
+                    prefs.edit().remove("pending_backup_file").apply()
+                }
+            }
+
+            if (showBackupDialog && pendingBackupFile != null) {
+                AlertDialog(
+                    onDismissRequest = { showBackupDialog = false },
+                    title = { Text("App Recovered from Crash") },
+                    text = { Text("The app recently crashed. A secure backup of your local database has been saved. Would you like to save it to your Google Drive for extra safety?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showBackupDialog = false
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.provider",
+                                pendingBackupFile!!
+                            )
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "application/x-sqlite3"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, "Save Backup to Google Drive"))
+                        }) {
+                            Text("Save to Drive", color = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showBackupDialog = false }) {
+                            Text("Dismiss")
+                        }
+                    }
+                )
+            }
+
             AppTheme(darkModeEnabled = darkModeEnabled) {
-                LibraryApp()
+                LibraryApp(settingsViewModel = settingsViewModel)
             }
         }
     }
 }
 
 @Composable
-fun LibraryApp(authViewModel: AuthViewModel = hiltViewModel()) {
+fun LibraryApp(
+    settingsViewModel: SettingsViewModel,
+    authViewModel: AuthViewModel = hiltViewModel(),
+    licenseViewModel: LicenseViewModel = hiltViewModel()
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
+    val isLicensed by licenseViewModel.isLicensed.collectAsState()
     var showOpac by remember { mutableStateOf(false) }
 
     val mainTabs = listOf("dashboard", "books", "members", "hub", "reports", "leaderboard", "ebooks")
@@ -183,6 +239,13 @@ fun LibraryApp(authViewModel: AuthViewModel = hiltViewModel()) {
             }
         }
     ) { padding ->
+        if (!isLicensed) {
+            LicenseScreen(
+                onLicenseActivated = { },
+                viewModel = licenseViewModel
+            )
+            return@Scaffold
+        }
         if (showOpac) {
             val opacNavController = rememberNavController()
             NavHost(
@@ -233,7 +296,8 @@ fun LibraryApp(authViewModel: AuthViewModel = hiltViewModel()) {
                     onNavigateToAiHub = { navController.navigate("ai_hub") },
                     onNavigateToIssue = { navController.navigate("issue_book") },
                     onNavigateToReturn = { navController.navigate("return_book") },
-                    onNavigateToAddMember = { navController.navigate("add_edit_member/0") }
+                    onNavigateToAddMember = { navController.navigate("add_edit_member/0") },
+                    onNavigateToSubjects = { navController.navigate("browse_subjects") }
                 ) 
             }
             
@@ -241,10 +305,18 @@ fun LibraryApp(authViewModel: AuthViewModel = hiltViewModel()) {
                 AiHubScreen(onNavigateBack = { navController.popBackStack() })
             }
             
+            composable("browse_subjects") {
+                SubjectBrowseScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetail = { id -> navController.navigate("book_detail/$id") }
+                )
+            }
+            
             composable("settings") {
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToAbout = { navController.navigate("about") }
+                    onNavigateToAbout = { navController.navigate("about") },
+                    viewModel = settingsViewModel
                 )
             }
             

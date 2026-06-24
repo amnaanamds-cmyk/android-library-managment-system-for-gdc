@@ -43,4 +43,10 @@ interface BookDao {
 
     @Query("SELECT COUNT(*) FROM books WHERE status = 'Available'")
     fun getAvailableCount(): Flow<Int>
+
+    @Query("SELECT DISTINCT category FROM books ORDER BY category ASC")
+    fun getCategories(): Flow<List<String>>
+
+    @Query("SELECT * FROM books WHERE category = :category ORDER BY title ASC")
+    fun getBooksByCategory(category: String): Flow<List<Book>>
 }

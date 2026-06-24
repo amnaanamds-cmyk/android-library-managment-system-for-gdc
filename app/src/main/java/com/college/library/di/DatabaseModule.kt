@@ -8,6 +8,7 @@ import com.college.library.data.db.LibraryDatabase
 import com.college.library.data.db.MIGRATION_1_2
 import com.college.library.data.db.MIGRATION_2_3
 import com.college.library.data.db.MIGRATION_3_4
+import com.college.library.data.db.MIGRATION_4_5
 import com.college.library.data.db.MemberDao
 import dagger.Module
 import dagger.Provides
@@ -38,7 +39,7 @@ object DatabaseModule {
             LibraryDatabase::class.java,
             "library_db"
         )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
         .fallbackToDestructiveMigration()
         .addCallback(LibraryDatabase.Callback(provider, applicationScope))
         .build()

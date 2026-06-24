@@ -40,7 +40,6 @@ import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.CardOrange
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -151,7 +150,7 @@ fun GlobalSearchScreen(
     Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
 
         // ── Search bar + filter toggle ────────────────────────────────────
-        Surface(modifier = Modifier.fillMaxWidth(), color = NavyBlue, shadowElevation = 4.dp) {
+        Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary, shadowElevation = 4.dp) {
             Column {
                 OutlinedTextField(
                     value = query,
@@ -207,7 +206,7 @@ fun GlobalSearchScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(NavyBlue.copy(alpha = 0.85f))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         // Entity filter
@@ -314,7 +313,7 @@ fun GlobalSearchScreen(
                     ) {
                         Text("Recent Searches", fontWeight = FontWeight.Bold, color = Color.Gray)
                         TextButton(onClick = viewModel::clearRecentSearches) {
-                            Text("Clear", color = NavyBlue)
+                            Text("Clear", color = MaterialTheme.colorScheme.primary)
                         }
                     }
                     recentSearches.forEach { recent ->
@@ -357,7 +356,7 @@ fun GlobalSearchScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.FilterAlt, contentDescription = "Filter Indicator",
-                                tint = NavyBlue, modifier = Modifier.size(16.dp))
+                                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 buildString {
@@ -365,13 +364,13 @@ fun GlobalSearchScreen(
                                     if (viewModel.bookStatusFilter != null) append(" · ${viewModel.bookStatusFilter}")
                                     if (viewModel.categoryFilter != null) append(" · ${viewModel.categoryFilter}")
                                 },
-                                fontSize = 12.sp, color = NavyBlue, fontWeight = FontWeight.Medium
+                                fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.weight(1f))
                             TextButton(
                                 onClick = viewModel::clearFilters,
                                 contentPadding = PaddingValues(0.dp)
-                            ) { Text("Clear", fontSize = 12.sp, color = NavyBlue) }
+                            ) { Text("Clear", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary) }
                         }
                     }
                 }
@@ -386,7 +385,7 @@ fun GlobalSearchScreen(
                             Text(
                                 "Books (${booksToShow.size})",
                                 fontWeight = FontWeight.Bold,
-                                color = NavyBlue,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                         }
@@ -404,7 +403,7 @@ fun GlobalSearchScreen(
                             Text(
                                 "Members (${membersToShow.size})",
                                 fontWeight = FontWeight.Bold,
-                                color = NavyBlue,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
                         }
@@ -434,7 +433,7 @@ fun BookSearchResult(book: Book, onClick: () -> Unit) {
                 Text(book.title, fontWeight = FontWeight.Bold)
                 Text(book.author, fontSize = 12.sp, color = Color.Gray)
                 if (book.publisher.isNotBlank()) {
-                    Text(book.publisher, fontSize = 11.sp, color = NavyBlue.copy(alpha = 0.6f))
+                    Text(book.publisher, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                 }
             }
             Surface(

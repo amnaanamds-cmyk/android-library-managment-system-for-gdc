@@ -33,7 +33,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.CardOrange
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +51,7 @@ fun AiHubScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -64,7 +63,7 @@ fun AiHubScreen(
             // Tabs
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = NavyBlue,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Gold,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
@@ -187,7 +186,7 @@ fun AiChatTab(viewModel: AiHubViewModel) {
                     .clip(RoundedCornerShape(24.dp)),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NavyBlue,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.LightGray
                 )
             )
@@ -202,7 +201,7 @@ fun AiChatTab(viewModel: AiHubViewModel) {
                 modifier = Modifier
                     .size(48.dp)
                     .background(
-                        brush = Brush.radialGradient(colors = listOf(NavyBlue, Color(0xFF0F1E3D))),
+                        brush = Brush.radialGradient(colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF0F1E3D))),
                         shape = CircleShape
                     ),
                 enabled = inputText.isNotBlank()
@@ -230,7 +229,7 @@ fun ChatBubble(message: ChatMessage) {
                     .border(1.dp, Gold, shape = CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = "Libby AI Logo", tint = NavyBlue, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.AutoAwesome, contentDescription = "Libby AI Logo", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
             Spacer(modifier = Modifier.width(8.dp))
         }
@@ -243,7 +242,7 @@ fun ChatBubble(message: ChatMessage) {
                 bottomEnd = if (isUser) 4.dp else 16.dp
             ),
             colors = CardDefaults.cardColors(
-                containerColor = if (isUser) NavyBlue else Color.White
+                containerColor = if (isUser) MaterialTheme.colorScheme.primary else Color.White
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.widthIn(max = 280.dp)
@@ -274,7 +273,7 @@ fun TypingIndicatorBubble() {
                 .border(1.dp, Gold, shape = CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.AutoAwesome, contentDescription = "Libby AI", tint = NavyBlue, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.AutoAwesome, contentDescription = "Libby AI", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         }
         Spacer(modifier = Modifier.width(8.dp))
 
@@ -311,9 +310,9 @@ fun TypingIndicatorBubble() {
                     label = "p3"
                 )
 
-                Box(modifier = Modifier.size(6.dp).scale(pulse1).background(NavyBlue, CircleShape))
-                Box(modifier = Modifier.size(6.dp).scale(pulse2).background(NavyBlue, CircleShape))
-                Box(modifier = Modifier.size(6.dp).scale(pulse3).background(NavyBlue, CircleShape))
+                Box(modifier = Modifier.size(6.dp).scale(pulse1).background(MaterialTheme.colorScheme.primary, CircleShape))
+                Box(modifier = Modifier.size(6.dp).scale(pulse2).background(MaterialTheme.colorScheme.primary, CircleShape))
+                Box(modifier = Modifier.size(6.dp).scale(pulse3).background(MaterialTheme.colorScheme.primary, CircleShape))
             }
         }
     }
@@ -385,7 +384,7 @@ fun LeaderboardTab(viewModel: AiHubViewModel) {
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("All Competitors", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+            Text("All Competitors", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             Spacer(modifier = Modifier.height(8.dp))
 
             // Other entries list
@@ -426,7 +425,7 @@ fun PodiumColumn(
             Text(
                 text = rank.toString(),
                 fontWeight = FontWeight.Bold,
-                color = if (rank == 1) NavyBlue else accentColor,
+                color = if (rank == 1) MaterialTheme.colorScheme.primary else accentColor,
                 fontSize = 16.sp
             )
         }
@@ -457,7 +456,7 @@ fun PodiumColumn(
                 .height(height.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(NavyBlue.copy(alpha = 0.9f), NavyBlue.copy(alpha = 0.6f))
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.9f), MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
                     ),
                     shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
                 )
@@ -528,7 +527,7 @@ fun LeaderboardRow(
                     text = entry.borrowCount.toString(),
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 16.sp,
-                    color = NavyBlue
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(text = "borrows", fontSize = 9.sp, color = Color.Gray)
             }

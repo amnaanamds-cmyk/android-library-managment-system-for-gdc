@@ -21,5 +21,6 @@ data class Book(
     val price: Double,
     val status: String = "Available",
     val isDigital: Boolean = false,
-    val digitalUrl: String? = null
+    val digitalUrl: String? = null,
+    val category: String = "Uncategorized"
 )

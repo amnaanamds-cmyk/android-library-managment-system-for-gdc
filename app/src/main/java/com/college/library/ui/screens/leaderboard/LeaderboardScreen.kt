@@ -26,7 +26,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.data.model.Member
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 
 // ── Badge definitions ─────────────────────────────────────────────────────────
 data class Badge(val label: String, val icon: ImageVector, val color: Color, val minBooks: Int)
@@ -60,7 +59,7 @@ fun LeaderboardScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -175,7 +174,7 @@ fun RankCard(rank: Int, member: Member) {
     val rankColor = when (rank) {
         4 -> Color(0xFFFFC107)
         5 -> Color(0xFFFF9800)
-        else -> NavyBlue.copy(alpha = 0.7f)
+        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
     }
 
     Card(

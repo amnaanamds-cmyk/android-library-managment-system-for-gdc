@@ -36,7 +36,6 @@ import com.college.library.data.model.Member
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -128,7 +127,7 @@ fun OpacHomeScreen(
                         Icon(Icons.Default.ExitToApp, "Logout", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -139,7 +138,7 @@ fun OpacHomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Brush.horizontalGradient(listOf(NavyBlue, Color(0xFF1A3A6B))))
+                        .background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, Color(0xFF1A3A6B))))
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -292,12 +291,14 @@ fun OpacBookCard(book: Book, context: android.content.Context) {
                         if (!book.digitalUrl.isNullOrBlank()) {
                             Button(
                                 onClick = {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(book.digitalUrl))
+                                    val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                        putExtra("ebook_url", book.digitalUrl)
+                                    }
                                     try { context.startActivity(intent) } catch (e: Exception) {
-                                        Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
+                                        android.widget.Toast.makeText(context, "Cannot open reader", android.widget.Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                                 modifier = Modifier.height(34.dp)
                             ) { Text("📖 Read Online", fontSize = 12.sp) }
@@ -320,7 +321,7 @@ fun OpacBookCard(book: Book, context: android.content.Context) {
                 modifier = Modifier.fillMaxWidth(),
                 contentPadding = PaddingValues(0.dp)
             ) {
-                Text(if (expanded) "▲ Less Info" else "▼ More Info", fontSize = 12.sp, color = NavyBlue)
+                Text(if (expanded) "▲ Less Info" else "▼ More Info", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -339,7 +340,7 @@ fun OpacMyBooksTab(issuedBooks: List<IssuedBook>, allBooks: List<Book>, context:
     if (issuedBooks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.LibraryBooks, null, modifier = Modifier.size(70.dp), tint = NavyBlue.copy(0.3f))
+                Icon(Icons.Default.LibraryBooks, null, modifier = Modifier.size(70.dp), tint = MaterialTheme.colorScheme.primary.copy(0.3f))
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("No books currently issued", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Visit the library to borrow books!", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
@@ -361,7 +362,7 @@ fun OpacMyBooksTab(issuedBooks: List<IssuedBook>, allBooks: List<Book>, context:
                     Text("By ${issued.memberName}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        IssuedInfoPill("Issued", issued.issueDate, NavyBlue)
+                        IssuedInfoPill("Issued", issued.issueDate, MaterialTheme.colorScheme.primary)
                         IssuedInfoPill("Due", issued.dueDate, if (issued.dueDate < java.time.LocalDate.now().toString()) DangerRed else CardGreen)
                     }
                     if (issued.dueDate < java.time.LocalDate.now().toString()) {
@@ -377,7 +378,9 @@ fun OpacMyBooksTab(issuedBooks: List<IssuedBook>, allBooks: List<Book>, context:
                     if (book != null && !book.digitalUrl.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(6.dp))
                         TextButton(onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(book.digitalUrl))
+                            val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                putExtra("ebook_url", book.digitalUrl)
+                            }
                             try { context.startActivity(intent) } catch (e: Exception) {}
                         }, contentPadding = PaddingValues(0.dp)) {
                             Icon(Icons.Default.MenuBook, null, modifier = Modifier.size(16.dp))
@@ -424,7 +427,7 @@ fun OpacHistoryTab(returnedBooks: List<IssuedBook>, totalFine: Double) {
         if (returnedBooks.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.History, null, modifier = Modifier.size(60.dp), tint = NavyBlue.copy(0.3f))
+                    Icon(Icons.Default.History, null, modifier = Modifier.size(60.dp), tint = MaterialTheme.colorScheme.primary.copy(0.3f))
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("No borrowing history yet", fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -464,7 +467,7 @@ fun OpacEBooksTab(eBooks: List<Book>, context: android.content.Context) {
     if (eBooks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(70.dp), tint = NavyBlue.copy(0.3f))
+                Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(70.dp), tint = MaterialTheme.colorScheme.primary.copy(0.3f))
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("No E-Books available", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Ask your librarian to add digital resources", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
@@ -482,11 +485,11 @@ fun OpacEBooksTab(eBooks: List<Book>, context: android.content.Context) {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 elevation = CardDefaults.cardElevation(2.dp),
-                colors = CardDefaults.cardColors(containerColor = NavyBlue.copy(0.05f))
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(0.05f))
             ) {
                 Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(NavyBlue.copy(0.1f)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.MenuBook, null, tint = NavyBlue, modifier = Modifier.size(26.dp))
+                    Box(modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary.copy(0.1f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.MenuBook, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -498,12 +501,14 @@ fun OpacEBooksTab(eBooks: List<Book>, context: android.content.Context) {
                         Button(
                             onClick = {
                                 val url = book.digitalUrl ?: return@Button
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                    putExtra("ebook_url", url)
+                                }
                                 try { context.startActivity(intent) } catch (e: Exception) {
-                                    Toast.makeText(context, "Cannot open file", Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, "Cannot open reader", android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) { Text("Read", fontSize = 11.sp) }

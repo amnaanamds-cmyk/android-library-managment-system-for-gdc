@@ -37,7 +37,6 @@ import com.college.library.data.model.Member
 import com.college.library.domain.usecase.IssueBookUseCase
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import com.college.library.utils.ReceiptGenerator
 import com.college.library.utils.rememberStrings
 import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
@@ -161,7 +160,7 @@ fun IssueBookScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -209,7 +208,7 @@ fun IssueBookScreen(
                             onClick = { viewModel.nextStep() },
                             enabled = (viewModel.currentStep == 1 && viewModel.selectedBook != null) ||
                                       (viewModel.currentStep == 2 && viewModel.selectedMember != null && viewModel.selectedMember!!.booksIssued < 3),
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) { Text("Next") }
                     }
                 }
@@ -232,7 +231,7 @@ fun Step1SelectBook(viewModel: IssueBookViewModel, onScanClick: () -> Unit, onGa
     }
 
     Column {
-        Text("Select a Book", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Select a Book", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = viewModel.bookSearchQuery,
@@ -242,10 +241,10 @@ fun Step1SelectBook(viewModel: IssueBookViewModel, onScanClick: () -> Unit, onGa
                 leadingIcon = { Icon(Icons.Default.Search, null) }
             )
             IconButton(onClick = onScanClick, modifier = Modifier.padding(start = 8.dp)) {
-                Icon(Icons.Default.CameraAlt, "Scan ISBN", tint = NavyBlue, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.CameraAlt, "Scan ISBN", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
             }
             IconButton(onClick = onGalleryClick, modifier = Modifier.padding(start = 4.dp)) {
-                Icon(Icons.Default.Image, "Scan from Gallery", tint = NavyBlue, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.Image, "Scan from Gallery", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -258,7 +257,7 @@ fun Step1SelectBook(viewModel: IssueBookViewModel, onScanClick: () -> Unit, onGa
             items(books, key = { it.id }) { book ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectedBook = book },
-                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedBook == book) NavyBlue.copy(alpha=0.1f) else Color.White)
+                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedBook == book) MaterialTheme.colorScheme.primary.copy(alpha=0.1f) else Color.White)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(book.title, fontWeight = FontWeight.Bold)
@@ -274,7 +273,7 @@ fun Step1SelectBook(viewModel: IssueBookViewModel, onScanClick: () -> Unit, onGa
 fun Step2SelectMember(viewModel: IssueBookViewModel) {
     val members by viewModel.membersFlow.collectAsState()
     Column {
-        Text("Select a Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Select a Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         OutlinedTextField(
             value = viewModel.memberSearchQuery,
             onValueChange = { viewModel.memberSearchQuery = it },
@@ -301,7 +300,7 @@ fun Step2SelectMember(viewModel: IssueBookViewModel) {
             items(members, key = { it.id }) { member ->
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectedMember = member },
-                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedMember == member) NavyBlue.copy(alpha=0.1f) else Color.White)
+                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedMember == member) MaterialTheme.colorScheme.primary.copy(alpha=0.1f) else Color.White)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(member.name, fontWeight = FontWeight.Bold)
@@ -319,7 +318,7 @@ fun Step3Confirm(viewModel: IssueBookViewModel) {
     val dueDate = LocalDate.now().plusDays(14).format(DateTimeFormatter.ISO_LOCAL_DATE)
     
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text("Confirm Issue", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+        Text("Confirm Issue", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
         Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(2.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -417,7 +416,7 @@ fun SuccessReceipt(
             }
             Spacer(modifier = Modifier.height(12.dp))
         }
-        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = NavyBlue), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary), modifier = Modifier.fillMaxWidth()) {
             Text(strings.done)
         }
     }

@@ -23,7 +23,6 @@ import com.college.library.data.db.BookDao
 import com.college.library.data.model.Book
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,7 +95,7 @@ fun BookDetailScreen(
                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -140,7 +139,9 @@ fun BookDetailScreen(
                 if (!b.digitalUrl.isNullOrBlank()) {
                     Button(
                         onClick = {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(b.digitalUrl))
+                            val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                putExtra("ebook_url", b.digitalUrl)
+                            }
                             try { context.startActivity(intent) } catch (e: Exception) {}
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),

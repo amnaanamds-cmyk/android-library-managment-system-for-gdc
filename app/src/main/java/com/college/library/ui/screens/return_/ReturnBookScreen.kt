@@ -34,7 +34,6 @@ import com.college.library.domain.usecase.CalculateFineUseCase
 import com.college.library.domain.usecase.ReturnBookUseCase
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
-import com.college.library.ui.theme.NavyBlue
 import com.college.library.utils.ReceiptGenerator
 import com.college.library.utils.rememberStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -136,7 +135,7 @@ fun ReturnBookScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         }
     ) { padding ->
@@ -154,7 +153,7 @@ fun ReturnBookScreen(
                 )
             } else {
                 if (viewModel.selectedMember == null) {
-                    Text("Search Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NavyBlue)
+                    Text("Search Member", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = viewModel.memberSearchQuery,
@@ -178,7 +177,7 @@ fun ReturnBookScreen(
                             },
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
-                            Icon(Icons.Default.CameraAlt, "Scan ID Card", tint = NavyBlue, modifier = Modifier.size(32.dp))
+                            Icon(Icons.Default.CameraAlt, "Scan ID Card", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                         }
                     }
                     LazyColumn(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -198,7 +197,7 @@ fun ReturnBookScreen(
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Member: ${viewModel.selectedMember!!.name}", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { viewModel.reset() }) { Text("Change", color = NavyBlue) }
+                        TextButton(onClick = { viewModel.reset() }) { Text("Change", color = MaterialTheme.colorScheme.primary) }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -210,8 +209,8 @@ fun ReturnBookScreen(
                             items(issuedBooks, key = { it.id }) { book ->
                                 Card(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectBookToReturn(book) },
-                                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedBookToReturn == book) NavyBlue.copy(0.1f) else Color.White),
-                                    border = if (viewModel.selectedBookToReturn == book) androidx.compose.foundation.BorderStroke(1.dp, NavyBlue) else null
+                                    colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedBookToReturn == book) MaterialTheme.colorScheme.primary.copy(0.1f) else Color.White),
+                                    border = if (viewModel.selectedBookToReturn == book) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
                                         Text(book.bookTitle, fontWeight = FontWeight.Bold)
@@ -237,7 +236,7 @@ fun ReturnBookScreen(
                         Button(
                             onClick = { viewModel.returnBook() },
                             modifier = Modifier.fillMaxWidth().height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Text("Confirm Return", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         }
@@ -310,7 +309,7 @@ fun ReturnReceipt(
             }
             Spacer(modifier = Modifier.height(12.dp))
         }
-        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = NavyBlue), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onFinish, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary), modifier = Modifier.fillMaxWidth()) {
             Text(strings.done)
         }
     }

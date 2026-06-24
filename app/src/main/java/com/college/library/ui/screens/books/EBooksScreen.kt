@@ -33,7 +33,6 @@ import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.BookDao
 import com.college.library.data.model.Book
 import com.college.library.ui.theme.Gold
-import com.college.library.ui.theme.NavyBlue
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -152,14 +151,14 @@ fun EBooksScreen(
                         Icon(Icons.Default.FolderOpen, contentDescription = "Browse Files", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { pdfPickerLauncher.launch("application/pdf") },
                 containerColor = Gold,
-                contentColor = NavyBlue
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Import E-Book")
             }
@@ -177,7 +176,7 @@ fun EBooksScreen(
                     .height(120.dp)
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(NavyBlue, Color(0xFF1A3A6B))
+                            colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF1A3A6B))
                         )
                     )
                     .padding(16.dp),
@@ -218,7 +217,7 @@ fun EBooksScreen(
                 value = viewModel.searchQuery,
                 onValueChange = { viewModel.searchQuery = it },
                 placeholder = { Text("Search books, authors...") },
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = NavyBlue) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary) },
                 trailingIcon = {
                     if (viewModel.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.searchQuery = "" }) {
@@ -248,7 +247,7 @@ fun EBooksScreen(
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NavyBlue,
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = Color.White,
                             selectedLeadingIconColor = Gold
                         )
@@ -261,7 +260,7 @@ fun EBooksScreen(
             if (filteredBooks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.LibraryBooks, contentDescription = null, modifier = Modifier.size(80.dp), tint = NavyBlue.copy(alpha = 0.3f))
+                        Icon(Icons.Default.LibraryBooks, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             if (viewModel.searchQuery.isBlank()) "No E-Books yet" else "No results for \"${viewModel.searchQuery}\"",
@@ -278,7 +277,7 @@ fun EBooksScreen(
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
                             onClick = { pdfPickerLauncher.launch("application/pdf") },
-                            colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -298,7 +297,9 @@ fun EBooksScreen(
                             colorIndex = filteredBooks.indexOf(book) % categoryColors.size,
                             onReadClick = {
                                 val url = book.digitalUrl ?: "https://www.google.com/search?q=${Uri.encode(book.title)}+pdf"
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                    putExtra("ebook_url", url)
+                                }
                                 try {
                                     context.startActivity(intent)
                                 } catch (e: Exception) {
@@ -329,7 +330,7 @@ fun EBooksScreen(
     if (showImportDialog) {
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
-            title = { Text("Import E-Book", fontWeight = FontWeight.Bold, color = NavyBlue) },
+            title = { Text("Import E-Book", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Enter book details for the imported file:", fontSize = 14.sp)
@@ -364,7 +365,7 @@ fun EBooksScreen(
                             Toast.makeText(context, "E-Book imported successfully!", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text("Import", color = Color.White) }
             },
             dismissButton = {
@@ -378,7 +379,7 @@ fun EBooksScreen(
         var linkInput by remember { mutableStateOf(selectedBook?.digitalUrl ?: "") }
         AlertDialog(
             onDismissRequest = { showLinkDialog = false },
-            title = { Text("Set E-Book URL", fontWeight = FontWeight.Bold, color = NavyBlue) },
+            title = { Text("Set E-Book URL", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
             text = {
                 Column {
                     Text("Book: ${selectedBook?.title}", fontWeight = FontWeight.Medium, fontSize = 14.sp)
@@ -399,7 +400,7 @@ fun EBooksScreen(
                         showLinkDialog = false
                         Toast.makeText(context, "E-Book link saved!", Toast.LENGTH_SHORT).show()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NavyBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text("Save", color = Color.White) }
             },
             dismissButton = {
