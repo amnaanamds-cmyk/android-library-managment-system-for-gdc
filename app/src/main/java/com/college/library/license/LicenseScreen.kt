@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -109,8 +108,7 @@ fun LicenseScreen(
                     drawCircle(
                         color = BluePrimary.copy(alpha = 0.12f),
                         radius = 250.dp.toPx(),
-                        center = Offset(-75.dp.toPx(), -75.dp.toPx()),
-                        blurRadius = 80f
+                        center = Offset(-75.dp.toPx(), -75.dp.toPx())
                     )
                     drawCircle(
                         color = GoldPrimary.copy(alpha = 0.10f),
@@ -118,8 +116,7 @@ fun LicenseScreen(
                         center = Offset(
                             size.width + 50.dp.toPx() - orbOffset.dp.toPx(),
                             size.height + 50.dp.toPx() - orbOffset.dp.toPx()
-                        ),
-                        blurRadius = 80f
+                        )
                     )
                 }
         )
@@ -460,13 +457,11 @@ private fun MachineIdBox(deviceId: String, context: Context) {
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = if (copied) GreenAccent else GoldPrimary
                     ),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).let {
-                        androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (copied) GreenAccent.copy(alpha = 0.4f)
-                            else GoldPrimary.copy(alpha = 0.3f)
-                        )
-                    },
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (copied) GreenAccent.copy(alpha = 0.4f)
+                        else GoldPrimary.copy(alpha = 0.3f)
+                    ),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                 ) {
                     if (copied) {
@@ -503,25 +498,27 @@ private fun MachineIdBox(deviceId: String, context: Context) {
 
 @Composable
 private fun StatusBanner(status: LicenseStatus) {
-    val (text, bgColor, borderColor, textColor) = when (status) {
+    data class BannerStyle(val text: String, val bg: Color, val border: Color, val fg: Color)
+
+    val style = when (status) {
         is LicenseStatus.Expired -> {
             val dateStr = SimpleDateFormat(
                 "dd MMMM yyyy", Locale.getDefault()
             ).format(Date(status.expiry))
-            arrayOf(
+            BannerStyle(
                 "Your license expired on $dateStr. Contact support for renewal.",
                 RedError.copy(alpha = 0.12f),
                 RedError.copy(alpha = 0.4f),
                 Color(0xFFF08080)
             )
         }
-        is LicenseStatus.WrongDevice -> arrayOf(
+        is LicenseStatus.WrongDevice -> BannerStyle(
             "This license is bound to a different device. Contact support.",
             GoldPrimary.copy(alpha = 0.10f),
             GoldPrimary.copy(alpha = 0.4f),
             GoldLight
         )
-        is LicenseStatus.Tampered -> arrayOf(
+        is LicenseStatus.Tampered -> BannerStyle(
             "⚠️ License file has been tampered with. Please re-activate.",
             RedError.copy(alpha = 0.15f),
             RedError.copy(alpha = 0.5f),
@@ -534,15 +531,15 @@ private fun StatusBanner(status: LicenseStatus) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(bgColor as Color)
-            .border(1.dp, borderColor as Color, RoundedCornerShape(10.dp))
+            .background(style.bg)
+            .border(1.dp, style.border, RoundedCornerShape(10.dp))
             .padding(12.dp, 10.dp)
     ) {
         Text(
-            text = text as String,
+            text = style.text,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            color = textColor as Color,
+            color = style.fg,
             lineHeight = 20.sp
         )
     }
@@ -597,11 +594,3 @@ private fun drawGrid(scope: DrawScope) {
     }
 }
 
-private fun DrawScope.drawCircle(
-    color: Color,
-    radius: Float,
-    center: Offset,
-    blurRadius: Float
-) {
-    drawCircle(color = color, radius = radius, center = center)
-}

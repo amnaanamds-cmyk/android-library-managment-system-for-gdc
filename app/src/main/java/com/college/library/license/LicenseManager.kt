@@ -4,11 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
 import java.security.MessageDigest
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class LicenseManager @Inject constructor(
+class LicenseManager(
     private val context: Context
 ) {
     companion object {
