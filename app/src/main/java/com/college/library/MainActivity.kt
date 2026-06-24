@@ -48,10 +48,15 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.college.library.backup.BackupRestoreScreen
+import com.college.library.export.ExportScreen
 import com.college.library.license.LicenseScreen
 import com.college.library.license.LicenseViewModel
+import com.college.library.notifications.NotificationCenterScreen
 import com.college.library.ui.screens.auth.AuthViewModel
 import com.college.library.ui.screens.auth.LoginScreen
+import com.college.library.ui.screens.reservation.ReservationScreen
+import com.college.library.ui.screens.stats.LibraryStatsScreen
 
 @OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
@@ -316,6 +321,11 @@ fun LibraryApp(
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToAbout = { navController.navigate("about") },
+                    onNavigateToBackup = { navController.navigate("backup_restore") },
+                    onNavigateToExport = { navController.navigate("export") },
+                    onNavigateToStats = { navController.navigate("library_stats") },
+                    onNavigateToReservations = { navController.navigate("reservations") },
+                    onNavigateToNotifications = { navController.navigate("notifications") },
                     viewModel = settingsViewModel
                 )
             }
@@ -408,6 +418,26 @@ fun LibraryApp(
 
             composable("ebooks") {
                 com.college.library.ui.screens.books.EBooksScreen()
+            }
+
+            composable("backup_restore") {
+                BackupRestoreScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable("export") {
+                ExportScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable("reservations") {
+                ReservationScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable("notifications") {
+                NotificationCenterScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable("library_stats") {
+                LibraryStatsScreen(onNavigateBack = { navController.popBackStack() })
             }
         }
         }

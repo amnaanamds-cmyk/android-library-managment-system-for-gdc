@@ -7,6 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.college.library.data.model.Book
 import com.college.library.data.model.IssuedBook
 import com.college.library.data.model.Member
+import com.college.library.data.model.Reservation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,15 +45,33 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reservations` (" +
+            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`bookId` INTEGER NOT NULL, " +
+            "`bookTitle` TEXT NOT NULL, " +
+            "`memberId` INTEGER NOT NULL, " +
+            "`memberName` TEXT NOT NULL, " +
+            "`reservedDate` TEXT NOT NULL, " +
+            "`status` TEXT NOT NULL DEFAULT 'Pending', " +
+            "`notifiedDate` TEXT)"
+        )
+    }
+}
+
 @Database(
-    entities = [Book::class, Member::class, IssuedBook::class],
-    version = 5,
+    entities = [Book::class, Member::class, IssuedBook::class, Reservation::class],
+    version = 6,
     exportSchema = true
 )
 abstract class LibraryDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
     abstract fun memberDao(): MemberDao
     abstract fun issuedBookDao(): IssuedBookDao
+    abstract fun statsQueries(): StatsQueries
+    abstract fun reservationDao(): ReservationDao
 
     class Callback(
         private val databaseProvider: Provider<LibraryDatabase>,

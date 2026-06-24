@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
@@ -44,6 +45,11 @@ import com.college.library.utils.AppLanguage
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAbout: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {},
+    onNavigateToExport: () -> Unit = {},
+    onNavigateToStats: () -> Unit = {},
+    onNavigateToReservations: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -412,6 +418,72 @@ fun SettingsScreen(
                             Icon(Icons.Default.Save, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Manual Backup to Local & Drive", color = Color.White)
+                        }
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = "Advanced Features",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onNavigateToBackup,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Backup & Restore Center", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToExport,
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Export Reports (PDF)", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = onNavigateToStats,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.BarChart, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Library Analytics", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToReservations,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Book Reservations", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToNotifications,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Notification Center", color = Color.White)
                         }
                     }
                 }
