@@ -57,6 +57,8 @@ import com.college.library.ui.screens.auth.AuthViewModel
 import com.college.library.ui.screens.auth.LoginScreen
 import com.college.library.ui.screens.reservation.ReservationScreen
 import com.college.library.ui.screens.stats.LibraryStatsScreen
+import com.college.library.profile.CollegeProfileManager
+import com.college.library.profile.CollegeProfileScreen
 
 @OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
@@ -146,7 +148,9 @@ fun LibraryApp(
     val currentRoute = navBackStackEntry?.destination?.route
     val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
     val isLicensed by licenseViewModel.isLicensed.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showOpac by remember { mutableStateOf(false) }
+    var isProfileSetup by remember { mutableStateOf(CollegeProfileManager.getInstance(context).isSetupComplete()) }
 
     val mainTabs = listOf("dashboard", "books", "members", "hub", "reports", "leaderboard", "ebooks")
     val isMainScreen = currentRoute in mainTabs && isAuthenticated
@@ -251,6 +255,14 @@ fun LibraryApp(
             )
             return@Scaffold
         }
+        if (!isProfileSetup) {
+            CollegeProfileScreen(
+                onNavigateBack = { },
+                onSetupComplete = { isProfileSetup = true },
+                isOnboarding = true
+            )
+            return@Scaffold
+        }
         if (showOpac) {
             val opacNavController = rememberNavController()
             NavHost(
@@ -326,6 +338,7 @@ fun LibraryApp(
                     onNavigateToStats = { navController.navigate("library_stats") },
                     onNavigateToReservations = { navController.navigate("reservations") },
                     onNavigateToNotifications = { navController.navigate("notifications") },
+                    onNavigateToCollegeProfile = { navController.navigate("college_profile") },
                     viewModel = settingsViewModel
                 )
             }
@@ -438,6 +451,12 @@ fun LibraryApp(
 
             composable("library_stats") {
                 LibraryStatsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
+            composable("college_profile") {
+                CollegeProfileScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
         }

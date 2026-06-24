@@ -50,6 +50,7 @@ fun SettingsScreen(
     onNavigateToStats: () -> Unit = {},
     onNavigateToReservations: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToCollegeProfile: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -484,6 +485,15 @@ fun SettingsScreen(
                             Icon(Icons.Default.Info, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Notification Center", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToCollegeProfile,
+                            colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("College Profile", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

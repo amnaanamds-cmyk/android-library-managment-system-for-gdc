@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,6 +22,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,9 +33,11 @@ import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.BookDao
 import com.college.library.data.db.IssuedBookDao
 import com.college.library.data.db.MemberDao
+import com.college.library.data.db.ReservationDao
 import com.college.library.data.model.Book
 import com.college.library.data.model.IssuedBook
 import com.college.library.data.model.Member
+import com.college.library.data.model.Reservation
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
@@ -40,6 +45,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class OpacState(
@@ -47,14 +53,16 @@ data class OpacState(
     val allBooks: List<Book> = emptyList(),
     val myIssuedBooks: List<IssuedBook> = emptyList(),
     val myReturnedBooks: List<IssuedBook> = emptyList(),
-    val myFine: Double = 0.0
+    val myFine: Double = 0.0,
+    val myReservations: List<Reservation> = emptyList()
 )
 
 @HiltViewModel
 class OpacHomeViewModel @Inject constructor(
     private val bookDao: BookDao,
     private val issuedBookDao: IssuedBookDao,
-    private val memberDao: MemberDao
+    private val memberDao: MemberDao,
+    private val reservationDao: ReservationDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OpacState())
@@ -89,6 +97,43 @@ class OpacHomeViewModel @Inject constructor(
                 _state.value = _state.value.copy(myFine = fine)
             }
         }
+        loadReservations(studentId)
+    }
+
+    fun loadReservations(memberId: Long) {
+        viewModelScope.launch {
+            reservationDao.getByMember(memberId).collect { reservations ->
+                _state.value = _state.value.copy(myReservations = reservations)
+            }
+        }
+    }
+
+    fun reserveBook(bookId: Long, bookTitle: String, memberId: Long, memberName: String) {
+        viewModelScope.launch {
+            val reservation = Reservation(
+                bookId = bookId,
+                bookTitle = bookTitle,
+                memberId = memberId,
+                memberName = memberName,
+                reservedDate = LocalDate.now().toString(),
+                status = "Pending"
+            )
+            reservationDao.insert(reservation)
+        }
+    }
+
+    fun isBookReservedByMember(bookId: Long, memberId: Long): Boolean {
+        return _state.value.myReservations.any { it.bookId == bookId && it.status == "Pending" }
+    }
+
+    fun updatePin(memberId: Long, newPin: String) {
+        viewModelScope.launch {
+            val member = memberDao.getMemberById(memberId)
+            if (member != null) {
+                memberDao.updateMember(member.copy(pin = newPin))
+                _state.value = _state.value.copy(member = member.copy(pin = newPin))
+            }
+        }
     }
 }
 
@@ -111,7 +156,7 @@ fun OpacHomeScreen(
         it.isbn.contains(viewModel.searchQuery, ignoreCase = true)
     }
 
-    val tabs = listOf("📚 Catalog", "📖 My Books", "📋 History", "🔖 E-Books")
+    val tabs = listOf("Catalog", "My Books", "History", "E-Books", "Reservations", "Profile")
 
     Scaffold(
         topBar = {
@@ -176,16 +221,49 @@ fun OpacHomeScreen(
                     Tab(
                         selected = viewModel.selectedTab == index,
                         onClick = { viewModel.selectedTab = index },
-                        text = { Text(title, fontSize = 12.sp, fontWeight = if (viewModel.selectedTab == index) FontWeight.Bold else FontWeight.Normal) }
+                        text = {
+                            Text(
+                                when (index) {
+                                    0 -> "📚 $title"
+                                    1 -> "📖 $title"
+                                    2 -> "📋 $title"
+                                    3 -> "🔖 $title"
+                                    4 -> "📌 $title"
+                                    5 -> "👤 $title"
+                                    else -> title
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = if (viewModel.selectedTab == index) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     )
                 }
             }
 
             when (viewModel.selectedTab) {
-                0 -> OpacCatalogTab(filteredBooks, viewModel.searchQuery, { viewModel.searchQuery = it }, context)
+                0 -> OpacCatalogTab(
+                    books = filteredBooks,
+                    searchQuery = viewModel.searchQuery,
+                    onSearch = { viewModel.searchQuery = it },
+                    context = context,
+                    member = state.member,
+                    myReservations = state.myReservations,
+                    onReserve = { book ->
+                        state.member?.let { m ->
+                            viewModel.reserveBook(book.id, book.title, m.id, m.name)
+                        }
+                    }
+                )
                 1 -> OpacMyBooksTab(state.myIssuedBooks, state.allBooks, context)
                 2 -> OpacHistoryTab(state.myReturnedBooks, state.myFine)
                 3 -> OpacEBooksTab(state.allBooks.filter { it.isDigital || !it.digitalUrl.isNullOrBlank() }, context)
+                4 -> OpacReservationsTab(state.myReservations, state.allBooks)
+                5 -> OpacProfileTab(
+                    member = state.member,
+                    onUpdatePin = { newPin ->
+                        state.member?.let { m -> viewModel.updatePin(m.id, newPin) }
+                    }
+                )
             }
         }
     }
@@ -196,7 +274,10 @@ fun OpacCatalogTab(
     books: List<Book>,
     searchQuery: String,
     onSearch: (String) -> Unit,
-    context: android.content.Context
+    context: android.content.Context,
+    member: Member?,
+    myReservations: List<Reservation>,
+    onReserve: (Book) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -223,7 +304,13 @@ fun OpacCatalogTab(
 
         LazyColumn(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(books) { book ->
-                OpacBookCard(book = book, context = context)
+                OpacBookCard(
+                    book = book,
+                    context = context,
+                    member = member,
+                    myReservations = myReservations,
+                    onReserve = onReserve
+                )
             }
             item { Spacer(modifier = Modifier.height(16.dp)) }
         }
@@ -231,9 +318,16 @@ fun OpacCatalogTab(
 }
 
 @Composable
-fun OpacBookCard(book: Book, context: android.content.Context) {
+fun OpacBookCard(
+    book: Book,
+    context: android.content.Context,
+    member: Member? = null,
+    myReservations: List<Reservation> = emptyList(),
+    onReserve: (Book) -> Unit = {}
+) {
     var expanded by remember { mutableStateOf(false) }
     val isAvailable = book.status == "Available"
+    val isAlreadyReserved = myReservations.any { it.bookId == book.id && it.status == "Pending" }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -271,6 +365,42 @@ fun OpacBookCard(book: Book, context: android.content.Context) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
+                }
+            }
+
+            // Reserve button for issued (unavailable) books
+            if (!isAvailable && member != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (isAlreadyReserved) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Gold.copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.Bookmark, null, tint = Gold, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Already Reserved", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = {
+                            onReserve(book)
+                            Toast.makeText(context, "Book reserved successfully!", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Icon(Icons.Default.BookmarkAdd, null, modifier = Modifier.size(16.dp), tint = Color.Black)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Reserve This Book", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    }
                 }
             }
 
@@ -375,6 +505,22 @@ fun OpacMyBooksTab(issuedBooks: List<IssuedBook>, allBooks: List<Book>, context:
                             }
                         }
                     }
+
+                    // Renewal Request Button
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            Toast.makeText(context, "Renewal request sent to librarian", Toast.LENGTH_SHORT).show()
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth().height(36.dp)
+                    ) {
+                        Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Request Renewal", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+
                     if (book != null && !book.digitalUrl.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(6.dp))
                         TextButton(onClick = {
@@ -527,4 +673,313 @@ fun OpacEBooksTab(eBooks: List<Book>, context: android.content.Context) {
         }
         item { Spacer(modifier = Modifier.height(16.dp)) }
     }
+}
+
+// ---- NEW TAB: Reservations ----
+@Composable
+fun OpacReservationsTab(reservations: List<Reservation>, allBooks: List<Book>) {
+    if (reservations.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.BookmarkBorder, null, modifier = Modifier.size(70.dp), tint = MaterialTheme.colorScheme.primary.copy(0.3f))
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("No reservations yet", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Reserve books from the catalog when they are issued", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f))
+            }
+        }
+        return
+    }
+
+    val pendingReservations = reservations.filter { it.status == "Pending" }
+    val otherReservations = reservations.filter { it.status != "Pending" }
+
+    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (pendingReservations.isNotEmpty()) {
+            item {
+                Text("Pending Reservations (${pendingReservations.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
+            }
+            items(pendingReservations) { reservation ->
+                OpacReservationCard(reservation = reservation, allBooks = allBooks, isPending = true)
+            }
+        }
+        if (otherReservations.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Past Reservations (${otherReservations.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            items(otherReservations) { reservation ->
+                OpacReservationCard(reservation = reservation, allBooks = allBooks, isPending = false)
+            }
+        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+fun OpacReservationCard(reservation: Reservation, allBooks: List<Book>, isPending: Boolean) {
+    val statusColor = when (reservation.status) {
+        "Pending" -> Gold
+        "Fulfilled" -> CardGreen
+        "Cancelled" -> DangerRed
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPending) Gold.copy(alpha = 0.05f) else MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp))
+                        .background(statusColor.copy(0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (isPending) Icons.Default.Schedule else Icons.Default.Bookmark,
+                        null,
+                        tint = statusColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(reservation.bookTitle, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("Reserved: ${reservation.reservedDate}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = statusColor.copy(0.15f)
+                ) {
+                    Text(
+                        reservation.status,
+                        color = statusColor,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            if (isPending) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(0.08f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            "You will be notified when this book becomes available",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            if (reservation.notifiedDate != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Notified: ${reservation.notifiedDate}", fontSize = 11.sp, color = CardGreen, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+// ---- NEW TAB: Profile ----
+@Composable
+fun OpacProfileTab(member: Member?, onUpdatePin: (String) -> Unit) {
+    val context = LocalContext.current
+
+    if (member == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    var showPinDialog by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Profile Header
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(0.08f))
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier.size(80.dp).clip(CircleShape)
+                            .background(Gold.copy(0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, null, tint = Gold, modifier = Modifier.size(48.dp))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(member.name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(member.memberType, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("ID: ${member.memberId}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        // Personal Details
+        item {
+            Text("Personal Details", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(1.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    ProfileInfoRow("Name", member.name)
+                    if (member.fatherName.isNotBlank()) ProfileInfoRow("Father's Name", member.fatherName)
+                    ProfileInfoRow("Email", member.email)
+                    ProfileInfoRow("Phone", member.phone)
+                    ProfileInfoRow("Department", member.department)
+                    if (member.className.isNotBlank()) ProfileInfoRow("Class", member.className)
+                    if (member.classNo.isNotBlank()) ProfileInfoRow("Class/Roll No", member.classNo)
+                    if (member.address.isNotBlank()) ProfileInfoRow("Address", member.address)
+                    if (member.designation.isNotBlank()) ProfileInfoRow("Designation", member.designation)
+                    if (member.bps.isNotBlank()) ProfileInfoRow("BPS", member.bps)
+                }
+            }
+        }
+
+        // Membership Details
+        item {
+            Text("Membership", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(1.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    ProfileInfoRow("Join Date", member.joinDate)
+                    ProfileInfoRow("Expiry Date", member.expiryDate)
+                    ProfileInfoRow("Books Issued", "${member.booksIssued}")
+                }
+            }
+        }
+
+        // Change PIN
+        item {
+            Spacer(modifier = Modifier.height(4.dp))
+            Button(
+                onClick = { showPinDialog = true },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Icon(Icons.Default.Lock, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Change PIN", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+
+    // PIN Change Dialog
+    if (showPinDialog) {
+        OpacChangePinDialog(
+            onDismiss = { showPinDialog = false },
+            onConfirm = { newPin ->
+                onUpdatePin(newPin)
+                showPinDialog = false
+                Toast.makeText(context, "PIN updated successfully!", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+}
+
+@Composable
+fun ProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(0.4f))
+        Text(value, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(0.6f))
+    }
+}
+
+@Composable
+fun OpacChangePinDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var newPin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Change PIN", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = newPin,
+                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) { newPin = it; error = null } },
+                    label = { Text("New PIN") },
+                    placeholder = { Text("4-digit PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirmPin,
+                    onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) { confirmPin = it; error = null } },
+                    label = { Text("Confirm PIN") },
+                    placeholder = { Text("Re-enter PIN") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error != null) {
+                    Text(error!!, color = DangerRed, fontSize = 12.sp)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    when {
+                        newPin.length != 4 -> error = "PIN must be exactly 4 digits"
+                        newPin != confirmPin -> error = "PINs do not match"
+                        else -> onConfirm(newPin)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) { Text("Update PIN") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
