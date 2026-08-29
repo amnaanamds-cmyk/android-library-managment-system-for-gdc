@@ -1,0 +1,12 @@
+-- BookReviewQueries.sq
+import kotlin.Boolean;
+
+insertBookReview:
+INSERT INTO book_reviews (syncId, bookId, memberId, memberName, rating, reviewText, reviewDate, lastUpdated, deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getReviewsForBook:
+SELECT * FROM book_reviews WHERE bookId = ? AND deleted = 0 ORDER BY id DESC;
+
+deleteBookReview:
+UPDATE book_reviews SET deleted = 1, lastUpdated = ? WHERE id = ?;

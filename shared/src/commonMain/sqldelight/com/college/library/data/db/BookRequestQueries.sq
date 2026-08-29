@@ -1,0 +1,15 @@
+-- BookRequestQueries.sq
+import kotlin.Boolean;
+
+insertBookRequest:
+INSERT INTO book_requests (syncId, title, author, memberId, memberName, requestDate, status, lastUpdated, deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getAllBookRequests:
+SELECT * FROM book_requests WHERE deleted = 0 ORDER BY id DESC;
+
+updateBookRequestStatus:
+UPDATE book_requests SET status = ?, lastUpdated = ? WHERE id = ?;
+
+deleteBookRequest:
+UPDATE book_requests SET deleted = 1, lastUpdated = ? WHERE id = ?;

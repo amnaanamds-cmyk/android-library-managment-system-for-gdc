@@ -1,0 +1,14 @@
+-- MessageLogQueries.sq
+
+insertMessageLog:
+INSERT INTO agent_message_log (memberId, memberName, memberPhone, bookTitle, channel, message, sentDate, status, lastUpdated)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getAllMessageLogs:
+SELECT * FROM agent_message_log ORDER BY id DESC;
+
+getMessageLogsByDate:
+SELECT * FROM agent_message_log WHERE sentDate = ? ORDER BY id DESC;
+
+wasMessageSentToday:
+SELECT COUNT(*) FROM agent_message_log WHERE memberId = ? AND bookTitle = ? AND channel = ? AND sentDate = ?;

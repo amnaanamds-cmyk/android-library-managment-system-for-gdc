@@ -1,0 +1,150 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return signedIn() ? getUserData().role : '';
+    }
+
+    // Desktop app writes lowercase roles (owner/staff/admin/librarian/director),
+    // Android/Kotlin writes capitalized (Librarian/Director). Accept both.
+    function isDirector() {
+      return userRole() in ['Director', 'director', 'owner', 'admin', 'college_admin'];
+    }
+
+    function isLibrarian() {
+      return userRole() in [
+        'Librarian', 'Director',
+        'librarian', 'director', 'admin', 'owner', 'staff', 'college_admin'
+      ];
+    }
+
+    // User explicitly belongs to this college (profile institutionId or collegeIds).
+    function belongsToCollege(collegeId) {
+      let profile = signedIn() ? getUserData() : null;
+      return profile != null &&
+             (profile.institutionId == collegeId || collegeId in profile.collegeIds);
+    }
+
+    // The authenticated user is the director/owner recorded on the college doc.
+    function isCollegeDirector(collegeId) {
+      let college = signedIn()
+        ? get(/databases/$(database)/documents/colleges/$(collegeId)).data
+        : null;
+      return college != null &&
+             (college.directorUid == request.auth.uid || college.ownerUid == request.auth.uid);
+    }
+
+    // Any signed-in member of the college OR its director.
+    function canManageCollege(collegeId) {
+      return isCollegeDirector(collegeId) || (belongsToCollege(collegeId) && isLibrarian());
+    }
+
+    // -------------------------------------------------------------
+    // Global user profiles (role + institution resolution)
+    // -------------------------------------------------------------
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isDirector());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // -------------------------------------------------------------
+    // Director accounts
+    // -------------------------------------------------------------
+
+    match /directors/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isDirector());
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // College registry (metadata + invite codes)
+    // -------------------------------------------------------------
+
+    match /colleges/{collegeId} {
+      allow create: if signedIn();
+      allow read: if signedIn();
+      // Only the recorded director/owner may edit metadata or reassign.
+      allow update, delete: if signedIn() && isCollegeDirector(collegeId);
+    }
+
+    // Institution metadata (name, inviteCode, qrPayload).
+    // Any signed-in user can read (needed to look up invite codes/QR).
+    // Only members of the institution can write.
+    match /institutions/{collegeId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && belongsToCollege(collegeId);
+      allow delete: if signedIn() && isCollegeDirector(collegeId);
+    }
+
+    // -------------------------------------------------------------
+    // Tenant data: /institutions/{collegeId}/{books|ebooks|members|issued_books|reservations}
+    // -------------------------------------------------------------
+
+    match /institutions/{collegeId}/books/{bookId} {
+      // Public catalog is browsable.
+      allow read: if true;
+      // Writes are restricted to college staff/directors.
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    match /institutions/{collegeId}/ebooks/{bookId} {
+      // Digital books are visible to signed-in users of the college.
+      allow read: if signedIn() && belongsToCollege(collegeId);
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    match /institutions/{collegeId}/members/{memberId} {
+      // Own college staff can read.
+      allow read: if signedIn() && belongsToCollege(collegeId);
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    match /institutions/{collegeId}/issued_books/{issueId} {
+      allow read: if signedIn() && belongsToCollege(collegeId);
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    match /institutions/{collegeId}/transactions/{txId} {
+      allow read: if signedIn() && belongsToCollege(collegeId);
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    match /institutions/{collegeId}/reservations/{reservationId} {
+      allow read: if signedIn() && belongsToCollege(collegeId);
+      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+    }
+
+    // -------------------------------------------------------------
+    // Settings + audit (director-only)
+    // -------------------------------------------------------------
+
+    match /institutions/{collegeId}/settings/{settingId} {
+      allow read: if signedIn() && isCollegeDirector(collegeId);
+      allow write: if signedIn() && isCollegeDirector(collegeId);
+    }
+
+    match /institutions/{collegeId}/audit/{entryId} {
+      allow read: if signedIn() && isCollegeDirector(collegeId);
+      allow create: if signedIn() && belongsToCollege(collegeId);
+      allow update, delete: if signedIn() && isCollegeDirector(collegeId);
+    }
+  }
+}

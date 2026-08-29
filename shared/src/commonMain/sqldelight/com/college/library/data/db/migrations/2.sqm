@@ -1,0 +1,7 @@
+-- Migration 2: BUG 4 FIX
+-- Add sync_metadata key-value table so the incremental pull cursor
+-- (last_sync_timestamp) is persisted across app restarts.
+CREATE TABLE IF NOT EXISTS sync_metadata (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);

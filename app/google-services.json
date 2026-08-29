@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "277394507679",
+    "project_id": "nexlib-e7970",
+    "storage_bucket": "nexlib-e7970.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277394507679:android:d46572c19699fb83879faa",
+        "android_client_info": {
+          "package_name": "com.college.library"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "277394507679-b789c1bjmcaogutfht16bv7i7l80rkpc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnDlkWcFqCWaXq9YSl2CFMzBb3yh3pIlE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "277394507679-b789c1bjmcaogutfht16bv7i7l80rkpc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

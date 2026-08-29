@@ -1,0 +1,43 @@
+insert:
+INSERT OR REPLACE INTO reservations(syncId, bookId, bookTitle, memberId, memberName, reservedDate, status, notifiedDate, lastUpdated, deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getByBook:
+SELECT * FROM reservations WHERE bookId = :bookId ORDER BY reservedDate ASC;
+
+getByMember:
+SELECT * FROM reservations WHERE memberId = :memberId ORDER BY reservedDate DESC;
+
+getAllPending:
+SELECT * FROM reservations WHERE status = 'Pending' ORDER BY reservedDate ASC;
+
+updateStatus:
+UPDATE reservations SET status = :status WHERE id = :id;
+
+updateNotifiedDate:
+UPDATE reservations SET notifiedDate = :date WHERE id = :id;
+
+delete:
+DELETE FROM reservations WHERE id = :id;
+
+softDelete:
+UPDATE reservations SET deleted = 1, lastUpdated = :lastUpdated WHERE id = :id;
+
+getReservationCount:
+SELECT COUNT(*) FROM reservations WHERE bookId = :bookId AND status = 'Pending';
+
+getFirstPendingForBook:
+SELECT * FROM reservations WHERE bookId = :bookId AND status = 'Pending' ORDER BY reservedDate ASC LIMIT 1;
+
+getAllReservations:
+SELECT * FROM reservations;
+
+getBySyncId:
+SELECT * FROM reservations WHERE syncId = :syncId LIMIT 1;
+
+updateTimestamp:
+UPDATE reservations SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+
+deleteAllReservations:
+DELETE FROM reservations;
+

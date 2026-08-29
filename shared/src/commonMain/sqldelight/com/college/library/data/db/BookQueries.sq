@@ -1,0 +1,65 @@
+getAllBooks:
+SELECT * FROM books ORDER BY id DESC;
+
+getAllBooksStatic:
+SELECT * FROM books;
+
+getAvailableBooks:
+SELECT * FROM books WHERE status = 'Available' ORDER BY id DESC;
+
+searchBooks:
+SELECT * FROM books WHERE title LIKE '%' || :query || '%' OR author LIKE '%' || :query || '%' OR isbn LIKE '%' || :query || '%' OR publisher LIKE '%' || :query || '%' ORDER BY id DESC;
+
+getBookById:
+SELECT * FROM books WHERE id = :id LIMIT 1;
+
+getBookBySyncId:
+SELECT * FROM books WHERE syncId = :syncId LIMIT 1;
+
+insertBook:
+INSERT OR REPLACE INTO books (
+    syncId, isbn, accNo, title, author, publisher, publisherPlace,
+    publishDate, edition, pages, procurement, volume, price,
+    status, isDigital, digitalUrl, category, marcData, lastUpdated, deleted
+)
+VALUES (
+    :syncId, :isbn, :accNo, :title, :author, :publisher, :publisherPlace,
+    :publishDate, :edition, :pages, :procurement, :volume, :price,
+    :status, :isDigital, :digitalUrl, :category, :marcData, :lastUpdated, :deleted
+);
+
+updateBook:
+UPDATE books
+SET syncId = :syncId, isbn = :isbn, accNo = :accNo, title = :title, author = :author,
+    publisher = :publisher, publisherPlace = :publisherPlace, publishDate = :publishDate,
+    edition = :edition, pages = :pages, procurement = :procurement, volume = :volume,
+    price = :price, status = :status, isDigital = :isDigital, digitalUrl = :digitalUrl,
+    category = :category, marcData = :marcData, lastUpdated = :lastUpdated, deleted = :deleted
+WHERE id = :id;
+
+deleteBook:
+DELETE FROM books WHERE id = :id;
+
+deleteAllBooks:
+DELETE FROM books;
+
+softDelete:
+UPDATE books SET deleted = 1, lastUpdated = :lastUpdated WHERE id = :id;
+
+updateBookStatus:
+UPDATE books SET status = :status, lastUpdated = :lastUpdated WHERE id = :id;
+
+updateTimestamp:
+UPDATE books SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+
+getTotalCount:
+SELECT COUNT(*) FROM books;
+
+getAvailableCount:
+SELECT COUNT(*) FROM books WHERE status = 'Available';
+
+getCategories:
+SELECT DISTINCT category FROM books ORDER BY category ASC;
+
+getBooksByCategory:
+SELECT * FROM books WHERE category = :category ORDER BY title ASC;

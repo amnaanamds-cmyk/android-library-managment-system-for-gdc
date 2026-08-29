@@ -1,0 +1,57 @@
+getAllMembers:
+SELECT * FROM members ORDER BY id DESC;
+
+getAllMembersStatic:
+SELECT * FROM members;
+
+searchMembers:
+SELECT * FROM members WHERE name LIKE '%' || :query || '%' OR memberId LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%' ORDER BY id DESC;
+
+getMemberById:
+SELECT * FROM members WHERE id = :id LIMIT 1;
+
+getMemberBySyncId:
+SELECT * FROM members WHERE syncId = :syncId LIMIT 1;
+
+loginOpacStudent:
+SELECT * FROM members WHERE memberId = :memberId AND pin = :pin LIMIT 1;
+
+insertMember:
+INSERT OR REPLACE INTO members(
+    syncId, memberId, name, email, phone, department, memberType,
+    joinDate, expiryDate, booksIssued, fatherName, className,
+    classNo, address, photoUri, designation, bps, pin, lastUpdated, deleted
+)
+VALUES (
+    :syncId, :memberId, :name, :email, :phone, :department, :memberType,
+    :joinDate, :expiryDate, :booksIssued, :fatherName, :className,
+    :classNo, :address, :photoUri, :designation, :bps, :pin, :lastUpdated, :deleted
+);
+
+updateMember:
+UPDATE members
+SET syncId = :syncId, memberId = :memberId, name = :name, email = :email,
+    phone = :phone, department = :department, memberType = :memberType,
+    joinDate = :joinDate, expiryDate = :expiryDate, booksIssued = :booksIssued,
+    fatherName = :fatherName, className = :className, classNo = :classNo,
+    address = :address, photoUri = :photoUri, designation = :designation,
+    bps = :bps, pin = :pin, lastUpdated = :lastUpdated, deleted = :deleted
+WHERE id = :id;
+
+deleteMember:
+DELETE FROM members WHERE id = :id;
+
+deleteAllMembers:
+DELETE FROM members;
+
+softDeleteMember:
+UPDATE members SET deleted = 1, lastUpdated = :lastUpdated WHERE id = :id;
+
+getTopMembers:
+SELECT * FROM members ORDER BY booksIssued DESC LIMIT :limit;
+
+getTotalCount:
+SELECT COUNT(*) FROM members;
+
+updateTimestamp:
+UPDATE members SET lastUpdated = :lastUpdated WHERE syncId = :syncId;

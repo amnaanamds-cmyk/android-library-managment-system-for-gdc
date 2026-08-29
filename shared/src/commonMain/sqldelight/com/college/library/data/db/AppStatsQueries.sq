@@ -1,0 +1,40 @@
+getBookCountByCategory:
+SELECT category, COUNT(id) AS count FROM books GROUP BY category ORDER BY count DESC;
+
+getTotalCollectionValue:
+SELECT COALESCE(SUM(price), 0.0) FROM books;
+
+getMostPopularAuthorRaw:
+SELECT author AS category, COUNT(id) AS count FROM books WHERE author != '' GROUP BY author ORDER BY count DESC LIMIT 1;
+
+getMonthlyIssueCounts:
+SELECT substr(issueDate, 1, 7) AS month, COUNT(id) AS count FROM issued_books GROUP BY substr(issueDate, 1, 7) ORDER BY month DESC LIMIT 6;
+
+getAverageBorrowDuration:
+SELECT AVG(julianday(returnDate) - julianday(issueDate)) AS averageDuration FROM issued_books WHERE returnDate IS NOT NULL AND status = 'Returned';
+
+getTopBorrowers:
+SELECT memberName, memberMemberId AS memberId, COUNT(id) AS issueCount FROM issued_books GROUP BY memberId ORDER BY issueCount DESC LIMIT 5;
+
+getDigitalBookCount:
+SELECT COUNT(id) FROM books WHERE isDigital = 1;
+
+getPhysicalBookCount:
+SELECT COUNT(id) FROM books WHERE isDigital = 0;
+
+getTotalFinesCollected:
+SELECT COALESCE(SUM(fine), 0.0) FROM issued_books WHERE status = 'Returned';
+
+getMonthlyReturnCounts:
+SELECT substr(returnDate, 1, 7) AS month, COUNT(id) AS count FROM issued_books WHERE returnDate IS NOT NULL GROUP BY substr(returnDate, 1, 7) ORDER BY month DESC LIMIT 6;
+
+-- BUG 4 FIX: Read/write the sync cursor timestamp from the sync_metadata table.
+getStatValue:
+SELECT value FROM sync_metadata WHERE key = :key;
+
+upsertStat:
+INSERT OR REPLACE INTO sync_metadata (key, value) VALUES (:key, :value);
+
+clearSyncMetadata:
+DELETE FROM sync_metadata;
+

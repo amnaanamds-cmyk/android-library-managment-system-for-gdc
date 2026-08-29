@@ -1,0 +1,53 @@
+getCurrentlyIssuedBooks:
+SELECT * FROM issued_books WHERE status = 'Issued' ORDER BY issueDate DESC;
+
+getOverdueBooks:
+SELECT * FROM issued_books WHERE status = 'Issued' AND dueDate < :today ORDER BY dueDate ASC;
+
+getAllTransactions:
+SELECT * FROM issued_books ORDER BY issueDate DESC;
+
+getIssuedBookById:
+SELECT * FROM issued_books WHERE id = :id LIMIT 1;
+
+getBySyncId:
+SELECT * FROM issued_books WHERE syncId = :syncId LIMIT 1;
+
+insertIssuedBook:
+INSERT OR REPLACE INTO issued_books(
+    syncId, bookId, bookTitle, bookIsbn, memberId, memberName,
+    memberMemberId, issueDate, dueDate, returnDate, fine,
+    status, lastUpdated, deleted
+)
+VALUES (
+    :syncId, :bookId, :bookTitle, :bookIsbn, :memberId, :memberName,
+    :memberMemberId, :issueDate, :dueDate, :returnDate, :fine,
+    :status, :lastUpdated, :deleted
+);
+
+returnBook:
+UPDATE issued_books SET returnDate = :returnDate, fine = :fine, status = 'Returned', lastUpdated = :lastUpdated WHERE id = :id;
+
+getIssuedCount:
+SELECT COUNT(*) FROM issued_books WHERE status = 'Issued';
+
+getTotalFineCollected:
+SELECT COALESCE(SUM(fine), 0.0) FROM issued_books;
+
+getCurrentlyIssuedBooksByMember:
+SELECT * FROM issued_books WHERE memberId = :memberId AND status = 'Issued' ORDER BY issueDate DESC;
+
+getReturnedBooksByMember:
+SELECT * FROM issued_books WHERE memberId = :memberId AND status = 'Returned' ORDER BY returnDate DESC;
+
+getTotalFineByMember:
+SELECT COALESCE(SUM(fine), 0.0) FROM issued_books WHERE memberId = :memberId AND status = 'Returned';
+
+deleteAllIssuedBooks:
+DELETE FROM issued_books;
+
+updateTimestamp:
+UPDATE issued_books SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+
+markDeleted:
+UPDATE issued_books SET deleted = 1, lastUpdated = :lastUpdated WHERE syncId = :syncId;

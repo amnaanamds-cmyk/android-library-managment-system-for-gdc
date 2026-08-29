@@ -1,0 +1,92 @@
+/* Premium Glassmorphism QSS for GDC Library50 - structural only */
+
+QWidget {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+    font-size: 14px;
+}
+
+/* Scroll Areas */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QScrollBar:vertical {
+    border: none;
+    width: 10px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    min-height: 20px;
+    border-radius: 5px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+
+/* Buttons - Common structural styles */
+QPushButton {
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+/* Input Fields */
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTextEdit {
+    border: 1.5px solid #1E3050;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+/* Tables */
+QTableWidget, QTableView {
+    border: 1px solid #1E3050;
+    border-radius: 8px;
+    outline: none;
+}
+QHeaderView::section {
+    padding: 8px;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* Group Boxes / Cards */
+QGroupBox, QFrame#Card {
+    border: 1px solid #1E3050;
+    border-radius: 12px;
+    margin-top: 14px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 10px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Tabs */
+QTabWidget::pane {
+    border: 1px solid #1E3050;
+    border-radius: 8px;
+}
+QTabBar::tab {
+    padding: 10px 20px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    font-weight: 600;
+    margin-right: 4px;
+}
+
+/* Custom Checkbox */
+QCheckBox {
+    spacing: 8px;
+}
+QCheckBox::indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid #1E3050;
+}
+QCheckBox::indicator:checked {
+    background-color: #10B981;
+    border-color: #10B981;
+}
