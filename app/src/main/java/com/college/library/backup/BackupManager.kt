@@ -6,7 +6,10 @@ import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.college.library.data.db.LibraryDatabase
+import app.cash.sqldelight.db.SqlDriver
+import com.college.library.data.db.BookDao
+import com.college.library.data.db.IssuedBookDao
+import com.college.library.data.db.MemberDao
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.flow.first
@@ -30,7 +33,10 @@ data class BackupInfo(
 @Singleton
 class BackupManager @Inject constructor(
     private val application: Application,
-    private val database: LibraryDatabase
+    private val driver: SqlDriver,
+    private val bookDao: BookDao,
+    private val memberDao: MemberDao,
+    private val issuedBookDao: IssuedBookDao
 ) {
 
     companion object {
@@ -60,8 +66,11 @@ class BackupManager @Inject constructor(
      * Checkpoint WAL so all pending writes are flushed into the main database file.
      */
     private fun checkpointWal() {
-        val db = database.openHelper.writableDatabase
-        db.query("PRAGMA wal_checkpoint(TRUNCATE)")?.close()
+        try {
+            driver.execute(null, "PRAGMA wal_checkpoint(TRUNCATE)", 0)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     /**
@@ -137,7 +146,7 @@ class BackupManager @Inject constructor(
             if (!backupFile.exists()) return false
 
             // Close the database so we can overwrite the file
-            database.close()
+            driver.close()
 
             val dbFile = getDbFile()
 
@@ -249,10 +258,6 @@ class BackupManager @Inject constructor(
      */
     suspend fun exportToJson(): File? {
         return try {
-            val bookDao = database.bookDao()
-            val memberDao = database.memberDao()
-            val issuedBookDao = database.issuedBookDao()
-
             val books = bookDao.getAllBooksStatic()
             val members = memberDao.getAllMembers().first()
             val issuedBooks = issuedBookDao.getAllTransactions().first()

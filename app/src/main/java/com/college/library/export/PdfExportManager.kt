@@ -134,14 +134,89 @@ class PdfExportManager(private val context: Context) {
         )
     }
 
+    fun exportSpineLabels(books: List<Book>): File {
+        val doc = PdfDocument()
+        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, 1).create()
+        var page = doc.startPage(pageInfo)
+        var canvas = page.canvas
+        canvas.drawColor(Color.WHITE)
+
+        val paint = Paint().apply { color = Color.BLACK; textSize = 10f }
+        val boldPaint = Paint().apply { color = Color.BLACK; textSize = 12f; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD) }
+        
+        val labelW = 140f
+        val labelH = 70f
+        val startX = MARGIN
+        val startY = MARGIN
+        
+        var x = startX
+        var y = startY
+        var pageNum = 1
+
+        for (book in books) {
+            // Draw Label Border
+            val borderPaint = Paint().apply { color = Color.LTGRAY; style = Paint.Style.STROKE; strokeWidth = 1f }
+            canvas.drawRect(x, y, x + labelW, y + labelH, borderPaint)
+            
+            // Draw Label Text
+            canvas.drawText("GDC Library", x + 5f, y + 15f, boldPaint)
+            canvas.drawText("Call: ${book.category}", x + 5f, y + 35f, paint)
+            canvas.drawText("Acc: ${book.accNo}", x + 5f, y + 50f, paint)
+            canvas.drawText("Auth: ${book.author.take(15)}", x + 5f, y + 65f, paint)
+
+            x += labelW + 10f
+            if (x + labelW > PAGE_W - MARGIN) {
+                x = startX
+                y += labelH + 10f
+                if (y + labelH > PAGE_H - MARGIN) {
+                    doc.finishPage(page)
+                    pageNum++
+                    val newPageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create()
+                    page = doc.startPage(newPageInfo)
+                    canvas = page.canvas
+                    canvas.drawColor(Color.WHITE)
+                    x = startX
+                    y = startY
+                }
+            }
+        }
+        
+        doc.finishPage(page)
+        val file = File(context.cacheDir, "spine_labels_${System.currentTimeMillis()}.pdf")
+        doc.writeTo(FileOutputStream(file))
+        doc.close()
+        return file
+    }
+
+    fun exportMarc21(books: List<Book>): File {
+        // Native MARC21 (MRC) format generation placeholder mimicking PyMarc export
+        val file = File(context.cacheDir, "export_koha_${System.currentTimeMillis()}.mrc")
+        FileOutputStream(file).bufferedWriter().use { writer ->
+            for (book in books) {
+                // This is a naive text representation for MRC to satisfy interoperability
+                writer.write("=LDR  00000nam a2200000 a 4500\n")
+                writer.write("=020  \\\\\$a${book.isbn}\n")
+                writer.write("=082  \\\\\$a${book.category}\n")
+                writer.write("=100  1\\\$a${book.author}\n")
+                writer.write("=245  10\$a${book.title}\n")
+                writer.write("=260  \\\\\$a${book.publisherPlace}\$b${book.publisher}\$c${book.publishDate}\n")
+                writer.write("=300  \\\\\$a${book.pages} p.\n")
+                writer.write("=952  \\\\\$p${book.accNo}\n")
+                writer.write("\n")
+            }
+        }
+        return file
+    }
+
     fun shareFile(file: File) {
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val mime = if (file.name.endsWith(".pdf")) "application/pdf" else "application/octet-stream"
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
+            type = mime
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share PDF Report"))
+        context.startActivity(Intent.createChooser(intent, "Share Report"))
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────

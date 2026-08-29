@@ -63,13 +63,13 @@ object OverdueNotificationHelper {
         notify(context, overdueBooks, emptyList())
     }
 
-    // ── Overdue notifications (one summary + one per book) ────────────────────
+    // ── Overdue notifications (one summary + limited per-book) ────────────────────
     private fun showOverdueNotifications(context: Context, overdueBooks: List<IssuedBook>) {
         val nm = NotificationManagerCompat.from(context)
         val pendingIntent = mainActivityIntent(context)
 
-        // Per-book notifications (inbox style)
-        overdueBooks.forEachIndexed { index, book ->
+        // Per-book notifications (limit to top 3 to avoid spam/ANR)
+        overdueBooks.take(3).forEachIndexed { index, book ->
             val notif = NotificationCompat.Builder(context, OVERDUE_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_notify_error)
                 .setContentTitle("⚠ Overdue: ${book.bookTitle}")

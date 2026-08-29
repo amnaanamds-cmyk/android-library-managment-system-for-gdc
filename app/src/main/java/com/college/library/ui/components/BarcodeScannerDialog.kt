@@ -33,26 +33,13 @@ import kotlinx.coroutines.delay
 fun BarcodeScannerDialog(
     title: String,
     instruction: String,
-    candidateItems: List<Pair<String, String>>, // Pair of (Name/Title, Barcode/ISBN)
+    candidateItems: List<Pair<String, String>> = emptyList(), // Pair of (Name/Title, Barcode/ISBN)
     onScanSuccess: (String) -> Unit,
     onDismiss: () -> Unit,
     onGalleryScan: (() -> Unit)? = null
 ) {
     var manualCode by remember { mutableStateOf("") }
     var scannedValue by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-
-    // Viewfinder laser line animation
-    val infiniteTransition = rememberInfiniteTransition(label = "laser")
-    val laserYFraction by infiniteTransition.animateFloat(
-        initialValue = 0.1f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "laserY"
-    )
 
     fun handleScan(code: String) {
         if (scannedValue != null) return // Already scanned
@@ -101,11 +88,11 @@ fun BarcodeScannerDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Simulated Viewfinder Box
+                // REAL Viewfinder with CameraX
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp)
+                        .height(250.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color.Black)
                         .border(1.dp, Color.DarkGray, RoundedCornerShape(16.dp))
@@ -135,32 +122,19 @@ fun BarcodeScannerDialog(
                             }
                         }
                     } else {
-                        // Viewfinder Overlay Brackets
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .size(width = 240.dp, height = 100.dp)
-                                .border(BorderStroke(2.dp, Gold), RoundedCornerShape(8.dp))
-                        )
-
-                        // Animating Red Laser Line
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.9f)
-                                .align(Alignment.TopCenter)
-                                .offset(y = (180 * laserYFraction).dp)
-                                .height(3.dp)
-                                .background(Color.Red)
-                        )
-
-                        // Bottom Helper Text
+                        // The actual camera feed
+                        CameraXScanner(onBarcodeScanned = { handleScan(it) })
+                        
+                        // Brackets and text already inside CameraXScanner (but we can add more specific instruction here)
                         Text(
                             text = instruction,
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 12.sp,
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                .padding(bottom = 8.dp)
+                                .padding(bottom = 12.dp)
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
                 }
@@ -212,10 +186,9 @@ fun BarcodeScannerDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Candidate Quick-Scan selection list for emulator testing
+                // Candidate Quick-Scan selection list (only if provided)
                 if (candidateItems.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Emulator Quick Scan targets:",
                         fontSize = 12.sp,
@@ -227,7 +200,7 @@ fun BarcodeScannerDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 120.dp)
+                            .heightIn(max = 100.dp)
                             .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                             .padding(4.dp)
                     ) {

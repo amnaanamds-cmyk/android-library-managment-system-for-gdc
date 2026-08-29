@@ -3,10 +3,13 @@ package com.college.library.ui.screens.issue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.LibraryAddCheck
 import androidx.compose.material3.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +24,8 @@ import com.college.library.ui.theme.CardGreen
 fun IssueReturnHubScreen(
     onNavigateToIssue: () -> Unit,
     onNavigateToReturn: () -> Unit,
-    onNavigateToBulk: () -> Unit
+    onNavigateToBulk: () -> Unit,
+    onNavigateToInventory: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -32,7 +36,7 @@ fun IssueReturnHubScreen(
         }
     ) { padding ->
         Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -60,6 +64,7 @@ fun IssueReturnHubScreen(
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().height(150.dp).clickable { onNavigateToBulk() },
                 colors = CardDefaults.cardColors(containerColor = com.college.library.ui.theme.Gold.copy(alpha = 0.1f)),
@@ -69,6 +74,18 @@ fun IssueReturnHubScreen(
                     Icon(Icons.Default.LibraryAddCheck, contentDescription = "Bulk Issue", tint = com.college.library.ui.theme.Gold, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Bulk Issue", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = com.college.library.ui.theme.Gold)
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().height(150.dp).clickable { onNavigateToInventory() },
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF6B7280).copy(alpha = 0.1f)),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF6B7280))
+            ) {
+                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Inventory, contentDescription = "Inventory", tint = Color(0xFF6B7280), modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Inventory / Stocktaking", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
                 }
             }
         }

@@ -5,8 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.BookDao
 import com.college.library.data.db.IssuedBookDao
 import com.college.library.data.db.MemberDao
+import com.college.library.data.db.LibraryDatabase
 import com.college.library.data.model.IssuedBook
+import com.college.library.profile.CollegeProfile
+import com.college.library.profile.CollegeProfileManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +33,8 @@ data class DashboardState(
     val overdueBooks: List<IssuedBook> = emptyList(),
     val topPublishers: Map<String, Int> = emptyMap(),
     val issueTrends: Map<String, Int> = emptyMap(),
-    val totalFineCollected: Double = 0.0
+    val totalFineCollected: Double = 0.0,
+    val collegeProfile: CollegeProfile = CollegeProfile()
 )
 
 data class OverdueItem(
@@ -38,17 +44,28 @@ data class OverdueItem(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    bookDao: BookDao,
+    private val bookDao: BookDao,
     private val memberDao: MemberDao,
-    issuedBookDao: IssuedBookDao
+    private val issuedBookDao: IssuedBookDao,
+    val database: LibraryDatabase,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
+    private val profileManager = CollegeProfileManager.getInstance(context)
     private val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
 
     private val _topPublishers = MutableStateFlow<Map<String, Int>>(emptyMap())
     private val _issueTrends = MutableStateFlow<Map<String, Int>>(emptyMap())
+    private val _collegeProfile = MutableStateFlow(profileManager.getProfile())
 
     init {
+        refreshProfile()
+        // Periodic sync is good for keeping data fresh while the dashboard is open.
+        startPeriodicSync()
+        
+        // Removed redundancy: startRealtimeSync is already called in MainActivity's 
+        // LibraryApp component whenever isAuthenticated is true.
+
         viewModelScope.launch(Dispatchers.IO) {
             bookDao.getAllBooks().distinctUntilChanged().collect { allBooks ->
                 _topPublishers.value = allBooks
@@ -79,6 +96,29 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun refreshProfile() {
+        _collegeProfile.value = profileManager.getProfile()
+    }
+
+    private fun startPeriodicSync() {
+        val authPrefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+        val instId = authPrefs.getString("institution_id", "gdc11") ?: "gdc11"
+        
+        viewModelScope.launch(Dispatchers.IO) {
+            while (true) {
+                try {
+                    val syncService = com.college.library.data.SyncManager.getSyncService(database)
+                    syncService.currentInstitutionId = instId
+                    syncService.startFullSync()
+                } catch (e: Exception) {
+                    // Fail silently in background
+                }
+                kotlinx.coroutines.delay(120000) // Every 2 minutes
+            }
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
     val state: StateFlow<DashboardState> = combine(
         bookDao.getTotalCount().distinctUntilChanged(),
         bookDao.getAvailableCount().distinctUntilChanged(),
@@ -87,20 +127,19 @@ class DashboardViewModel @Inject constructor(
         issuedBookDao.getOverdueBooks(today).distinctUntilChanged(),
         issuedBookDao.getTotalFineCollected().distinctUntilChanged(),
         _topPublishers,
-        _issueTrends
+        _issueTrends,
+        _collegeProfile
     ) { flows ->
         DashboardState(
             totalBooks = flows[0] as Int,
             availableBooks = flows[1] as Int,
             issuedBooks = flows[2] as Int,
             totalMembers = flows[3] as Int,
-            @Suppress("UNCHECKED_CAST")
             overdueBooks = flows[4] as List<IssuedBook>,
             totalFineCollected = flows[5] as Double,
-            @Suppress("UNCHECKED_CAST")
             topPublishers = flows[6] as Map<String, Int>,
-            @Suppress("UNCHECKED_CAST")
-            issueTrends = flows[7] as Map<String, Int>
+            issueTrends = flows[7] as Map<String, Int>,
+            collegeProfile = flows[8] as CollegeProfile
         )
     }
     .flowOn(Dispatchers.IO)

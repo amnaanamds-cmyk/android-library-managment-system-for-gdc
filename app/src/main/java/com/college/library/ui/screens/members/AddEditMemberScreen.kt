@@ -5,7 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -23,8 +23,6 @@ import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -42,7 +40,20 @@ import javax.inject.Inject
 class AddEditMemberViewModel @Inject constructor(
     private val memberDao: MemberDao
 ) : ViewModel() {
-    private val _memberState = MutableStateFlow(Member(0, "", "", "", "", "", "Student", LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE), LocalDate.now().plusYears(1).format(DateTimeFormatter.ISO_LOCAL_DATE), 0))
+    private val _memberState = MutableStateFlow(
+        Member(
+            id = 0L,
+            memberId = "",
+            name = "",
+            email = "",
+            phone = "",
+            department = "",
+            memberType = "Student",
+            joinDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
+            expiryDate = LocalDate.now().plusYears(1).format(DateTimeFormatter.ISO_LOCAL_DATE),
+            booksIssued = 0
+        )
+    )
     val memberState = _memberState.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -110,7 +121,7 @@ fun AddEditMemberScreen(
             TopAppBar(
                 title = { Text(if (memberId == 0L) "Add Member" else "Edit Member", color = Color.White) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
             )

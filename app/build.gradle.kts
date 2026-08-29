@@ -1,18 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.googleServices)
 }
 
 android {
     namespace = "com.college.library"
     compileSdk = 34
 
+    // Shorten build directory to avoid Windows MAX_PATH (260 chars) issues
+    // layout.buildDirectory.set(file("${rootDir.absolutePath}/../build-gdc/${project.name}"))
+
     defaultConfig {
         applicationId = "com.college.library"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -21,6 +27,15 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        }
+        val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY") ?: "\"\""
+        val formattedApiKey = if (geminiApiKey.startsWith("\"")) geminiApiKey else "\"$geminiApiKey\""
+        buildConfigField("String", "GEMINI_API_KEY", formattedApiKey)
     }
 
     signingConfigs {
@@ -62,6 +77,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -79,9 +95,18 @@ android {
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+    arg("hilt.enableAggregatingTask", "true")
+    arg("hilt.correctErrorTypes", "true")
+}
+
+hilt {
+    enableAggregatingTask = true
 }
 
 dependencies {
+    implementation(project(":shared"))
+    implementation(libs.sqldelight.android)
+    implementation(libs.sqldelight.coroutines)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -91,6 +116,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.foundation.layout)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.ui.text.google.fonts)
@@ -103,6 +130,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    ksp("androidx.hilt:hilt-compiler:1.2.0")
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Vico Charts
@@ -134,8 +162,24 @@ dependencies {
         exclude(group = "stax", module = "stax-api")
     }
 
+    // CameraX
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.guava)
+
     // Coil for Image Loading (Compose)
     implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Gemini AI
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    // Firebase (Auth + Firestore for multi-tenant onboarding & sync)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore.ktx)
+
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

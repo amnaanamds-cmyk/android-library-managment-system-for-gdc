@@ -25,7 +25,7 @@ data class ExportState(
     val completedFile: File? = null
 )
 
-enum class ExportType { BOOKS, MEMBERS, TRANSACTIONS, OVERDUE }
+enum class ExportType { BOOKS, MEMBERS, TRANSACTIONS, OVERDUE, SPINE_LABELS, MARC21 }
 
 @HiltViewModel
 class ExportViewModel @Inject constructor(
@@ -59,6 +59,16 @@ class ExportViewModel @Inject constructor(
         val today = LocalDate.now().toString()
         val overdue = issuedBookDao.getOverdueBooks(today).first()
         pdfManager.exportOverdueReport(overdue)
+    }
+
+    fun exportSpineLabels() = export(ExportType.SPINE_LABELS) {
+        val books = bookDao.getAllBooks().first()
+        pdfManager.exportSpineLabels(books)
+    }
+
+    fun exportMarc21() = export(ExportType.MARC21) {
+        val books = bookDao.getAllBooks().first()
+        pdfManager.exportMarc21(books)
     }
 
     fun shareFile(file: File) {

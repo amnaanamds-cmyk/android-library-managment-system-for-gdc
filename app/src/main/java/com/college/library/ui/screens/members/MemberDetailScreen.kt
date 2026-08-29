@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContactPage
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
@@ -32,6 +33,9 @@ import com.college.library.data.model.Member
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.CardOrange
 import com.college.library.ui.theme.DangerRed
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import com.college.library.BuildConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -54,16 +58,51 @@ class MemberDetailViewModel @Inject constructor(
     private val _totalFines = MutableStateFlow(0.0)
     val totalFines = _totalFines.asStateFlow()
 
+    private val _aiInsights = MutableStateFlow<String?>(null)
+    val aiInsights = _aiInsights.asStateFlow()
+
+    private val generativeModel by lazy {
+        GenerativeModel(
+            modelName = "gemini-1.5-flash",
+            apiKey = BuildConfig.GEMINI_API_KEY
+        )
+    }
+
     fun loadMember(id: Long) {
         viewModelScope.launch {
-            _member.value = memberDao.getMemberById(id)
+            val mData = memberDao.getMemberById(id)
+            _member.value = mData
             issuedBookDao.getCurrentlyIssuedBooksByMember(id).collect { _currentBooks.value = it }
+            
+            // Generate AI Insights
+            if (mData != null && _aiInsights.value == null && BuildConfig.GEMINI_API_KEY.isNotBlank()) {
+                generateAiMemberInsights(mData)
+            }
         }
         viewModelScope.launch {
             issuedBookDao.getReturnedBooksByMember(id).collect { _pastTransactions.value = it }
         }
         viewModelScope.launch {
             issuedBookDao.getTotalFineByMember(id).collect { _totalFines.value = it }
+        }
+    }
+
+    private fun generateAiMemberInsights(member: Member) {
+        viewModelScope.launch {
+            try {
+                // Fetch some past transactions for context
+                val past = issuedBookDao.getReturnedBooksByMember(member.id).first().take(5)
+                val titles = past.joinToString { it.bookTitle }
+                
+                val prompt = "Analyze the reading profile of ${member.name}. " +
+                             "They have recently read: $titles. " +
+                             "Predict their favorite genre and provide one encouraging reading tip in 2 sentences."
+                
+                val response = generativeModel.generateContent(prompt)
+                _aiInsights.value = response.text
+            } catch (e: Exception) {
+                _aiInsights.value = "AI Profile temporarily unavailable."
+            }
         }
     }
 }
@@ -81,6 +120,7 @@ fun MemberDetailScreen(
     val currentBooks by viewModel.currentBooks.collectAsState()
     val pastTransactions by viewModel.pastTransactions.collectAsState()
     val totalFines by viewModel.totalFines.collectAsState()
+    val aiInsights by viewModel.aiInsights.collectAsState()
     val canEdit = authViewModel.canEditMembers()
     var showCardDialog by remember { mutableStateOf(false) }
 
@@ -155,6 +195,46 @@ fun MemberDetailScreen(
                             DetailRow("Phone", m.phone)
                             DetailRow("Joined", m.joinDate)
                             DetailRow("Expiry", m.expiryDate)
+                            if (m.pin.isNotBlank()) DetailRow("OPAC PIN", m.pin)
+                            
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        cm.setPrimaryClip(android.content.ClipData.newPlainText("Member ID", m.memberId))
+                                        android.widget.Toast.makeText(context, "ID Copied!", android.widget.Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Copy ID", fontSize = 12.sp)
+                                }
+                                if (m.pin.isNotBlank()) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            cm.setPrimaryClip(android.content.ClipData.newPlainText("Member PIN", m.pin))
+                                            android.widget.Toast.makeText(context, "PIN Copied!", android.widget.Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Copy PIN", fontSize = 12.sp)
+                                    }
+                                }
+                                Button(
+                                    onClick = {
+                                        val shareMsg = "👤 ${m.name}\n🆔 ID: ${m.memberId}\n🏛️ ${m.department} (${m.memberType})"
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(android.content.Intent.EXTRA_TEXT, shareMsg)
+                                        }
+                                        context.startActivity(android.content.Intent.createChooser(intent, "Share Member..."))
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Share", fontSize = 12.sp)
+                                }
+                            }
                         }
                     }
                 }
@@ -164,6 +244,26 @@ fun MemberDetailScreen(
                         StatBox("Currently Issued", currentBooks.size.toString(), CardOrange, Modifier.weight(1f))
                         Spacer(modifier = Modifier.width(16.dp))
                         StatBox("Total Fines Paid", "Rs. $totalFines", DangerRed, Modifier.weight(1f))
+                    }
+                }
+
+                if (aiInsights != null) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("AI Patron Reading Profile", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(aiInsights!!, fontSize = 14.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                            }
+                        }
                     }
                 }
 

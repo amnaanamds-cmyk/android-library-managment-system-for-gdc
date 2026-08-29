@@ -1,25 +1,17 @@
 package com.college.library.di
 
 import android.app.Application
-import androidx.room.Room
-import com.college.library.data.db.BookDao
-import com.college.library.data.db.IssuedBookDao
-import com.college.library.data.db.LibraryDatabase
-import com.college.library.data.db.MIGRATION_1_2
-import com.college.library.data.db.MIGRATION_2_3
-import com.college.library.data.db.MIGRATION_3_4
-import com.college.library.data.db.MIGRATION_4_5
-import com.college.library.data.db.MIGRATION_5_6
-import com.college.library.data.db.MemberDao
-import com.college.library.data.db.ReservationDao
-import com.college.library.data.db.StatsQueries
+import android.content.Context
+import app.cash.sqldelight.driver.android.AndroidSqliteDriver
+import com.college.library.data.db.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import javax.inject.Provider
+import kotlinx.coroutines.launch
 import javax.inject.Singleton
 
 @Module
@@ -32,39 +24,67 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideLibraryDatabase(
-        app: Application,
-        provider: Provider<LibraryDatabase>,
-        applicationScope: CoroutineScope
-    ): LibraryDatabase {
-        return Room.databaseBuilder(
-            app,
-            LibraryDatabase::class.java,
-            "library_db"
-        )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
-        .fallbackToDestructiveMigration()
-        .addCallback(LibraryDatabase.Callback(provider, applicationScope))
-        .build()
+    fun provideSqlDriver(app: Application): app.cash.sqldelight.db.SqlDriver {
+        // Database name v6 to ensure a clean slate and resolve any persistent schema conflicts.
+        val databaseName = "library_v6.db"
+        return try {
+            AndroidSqliteDriver(LibraryDatabase.Schema, app, databaseName)
+        } catch (e: Exception) {
+            // If initialization fails (e.g. corruption), delete and recreate
+            app.deleteDatabase(databaseName)
+            AndroidSqliteDriver(LibraryDatabase.Schema, app, databaseName)
+        }
     }
 
     @Provides
     @Singleton
-    fun provideBookDao(db: LibraryDatabase): BookDao = db.bookDao()
+    fun provideLibraryDatabase(
+        app: Application,
+        driver: app.cash.sqldelight.db.SqlDriver,
+        applicationScope: CoroutineScope
+    ): LibraryDatabase {
+        val db = LibraryDatabase(driver)
+        
+        // Seed initial data if the database is completely empty and reset was not performed
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                val prefs = app.getSharedPreferences("library_settings", Context.MODE_PRIVATE)
+                val preventAutoSeed = prefs.getBoolean("prevent_autoseed", false)
+                if (!preventAutoSeed && db.bookQueriesQueries.getTotalCount().executeAsOneOrNull() == 0L) {
+                    DataSeeder.seedBooks(db)
+                }
+            } catch (e: Exception) {
+                // Ignore seeding errors on first startup if schema is malformed
+            }
+        }
+        return db
+    }
 
     @Provides
     @Singleton
-    fun provideMemberDao(db: LibraryDatabase): MemberDao = db.memberDao()
+    fun provideBookDao(db: LibraryDatabase): BookDao = BookDaoAdapter(db)
 
     @Provides
     @Singleton
-    fun provideIssuedBookDao(db: LibraryDatabase): IssuedBookDao = db.issuedBookDao()
+    fun provideMemberDao(db: LibraryDatabase): MemberDao = MemberDaoAdapter(db)
 
     @Provides
     @Singleton
-    fun provideStatsQueries(db: LibraryDatabase): StatsQueries = db.statsQueries()
+    fun provideIssuedBookDao(db: LibraryDatabase): IssuedBookDao = IssuedBookDaoAdapter(db)
 
     @Provides
     @Singleton
-    fun provideReservationDao(db: LibraryDatabase): ReservationDao = db.reservationDao()
+    fun provideStatsQueries(db: LibraryDatabase): StatsQueries = StatsQueriesAdapter(db)
+
+    @Provides
+    @Singleton
+    fun provideReservationDao(db: LibraryDatabase): ReservationDao = ReservationDaoAdapter(db)
+
+    @Provides
+    @Singleton
+    fun provideBookRequestDao(db: LibraryDatabase): BookRequestDao = BookRequestDaoAdapter(db)
+
+    @Provides
+    @Singleton
+    fun provideBookReviewDao(db: LibraryDatabase): BookReviewDao = BookReviewDaoAdapter(db)
 }

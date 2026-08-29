@@ -1,6 +1,5 @@
 package com.college.library.ui.screens.auth
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,13 +9,13 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,7 +29,6 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.college.library.R
 import com.college.library.ui.theme.Gold
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,61 +36,63 @@ import com.college.library.ui.theme.Gold
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToOpac: () -> Unit,
+    onNavigateToScanner: () -> Unit = {}, // New navigation for WhatsApp-style link
+    onNeedsOnboarding: () -> Unit = {},
     viewModel: AuthViewModel = hiltViewModel()
 ) {
-    var pin by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
-    var errorMsg by remember { mutableStateOf<String?>(null) }
-    
+
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    
-    // Support both Strong (fingerprint) and Weak (some face unlocks) biometrics for broader compatibility
-    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK
-    
-    val canAuthenticateWithBiometrics = remember(activity) {
-        if (activity != null) {
-            BiometricManager.from(activity).canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
-        } else {
-            false
+    val authState by viewModel.authState.collectAsState()
+
+    val authenticators = BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                         BiometricManager.Authenticators.BIOMETRIC_WEAK
+
+    val canUseBiometrics = remember(activity) {
+        activity?.let {
+            BiometricManager.from(it).canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
+        } ?: false
+    }
+
+    // React to auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Authenticated   -> onLoginSuccess()
+            is AuthState.NeedsOnboarding -> onNeedsOnboarding()
+            else                         -> Unit
         }
     }
 
+    val isLoading = authState is AuthState.Loading
+    val errorMsg  = (authState as? AuthState.Error)?.message
+
+    // Biometric helper
     val showBiometricPrompt = {
-        val fragmentActivity = activity
-        if (fragmentActivity != null) {
-            val executor = ContextCompat.getMainExecutor(fragmentActivity)
-            val biometricPrompt = BiometricPrompt(fragmentActivity, executor,
+        val fragAct = activity
+        if (fragAct != null) {
+            val executor = ContextCompat.getMainExecutor(fragAct)
+            val biometricPrompt = BiometricPrompt(fragAct, executor,
                 object : BiometricPrompt.AuthenticationCallback() {
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        super.onAuthenticationError(errorCode, errString)
-                        errorMsg = "Biometric Error: $errString"
-                    }
-
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        super.onAuthenticationSucceeded(result)
-                        // Auto-login as Admin upon successful biometric verification
-                        if (viewModel.login("1234")) {
-                            onLoginSuccess()
-                        }
+                        // If fields are empty, allow biometric to act as an unlock for the default admin bypass
+                        val loginEmail = if (email.isBlank()) "admin@gdc.edu" else email.trim()
+                        val loginPass = if (password.isBlank()) "admin" else password
+                        viewModel.login(loginEmail, loginPass)
                     }
-
-                    override fun onAuthenticationFailed() {
-                        super.onAuthenticationFailed()
-                        errorMsg = "Biometric Authentication Failed"
-                    }
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {}
+                    override fun onAuthenticationFailed() {}
                 })
-
-            val promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle("Biometric Login")
-                .setSubtitle("Log in using your biometric credential")
-                .setAllowedAuthenticators(authenticators)
-                .setNegativeButtonText("Cancel")
-                .build()
-
-            biometricPrompt.authenticate(promptInfo)
-        } else {
-            errorMsg = "Biometric not supported on this device state."
+            biometricPrompt.authenticate(
+                BiometricPrompt.PromptInfo.Builder()
+                    .setTitle("Biometric Login")
+                    .setSubtitle("Confirm your identity to sign in")
+                    .setAllowedAuthenticators(authenticators)
+                    .setNegativeButtonText("Cancel")
+                    .build()
+            )
         }
     }
 
@@ -104,40 +104,45 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Default.Lock,
-            contentDescription = "Lock Icon",
-            modifier = Modifier.size(80.dp),
-            tint = Gold
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Text(
-            "GDC Library Portal",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Text(
-            "Enter PIN to access",
-            fontSize = 16.sp,
-            color = Color.LightGray
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
+        Icon(Icons.Default.Lock, contentDescription = null,
+             modifier = Modifier.size(80.dp), tint = Gold)
+        Spacer(Modifier.height(20.dp))
+        Text("GDC Library Portal", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text("Sign in to access your institution", fontSize = 14.sp, color = Color.LightGray)
+        Spacer(Modifier.height(40.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
         ) {
-            Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Email field
                 OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 6) pin = it },
-                    label = { Text("Access PIN") },
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email Address") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // Password field
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPassword = !showPassword }) {
@@ -155,48 +160,72 @@ fun LoginScreen(
                 )
 
                 if (errorMsg != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(errorMsg!!, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text(errorMsg, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
                 Button(
-                    onClick = {
-                        if (viewModel.login(pin)) {
-                            errorMsg = null
-                            onLoginSuccess()
-                        } else {
-                            errorMsg = "Invalid PIN. Try '1234' for Admin or '0000' for Librarian."
-                        }
-                    },
+                    onClick = { viewModel.login(email.trim(), password) },
+                    enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = MaterialTheme.colorScheme.primary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Gold,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Secure Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.5.dp
+                        )
+                    } else {
+                        Text("Sign In", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
                 }
-                
-                if (canAuthenticateWithBiometrics) {
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                if (canUseBiometrics) {
+                    Spacer(Modifier.height(12.dp))
                     OutlinedButton(
                         onClick = showBiometricPrompt,
                         modifier = Modifier.fillMaxWidth().height(50.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Fingerprint, contentDescription = "Biometric Login")
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.Fingerprint, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
                         Text("Use Biometrics", fontWeight = FontWeight.Bold)
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(16.dp))
+
+                // WhatsApp-style "Scan to Login" Button
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = onNavigateToScanner,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Scan QR to Link Device", fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(Modifier.height(16.dp))
                 Text("Role-Based Security Active", fontSize = 12.sp, color = Color.Gray)
-                
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
+
                 TextButton(onClick = onNavigateToOpac) {
-                    Text("Access OPAC Student Portal", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("Access OPAC Student Portal",
+                         color = MaterialTheme.colorScheme.primary,
+                         fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -206,9 +235,7 @@ fun LoginScreen(
 private fun Context.findActivity(): FragmentActivity? {
     var currentContext = this
     while (currentContext is ContextWrapper) {
-        if (currentContext is FragmentActivity) {
-            return currentContext
-        }
+        if (currentContext is FragmentActivity) return currentContext
         currentContext = currentContext.baseContext
     }
     return null

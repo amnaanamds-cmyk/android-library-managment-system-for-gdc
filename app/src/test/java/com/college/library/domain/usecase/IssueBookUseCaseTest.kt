@@ -1,5 +1,8 @@
 package com.college.library.domain.usecase
 
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.room.withTransaction
 import com.college.library.data.db.BookDao
 import com.college.library.data.db.IssuedBookDao
@@ -25,6 +28,8 @@ class IssueBookUseCaseTest {
 
     private lateinit var useCase: IssueBookUseCase
     private val database: LibraryDatabase = mockk()
+    private val application: Application = mockk()
+    private val sharedPreferences: SharedPreferences = mockk()
     private val bookDao: BookDao = mockk(relaxed = true)
     private val memberDao: MemberDao = mockk(relaxed = true)
     private val issuedBookDao: IssuedBookDao = mockk(relaxed = true)
@@ -40,7 +45,11 @@ class IssueBookUseCaseTest {
         every { database.memberDao() } returns memberDao
         every { database.issuedBookDao() } returns issuedBookDao
 
-        useCase = IssueBookUseCase(database)
+        every { application.getSharedPreferences("library_settings", Context.MODE_PRIVATE) } returns sharedPreferences
+        every { sharedPreferences.getInt("max_books", 3) } returns 3
+        every { sharedPreferences.getInt("borrow_duration", 14) } returns 14
+
+        useCase = IssueBookUseCase(database, application)
         
         mockkStatic(LocalDate::class)
         every { LocalDate.now() } returns LocalDate.of(2026, 5, 15)

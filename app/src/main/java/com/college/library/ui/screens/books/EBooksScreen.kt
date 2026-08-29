@@ -297,13 +297,25 @@ fun EBooksScreen(
                             colorIndex = filteredBooks.indexOf(book) % categoryColors.size,
                             onReadClick = {
                                 val url = book.digitalUrl ?: "https://www.google.com/search?q=${Uri.encode(book.title)}+pdf"
-                                val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
-                                    putExtra("ebook_url", url)
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Cannot open this file. Please install a PDF viewer.", Toast.LENGTH_LONG).show()
+                                if (url.startsWith("content://") || url.startsWith("file://")) {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(Uri.parse(url), "application/pdf")
+                                            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NO_HISTORY
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Cannot open this file. Please install a PDF viewer.", Toast.LENGTH_LONG).show()
+                                    }
+                                } else {
+                                    val intent = android.content.Intent(context, com.college.library.ui.screens.books.EBookReaderActivity::class.java).apply {
+                                        putExtra("ebook_url", url)
+                                    }
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Cannot open this file. Please install a PDF viewer.", Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             },
                             onShareClick = {

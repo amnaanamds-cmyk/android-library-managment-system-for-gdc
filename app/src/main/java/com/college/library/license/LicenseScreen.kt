@@ -377,6 +377,18 @@ fun LicenseScreen(
                                 lineHeight = 18.sp
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Copyright Tag
+                        Text(
+                            text = "© 2026 GDC Library. All Rights Reserved.\nUnauthorized use, distribution, or modification of this application without a valid license is strictly prohibited and protected by copyright law.",
+                            fontSize = 9.sp,
+                            color = TextMuted.copy(alpha = 0.7f),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 14.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
                     }
                 }
             }

@@ -1,7 +1,8 @@
 package com.college.library.domain.usecase
 
-import androidx.room.withTransaction
 import com.college.library.data.db.LibraryDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -10,42 +11,62 @@ class ReturnBookUseCase @Inject constructor(
     private val database: LibraryDatabase,
     private val calculateFineUseCase: CalculateFineUseCase
 ) {
-    suspend operator fun invoke(issueId: Long): Result<Double> {
-        return try {
-            database.withTransaction {
-                val bookDao = database.bookDao()
-                val memberDao = database.memberDao()
-                val issuedBookDao = database.issuedBookDao()
+    suspend operator fun invoke(issueId: Long): Result<Double> = withContext(Dispatchers.IO) {
+        try {
+            database.transactionWithResult {
+                val bookQueries = database.bookQueriesQueries
+                val memberQueries = database.memberQueriesQueries
+                val issuedBookQueries = database.issuedBookQueriesQueries
 
-                val issuedBook = issuedBookDao.getIssuedBookById(issueId)
-                    ?: return@withTransaction Result.failure(Exception("Issued book record not found"))
+                val issuedBookRow = issuedBookQueries.getIssuedBookById(issueId).executeAsOneOrNull()
+                    ?: return@transactionWithResult Result.failure(Exception("Issued book record not found"))
 
-                if (issuedBook.status == "Returned") {
-                    return@withTransaction Result.failure(Exception("Book is already returned"))
+                if (issuedBookRow.status == "Returned") {
+                    return@transactionWithResult Result.failure(Exception("Book is already returned"))
                 }
 
                 val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
                 
                 // 1. Calculate fine
-                val fine = calculateFineUseCase.calculateFine(issuedBook.dueDate)
+                val fine = calculateFineUseCase.calculateFine(issuedBookRow.dueDate)
 
                 // 2. Set IssuedBook status to "Returned", record return date + fine
-                issuedBookDao.returnBook(
+                issuedBookQueries.returnBook(
                     id = issueId,
                     returnDate = today,
-                    fine = fine
+                    fine = fine,
+                    lastUpdated = System.currentTimeMillis()
                 )
 
                 // 3. Set book status back to "Available"
-                val book = bookDao.getBookById(issuedBook.bookId)
-                if (book != null) {
-                    bookDao.updateBookStatus(book.id, "Available")
-                }
+                bookQueries.updateBookStatus(status = "Available", id = issuedBookRow.bookId, lastUpdated = System.currentTimeMillis())
 
                 // 4. Decrement member's booksIssued count
-                val member = memberDao.getMemberById(issuedBook.memberId)
-                if (member != null && member.booksIssued > 0) {
-                    memberDao.updateMember(member.copy(booksIssued = member.booksIssued - 1))
+                val memberRow = memberQueries.getMemberById(issuedBookRow.memberId).executeAsOneOrNull()
+                if (memberRow != null && memberRow.booksIssued > 0) {
+                    memberQueries.updateMember(
+                        syncId = memberRow.syncId,
+                        memberId = memberRow.memberId,
+                        name = memberRow.name,
+                        email = memberRow.email,
+                        phone = memberRow.phone,
+                        department = memberRow.department,
+                        memberType = memberRow.memberType,
+                        joinDate = memberRow.joinDate,
+                        expiryDate = memberRow.expiryDate,
+                        booksIssued = memberRow.booksIssued - 1,
+                        fatherName = memberRow.fatherName,
+                        className = memberRow.className,
+                        classNo = memberRow.classNo,
+                        address = memberRow.address,
+                        photoUri = memberRow.photoUri,
+                        designation = memberRow.designation,
+                        bps = memberRow.bps,
+                        pin = memberRow.pin,
+                        lastUpdated = System.currentTimeMillis(),
+                        deleted = memberRow.deleted,
+                        id = memberRow.id
+                    )
                 }
 
                 // Return the fine amount

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -78,6 +79,17 @@ class BookListViewModel @Inject constructor(
     fun deleteBook(book: Book) {
         viewModelScope.launch { bookDao.deleteBook(book) }
     }
+
+    fun duplicateBook(book: Book) {
+        viewModelScope.launch {
+            val duplicate = book.copy(
+                id = 0,
+                title = "${book.title} (Copy)",
+                accNo = "${book.accNo}-COPY"
+            )
+            bookDao.insertBook(duplicate)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -86,6 +98,7 @@ fun BookListScreen(
     onNavigateToAddBook: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToEdit: (Long) -> Unit,
+    onNavigateToWishlist: () -> Unit,
     viewModel: BookListViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -94,7 +107,8 @@ fun BookListScreen(
     val filter by viewModel.filter.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val pullRefreshState = rememberPullToRefreshState()
-    val canEdit = authViewModel.canEditBooks()
+    val currentRole by authViewModel.currentRole.collectAsState()
+    val canEdit = remember(currentRole) { authViewModel.canEditBooks() }
 
     if (pullRefreshState.isRefreshing) {
         LaunchedEffect(true) { viewModel.refresh() }
@@ -110,7 +124,12 @@ fun BookListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Books", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
+                actions = {
+                    IconButton(onClick = onNavigateToWishlist) {
+                        Icon(Icons.Default.Star, contentDescription = "Wishlist", tint = Color.White)
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -176,6 +195,14 @@ fun BookListScreen(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Edit") }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.duplicateBook(selectedBook!!)
+                            showBottomSheet = false
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Duplicate") }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = {

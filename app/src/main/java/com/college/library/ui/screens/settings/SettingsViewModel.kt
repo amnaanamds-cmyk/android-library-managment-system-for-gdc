@@ -6,7 +6,6 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.room.withTransaction
 import com.college.library.data.db.DataSeeder
 import com.college.library.data.db.LibraryDatabase
 import com.college.library.data.model.Book
@@ -22,6 +21,7 @@ import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.DateUtil
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.UUID
 import javax.inject.Inject
 
 data class SettingsState(
@@ -39,7 +39,9 @@ data class SettingsState(
     val darkModeEnabled: Boolean = false,
     val fontScale: Float = 1.0f,
     val onboardingCompleted: Boolean = false,
-    val currentLanguage: AppLanguage = AppLanguage.ENGLISH
+    val currentLanguage: AppLanguage = AppLanguage.ENGLISH,
+    val isSyncing: Boolean = false,
+    val syncResult: String? = null
 )
 
 @HiltViewModel
@@ -74,6 +76,28 @@ class SettingsViewModel @Inject constructor(
             onboardingCompleted = onboardingDone,
             currentLanguage = languageManager.currentLanguage.value
         )
+    }
+
+    fun triggerSync() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(isSyncing = true, syncResult = null)
+            try {
+                // Use the main database provided via Hilt
+                val syncService = com.college.library.data.SyncManager.getSyncService(database)
+                
+                // Get current institutionId from auth or default
+                syncService.currentInstitutionId = "gdc11"
+                syncService.startFullSync()
+                
+                _state.value = _state.value.copy(isSyncing = false, syncResult = "Sync Successful!")
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isSyncing = false, syncResult = "Sync Failed: ${e.message}")
+            }
+        }
+    }
+
+    fun clearSyncResult() {
+        _state.value = _state.value.copy(syncResult = null)
     }
 
     fun setLanguage(language: AppLanguage) {
@@ -114,6 +138,8 @@ class SettingsViewModel @Inject constructor(
         )
     }
 
+    var isImportingOrganized = false
+
     fun importBooksFromFile(uri: Uri) {
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isImporting = true, importSuccessCount = -1, importError = null)
@@ -135,9 +161,9 @@ class SettingsViewModel @Inject constructor(
                               fileName.endsWith(".xls", ignoreCase = true)
 
                 val successCount = if (isExcel) {
-                    importBooksFromExcel(uri)
+                    importBooksFromExcel(uri, isImportingOrganized)
                 } else {
-                    parseAndImportCsv(uri)
+                    parseAndImportCsv(uri, isImportingOrganized)
                 }
 
                 _state.value = _state.value.copy(
@@ -154,7 +180,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun parseAndImportCsv(uri: Uri): Int {
+    private suspend fun parseAndImportCsv(uri: Uri, isOrganized: Boolean): Int {
         val contentResolver = application.contentResolver
         val inputStream = contentResolver.openInputStream(uri) ?: throw Exception("Failed to open the CSV file")
         val reader = BufferedReader(InputStreamReader(inputStream))
@@ -199,6 +225,13 @@ class SettingsViewModel @Inject constructor(
                 val digitalUrlVal = tokens.getOrNull(13)?.trim()
                 val isDigital = !digitalUrlVal.isNullOrBlank()
 
+                val categoryVal = tokens.getOrNull(14)?.trim()
+                val category = if (isOrganized) {
+                    if (categoryVal.isNullOrBlank()) "Uncategorized" else categoryVal
+                } else {
+                    "Uncategorized"
+                }
+
                 if (title.isBlank()) continue
 
                 val book = Book(
@@ -216,7 +249,8 @@ class SettingsViewModel @Inject constructor(
                     price = price,
                     status = status,
                     isDigital = isDigital,
-                    digitalUrl = if (digitalUrlVal.isNullOrBlank()) null else digitalUrlVal
+                    digitalUrl = if (digitalUrlVal.isNullOrBlank()) null else digitalUrlVal,
+                    category = category
                 )
                 booksToInsert.add(book)
                 successCount++
@@ -226,15 +260,39 @@ class SettingsViewModel @Inject constructor(
         }
 
         if (booksToInsert.isNotEmpty()) {
-            database.withTransaction {
-                booksToInsert.forEach { database.bookDao().insertBook(it) }
+            database.transaction {
+                booksToInsert.forEach { book ->
+                    val syncId = if (book.syncId.isBlank()) UUID.randomUUID().toString() else book.syncId
+                    database.bookQueriesQueries.insertBook(
+                        syncId = syncId,
+                        isbn = book.isbn,
+                        accNo = book.accNo,
+                        title = book.title,
+                        author = book.author,
+                        publisher = book.publisher,
+                        publisherPlace = book.publisherPlace,
+                        publishDate = book.publishDate,
+                        edition = book.edition,
+                        pages = book.pages.toLong(),
+                        procurement = book.procurement,
+                        volume = book.volume,
+                        price = book.price,
+                        status = book.status,
+                        isDigital = book.isDigital,
+                        digitalUrl = book.digitalUrl,
+                        category = book.category,
+                        marcData = book.marcData,
+                        lastUpdated = System.currentTimeMillis(),
+                        deleted = false
+                    )
+                }
             }
         }
 
         return successCount
     }
 
-    private suspend fun importBooksFromExcel(uri: Uri): Int {
+    private suspend fun importBooksFromExcel(uri: Uri, isOrganized: Boolean): Int {
         val contentResolver = application.contentResolver
         val inputStream = contentResolver.openInputStream(uri) ?: throw Exception("Failed to open Excel file")
         
@@ -288,6 +346,13 @@ class SettingsViewModel @Inject constructor(
                 val digitalUrlVal = getCellValueAsString(row.getCell(13)).trim()
                 val isDigital = digitalUrlVal.isNotBlank()
 
+                val categoryVal = getCellValueAsString(row.getCell(14)).trim()
+                val category = if (isOrganized) {
+                    if (categoryVal.isBlank()) "Uncategorized" else categoryVal
+                } else {
+                    "Uncategorized"
+                }
+
                 if (title.isBlank()) continue
 
                 val book = Book(
@@ -305,7 +370,8 @@ class SettingsViewModel @Inject constructor(
                     price = price,
                     status = status,
                     isDigital = isDigital,
-                    digitalUrl = if (digitalUrlVal.isBlank()) null else digitalUrlVal
+                    digitalUrl = if (digitalUrlVal.isBlank()) null else digitalUrlVal,
+                    category = category
                 )
                 booksToInsert.add(book)
                 successCount++
@@ -318,8 +384,32 @@ class SettingsViewModel @Inject constructor(
         inputStream.close()
 
         if (booksToInsert.isNotEmpty()) {
-            database.withTransaction {
-                booksToInsert.forEach { database.bookDao().insertBook(it) }
+            database.transaction {
+                booksToInsert.forEach { book ->
+                    val syncId = if (book.syncId.isBlank()) UUID.randomUUID().toString() else book.syncId
+                    database.bookQueriesQueries.insertBook(
+                        syncId = syncId,
+                        isbn = book.isbn,
+                        accNo = book.accNo,
+                        title = book.title,
+                        author = book.author,
+                        publisher = book.publisher,
+                        publisherPlace = book.publisherPlace,
+                        publishDate = book.publishDate,
+                        edition = book.edition,
+                        pages = book.pages.toLong(),
+                        procurement = book.procurement,
+                        volume = book.volume,
+                        price = book.price,
+                        status = book.status,
+                        isDigital = book.isDigital,
+                        digitalUrl = book.digitalUrl,
+                        category = book.category,
+                        marcData = book.marcData,
+                        lastUpdated = System.currentTimeMillis(),
+                        deleted = false
+                    )
+                }
             }
         }
 
@@ -328,7 +418,7 @@ class SettingsViewModel @Inject constructor(
 
     private fun getCellValueAsString(cell: Cell?): String {
         if (cell == null) return ""
-        // Use integer constants for POI 3.17 compatibility (before CellType enum was added)
+        // POI 3.17 uses integer constants (CellType enum only available in POI 4.0+)
         return when (cell.cellType) {
             Cell.CELL_TYPE_STRING -> cell.stringCellValue.trim()
             Cell.CELL_TYPE_NUMERIC -> {
@@ -380,12 +470,30 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isResetting = true, resetSuccess = false)
             try {
-                database.withTransaction {
-                    // Delete in FK-safe order: child tables first
-                    database.openHelper.writableDatabase.execSQL("DELETE FROM issued_books")
-                    database.openHelper.writableDatabase.execSQL("DELETE FROM books")
-                    database.openHelper.writableDatabase.execSQL("DELETE FROM members")
+                // 1. Wipe remote Firestore data for current institution
+                try {
+                    val syncService = com.college.library.data.SyncManager.getSyncService(database)
+                    val instId = syncService.currentInstitutionId.ifEmpty { "gdc11" }
+                    val firestoreService = com.college.library.data.FirestoreService()
+                    firestoreService.clearAllCloudData(instId)
+                } catch (e: Exception) {
+                    // Ignore cloud clear error if offline
                 }
+
+                // 2. Delete local SQLite database tables
+                database.transaction {
+                    // Delete in FK-safe order: child tables first
+                    database.issuedBookQueriesQueries.deleteAllIssuedBooks()
+                    database.reservationQueriesQueries.deleteAllReservations()
+                    database.bookQueriesQueries.deleteAllBooks()
+                    database.memberQueriesQueries.deleteAllMembers()
+                    database.appStatsQueriesQueries.clearSyncMetadata()
+                }
+
+                // 3. Prevent automatic seeder from inserting demo data on restart
+                val prefs = application.getSharedPreferences("library_settings", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("prevent_autoseed", true).apply()
+
                 _state.value = _state.value.copy(isResetting = false, resetSuccess = true)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
@@ -395,6 +503,7 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
+
 
     fun clearStatus() {
         _state.value = _state.value.copy(

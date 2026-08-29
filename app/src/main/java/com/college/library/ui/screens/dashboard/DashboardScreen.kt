@@ -1,9 +1,13 @@
 package com.college.library.ui.screens.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,14 +22,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.college.library.data.SyncManager
+import com.college.library.data.SyncStatus
 import com.college.library.data.model.IssuedBook
+import com.college.library.ui.components.SyncStatusBadge
 import com.college.library.ui.theme.*
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -41,11 +52,16 @@ fun DashboardScreen(
     onNavigateToReturn: () -> Unit,
     onNavigateToAddMember: () -> Unit,
     onNavigateToSubjects: () -> Unit,
+    onNavigateToWishlist: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val canAccessSettings by remember { derivedStateOf { authViewModel.canAccessSettings() } }
+    val currentRole by authViewModel.currentRole.collectAsState()
+    val canAccessSettings = remember(currentRole) { authViewModel.canAccessSettings() }
+
+    val syncService = remember { SyncManager.getSyncService(viewModel.database) }
+    val syncStatus by syncService.status.collectAsState()
 
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         val permissionState = rememberPermissionState(permission = android.Manifest.permission.POST_NOTIFICATIONS)
@@ -57,6 +73,22 @@ fun DashboardScreen(
     }
 
     val context = LocalContext.current
+    
+    // Refresh profile every time the screen is displayed
+    LaunchedEffect(Unit) {
+        viewModel.refreshProfile()
+    }
+    
+    // Also re-fetch on every app resume to ensure profile updates are visible
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                viewModel.refreshProfile()
+            }
+        })
+    }
+
     LaunchedEffect(state.overdueBooks) {
         if (state.overdueBooks.isNotEmpty()) {
             OverdueNotificationHelper.showNotification(context, state.overdueBooks)
@@ -68,7 +100,12 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("College Library", color = Gold, fontWeight = FontWeight.Bold) },
+                title = { 
+                    Column {
+                        Text("College Library", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        SyncStatusBadge(status = syncStatus)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
                 actions = {
                     IconButton(onClick = onNavigateToAiHub) {
@@ -78,9 +115,6 @@ fun DashboardScreen(
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Gold)
                         }
-                    }
-                    IconButton(onClick = onNavigateToSubjects) {
-                        Icon(Icons.Default.Category, contentDescription = "Browse Subjects", tint = Gold)
                     }
                 }
             )
@@ -130,6 +164,34 @@ fun DashboardScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // -- Hero Branding Banner --
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = state.collegeProfile.collegeFullName.ifBlank { "GDC Library Portal" }.uppercase(),
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        if (state.collegeProfile.tagline.isNotBlank()) {
+                            Text(
+                                text = state.collegeProfile.tagline,
+                                color = Gold,
+                                fontSize = 12.sp,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatCard(title = "Total Books", value = state.totalBooks, color = CardBlue, modifier = Modifier.weight(1f))
@@ -184,14 +246,14 @@ fun DashboardScreen(
                     ) {
                         Box(modifier = Modifier.padding(16.dp)) {
                             val entries = state.topPublishers.values.map { it.toFloat() }.toTypedArray()
+                            val keys = state.topPublishers.keys.toList()
                             if (entries.isNotEmpty()) {
                                 Chart(
                                     chart = columnChart(),
                                     model = entryModelOf(*entries),
                                     startAxis = rememberStartAxis(),
                                     bottomAxis = rememberBottomAxis(
-                                        valueFormatter = { value, _ -> 
-                                            val keys = state.topPublishers.keys.toList()
+                                        valueFormatter = { value, _ ->
                                             val idx = value.toInt()
                                             if (idx in keys.indices) keys[idx].take(10) + ".." else ""
                                         }
@@ -217,18 +279,18 @@ fun DashboardScreen(
                     ) {
                         Box(modifier = Modifier.padding(16.dp)) {
                             val entries = state.issueTrends.values.map { it.toFloat() }.toTypedArray()
+                            val keys = state.issueTrends.keys.toList()
                             if (entries.isNotEmpty()) {
                                 Chart(
-                                    chart = com.patrykandpatrick.vico.compose.chart.line.lineChart(),
+                                    chart = lineChart(),
                                     model = entryModelOf(*entries),
                                     startAxis = rememberStartAxis(
                                         valueFormatter = { value, _ -> value.toInt().toString() }
                                     ),
                                     bottomAxis = rememberBottomAxis(
-                                        valueFormatter = { value, _ -> 
-                                            val keys = state.issueTrends.keys.toList()
+                                        valueFormatter = { value, _ ->
                                             val idx = value.toInt()
-                                            if (idx in keys.indices) keys[idx].takeLast(5) else "" // Show MM-DD
+                                            if (idx in keys.indices) keys[idx].takeLast(5) else ""
                                         }
                                     )
                                 )

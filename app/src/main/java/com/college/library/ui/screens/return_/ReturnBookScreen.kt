@@ -1,24 +1,17 @@
 package com.college.library.ui.screens.return_
 
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Share
-import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
-import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +29,7 @@ import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
 import com.college.library.utils.ReceiptGenerator
 import com.college.library.utils.rememberStrings
+import com.college.library.ui.components.BarcodeScannerDialog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -121,12 +115,23 @@ fun ReturnBookScreen(
     val members by viewModel.membersFlow.collectAsState()
     val issuedBooks by viewModel.issuedBooks.collectAsState()
     val context = LocalContext.current
-    val scannerOptions = remember {
-        GmsBarcodeScannerOptions.Builder()
-            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
-            .build()
+    var showScanner by remember { mutableStateOf(false) }
+
+    if (showScanner) {
+        BarcodeScannerDialog(
+            title = "Scan Member ID",
+            instruction = "Point camera at Member ID Barcode",
+            onScanSuccess = { memberId ->
+                viewModel.memberSearchQuery = memberId
+                val match = members.firstOrNull { it.memberId.equals(memberId, ignoreCase = true) }
+                if (match != null) {
+                    viewModel.selectMember(match)
+                }
+                showScanner = false
+            },
+            onDismiss = { showScanner = false }
+        )
     }
-    val scanner = remember { GmsBarcodeScanning.getClient(context, scannerOptions) }
 
     Scaffold(
         topBar = {
@@ -163,18 +168,7 @@ fun ReturnBookScreen(
                             leadingIcon = { Icon(Icons.Default.Search, null) }
                         )
                         IconButton(
-                            onClick = {
-                                scanner.startScan()
-                                    .addOnSuccessListener { barcode ->
-                                        barcode.rawValue?.let { memberId ->
-                                            viewModel.memberSearchQuery = memberId
-                                            val match = members.firstOrNull { it.memberId.equals(memberId, ignoreCase = true) }
-                                            if (match != null) {
-                                                viewModel.selectMember(match)
-                                            }
-                                        }
-                                    }
-                            },
+                            onClick = { showScanner = true },
                             modifier = Modifier.padding(start = 8.dp)
                         ) {
                             Icon(Icons.Default.CameraAlt, "Scan ID Card", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
@@ -212,9 +206,18 @@ fun ReturnBookScreen(
                                     colors = CardDefaults.cardColors(containerColor = if (viewModel.selectedBookToReturn == book) MaterialTheme.colorScheme.primary.copy(0.1f) else Color.White),
                                     border = if (viewModel.selectedBookToReturn == book) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
                                 ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(book.bookTitle, fontWeight = FontWeight.Bold)
-                                        Text("Due: ${book.dueDate}", fontSize = 12.sp, color = DangerRed)
+                                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(book.bookTitle, fontWeight = FontWeight.Bold)
+                                            Text("Due: ${book.dueDate}", fontSize = 12.sp, color = DangerRed)
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                android.widget.Toast.makeText(context, "Reminder sent to ${book.memberName}!", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        ) {
+                                            Icon(Icons.Default.Share, contentDescription = "Send Reminder", tint = MaterialTheme.colorScheme.primary)
+                                        }
                                     }
                                 }
                             }
@@ -244,8 +247,6 @@ fun ReturnBookScreen(
                 }
             }
         }
-
-
     }
 }
 

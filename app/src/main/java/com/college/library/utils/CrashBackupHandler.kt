@@ -18,7 +18,7 @@ class CrashBackupHandler(
     override fun uncaughtException(t: Thread, e: Throwable) {
         try {
             Log.e("CrashBackupHandler", "App crashed. Taking database backup...", e)
-            val dbFile = context.getDatabasePath("library_db")
+            val dbFile = context.getDatabasePath("library_v6.db")
             if (dbFile.exists()) {
                 val backupDir = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "LibraryBackups")
                 if (!backupDir.exists()) backupDir.mkdirs()

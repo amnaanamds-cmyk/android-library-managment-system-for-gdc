@@ -6,17 +6,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,7 +45,9 @@ import com.college.library.ui.screens.return_.ReturnBookScreen
 import com.college.library.ui.screens.settings.SettingsScreen
 import com.college.library.ui.screens.settings.SettingsViewModel
 import com.college.library.ui.screens.settings.AboutScreen
+import com.college.library.ui.screens.inventory.InventoryScreen
 import com.college.library.ui.screens.ai.AiHubScreen
+import com.college.library.ui.screens.wishlist.WishlistScreen
 import com.college.library.ui.screens.leaderboard.LeaderboardScreen
 import com.college.library.ui.theme.AppTheme
 import com.college.library.utils.rememberStrings
@@ -59,18 +66,37 @@ import com.college.library.ui.screens.reservation.ReservationScreen
 import com.college.library.ui.screens.stats.LibraryStatsScreen
 import com.college.library.profile.CollegeProfileManager
 import com.college.library.profile.CollegeProfileScreen
+import com.college.library.ui.screens.heatmap.HeatmapScreen
+import com.college.library.ui.screens.recommendation.RecommendationScreen
+import com.college.library.ui.screens.finewaiver.FineWaiverScreen
+import com.college.library.ui.screens.readinggoals.ReadingGoalsScreen
+import com.college.library.ui.screens.digitalid.DigitalIdScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+import com.college.library.data.db.LibraryDatabase
+import javax.inject.Inject
 
 @OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
+    @Inject lateinit var database: LibraryDatabase
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             val darkModeEnabled = settingsViewModel.state.collectAsState().value.darkModeEnabled
+            val context = androidx.compose.ui.platform.LocalContext.current
 
-            // Request Notification Permission on Android 13+
+            var isProfileSetup by remember { mutableStateOf<Boolean?>(null) }
+
+            LaunchedEffect(Unit) {
+                isProfileSetup = withContext(Dispatchers.IO) {
+                    CollegeProfileManager.getInstance(context).isSetupComplete()
+                }
+            }
+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 val permissionState = com.google.accompanist.permissions.rememberPermissionState(
                     android.Manifest.permission.POST_NOTIFICATIONS
@@ -82,75 +108,100 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            val context = androidx.compose.ui.platform.LocalContext.current
-            var showBackupDialog by remember { mutableStateOf(false) }
-            var pendingBackupFile by remember { mutableStateOf<java.io.File?>(null) }
-
-            LaunchedEffect(Unit) {
-                val prefs = context.getSharedPreferences("library_prefs", android.content.Context.MODE_PRIVATE)
-                val path = prefs.getString("pending_backup_file", null)
-                if (path != null) {
-                    val file = java.io.File(path)
-                    if (file.exists()) {
-                        pendingBackupFile = file
-                        showBackupDialog = true
-                    }
-                    prefs.edit().remove("pending_backup_file").apply()
-                }
-            }
-
-            if (showBackupDialog && pendingBackupFile != null) {
-                AlertDialog(
-                    onDismissRequest = { showBackupDialog = false },
-                    title = { Text("App Recovered from Crash") },
-                    text = { Text("The app recently crashed. A secure backup of your local database has been saved. Would you like to save it to your Google Drive for extra safety?") },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showBackupDialog = false
-                            val uri = androidx.core.content.FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.provider",
-                                pendingBackupFile!!
-                            )
-                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = "application/x-sqlite3"
-                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(android.content.Intent.createChooser(intent, "Save Backup to Google Drive"))
-                        }) {
-                            Text("Save to Drive", color = MaterialTheme.colorScheme.primary)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showBackupDialog = false }) {
-                            Text("Dismiss")
-                        }
-                    }
-                )
-            }
-
             AppTheme(darkModeEnabled = darkModeEnabled) {
-                LibraryApp(settingsViewModel = settingsViewModel)
+                if (isProfileSetup == null) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    LibraryApp(
+                        settingsViewModel = settingsViewModel,
+                        initialProfileSetup = isProfileSetup!!,
+                        onProfileSetupComplete = { isProfileSetup = true },
+                        database = database
+                    )
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryApp(
     settingsViewModel: SettingsViewModel,
+    initialProfileSetup: Boolean,
+    onProfileSetupComplete: () -> Unit,
+    database: LibraryDatabase,
     authViewModel: AuthViewModel = hiltViewModel(),
     licenseViewModel: LicenseViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val isAuthenticated by authViewModel.isAuthenticated.collectAsState()
+    val authState by authViewModel.authState.collectAsState()
+    val isAuthenticated = authState is com.college.library.ui.screens.auth.AuthState.Authenticated
     val isLicensed by licenseViewModel.isLicensed.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
     var showOpac by remember { mutableStateOf(false) }
-    var isProfileSetup by remember { mutableStateOf(CollegeProfileManager.getInstance(context).isSetupComplete()) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Initialize Realtime Sync engine
+    //
+    // FIX: previously this fell back to institutionId = "gdc11" whenever the
+    // Authenticated state's institutionId couldn't be read. That silent
+    // fallback is what caused every device to converge on a shared "gdc11"
+    // institution document instead of each college's own data. Now, if we
+    // don't have a real institutionId yet, we simply don't start sync — the
+    // LaunchedEffect will re-run and start it correctly once authState
+    // actually carries a valid institutionId (right after login/onboarding).
+    val coroutineScope = rememberCoroutineScope()
+    LaunchedEffect(isAuthenticated, (authState as? com.college.library.ui.screens.auth.AuthState.Authenticated)?.institutionId) {
+        val institutionId = (authState as? com.college.library.ui.screens.auth.AuthState.Authenticated)?.institutionId
+        if (isAuthenticated && !institutionId.isNullOrBlank()) {
+            com.college.library.data.sync.RealtimeSyncManager.initialize(context, database, institutionId, coroutineScope)
+        } else {
+            com.college.library.data.sync.RealtimeSyncManager.disconnect(database)
+        }
+    }
+
+    if (!isLicensed) {
+        LicenseScreen(onLicenseActivated = { }, viewModel = licenseViewModel)
+        return
+    }
+
+    if (!initialProfileSetup) {
+        CollegeProfileScreen(onNavigateBack = { }, onSetupComplete = onProfileSetupComplete, isOnboarding = true)
+        return
+    }
+
+    if (showOpac) {
+        val opacNavController = rememberNavController()
+        NavHost(navController = opacNavController, startDestination = "opac_login") {
+            composable("opac_login") {
+                com.college.library.ui.screens.opac.OpacLoginScreen(
+                    onLoginSuccess = { id -> opacNavController.navigate("opac_home/$id") { popUpTo("opac_login") { inclusive = true } } },
+                    onNavigateBack = { showOpac = false }
+                )
+            }
+            composable("opac_home/{studentId}", arguments = listOf(navArgument("studentId") { type = NavType.LongType })) { backStackEntry ->
+                val id = backStackEntry.arguments?.getLong("studentId") ?: 0L
+                com.college.library.ui.screens.opac.OpacHomeScreen(studentId = id, onLogout = { showOpac = false })
+            }
+        }
+        return
+    }
+
+    if (authState is com.college.library.ui.screens.auth.AuthState.NeedsOnboarding) {
+        com.college.library.ui.screens.auth.OnboardingScreen(viewModel = authViewModel)
+        return
+    }
+
+    val startDestination = when {
+        !isAuthenticated -> "login"
+        else -> "dashboard"
+    }
 
     val mainTabs = listOf("dashboard", "books", "members", "hub", "reports", "leaderboard", "ebooks")
     val isMainScreen = currentRoute in mainTabs && isAuthenticated
@@ -161,152 +212,102 @@ fun LibraryApp(
                 val strings = rememberStrings()
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = strings.navHome) },
-                        label = { Text(strings.navHome) },
+                        icon = { Icon(Icons.Default.Home, null) },
+                        label = { Text(strings.navHome, fontSize = 10.sp) },
                         selected = currentRoute == "dashboard",
-                        onClick = {
-                            navController.navigate("dashboard") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("dashboard") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = strings.navBooks) },
-                        label = { Text(strings.navBooks) },
+                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },
+                        label = { Text(strings.navBooks, fontSize = 10.sp) },
                         selected = currentRoute == "books",
-                        onClick = {
-                            navController.navigate("books") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("books") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.People, contentDescription = strings.navMembers) },
-                        label = { Text(strings.navMembers) },
+                        icon = { Icon(Icons.Default.People, null) },
+                        label = { Text(strings.navMembers, fontSize = 10.sp) },
                         selected = currentRoute == "members",
-                        onClick = {
-                            navController.navigate("members") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("members") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.SwapHoriz, contentDescription = strings.navTransact) },
-                        label = { Text(strings.navTransact) },
+                        icon = { Icon(Icons.Default.SwapHoriz, null) },
+                        label = { Text(strings.navTransact, fontSize = 10.sp) },
                         selected = currentRoute == "hub",
-                        onClick = {
-                            navController.navigate("hub") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("hub") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.BarChart, contentDescription = strings.navReports) },
-                        label = { Text(strings.navReports) },
+                        icon = { Icon(Icons.Default.BarChart, null) },
+                        label = { Text(strings.navReports, fontSize = 10.sp) },
                         selected = currentRoute == "reports",
-                        onClick = {
-                            navController.navigate("reports") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("reports") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.EmojiEvents, contentDescription = strings.navRanks) },
-                        label = { Text(strings.navRanks) },
-                        selected = currentRoute == "leaderboard",
-                        onClick = {
-                            navController.navigate("leaderboard") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "E-Books") },
-                        label = { Text("E-Books") },
+                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },
+                        label = { Text("E-Books", fontSize = 10.sp) },
                         selected = currentRoute == "ebooks",
-                        onClick = {
-                            navController.navigate("ebooks") {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
+                        onClick = { navController.navigate("ebooks") { popUpTo(navController.graph.findStartDestination().id) { saveState = true }; launchSingleTop = true; restoreState = true } }
                     )
                 }
             }
         }
     ) { padding ->
-        if (!isLicensed) {
-            LicenseScreen(
-                onLicenseActivated = { },
-                viewModel = licenseViewModel
-            )
-            return@Scaffold
-        }
-        if (!isProfileSetup) {
-            CollegeProfileScreen(
-                onNavigateBack = { },
-                onSetupComplete = { isProfileSetup = true },
-                isOnboarding = true
-            )
-            return@Scaffold
-        }
-        if (showOpac) {
-            val opacNavController = rememberNavController()
-            NavHost(
-                navController = opacNavController,
-                startDestination = "opac_login",
-                modifier = Modifier.padding(padding)
-            ) {
-                composable("opac_login") {
-                    com.college.library.ui.screens.opac.OpacLoginScreen(
-                        onLoginSuccess = { studentId ->
-                            opacNavController.navigate("opac_home/$studentId") {
-                                popUpTo("opac_login") { inclusive = true }
-                            }
-                        },
-                        onNavigateBack = { showOpac = false }
-                    )
-                }
-                composable(
-                    route = "opac_home/{studentId}",
-                    arguments = listOf(navArgument("studentId") { type = NavType.LongType })
-                ) { backStackEntry ->
-                    val id = backStackEntry.arguments?.getLong("studentId") ?: 0L
-                    com.college.library.ui.screens.opac.OpacHomeScreen(
-                        studentId = id,
-                        onLogout = { showOpac = false }
-                    )
-                }
-            }
-        } else if (!isAuthenticated) {
-            LoginScreen(
-                onLoginSuccess = { },
-                onNavigateToOpac = { showOpac = true }
-            ) // State will update automatically via ViewModel
-        } else {
-            NavHost(
-                navController = navController,
-                startDestination = "dashboard",
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
             modifier = Modifier.padding(padding),
             enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300)) },
-            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300)) },
-            popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300)) },
-            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec = tween(300)) }
+            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec = tween(300)) }
         ) {
-            composable("dashboard") { 
+            composable("login") {
+                LoginScreen(
+                    onLoginSuccess = {
+                        navController.navigate("dashboard") {
+                            popUpTo("login") { inclusive = true }
+                        }
+                    },
+                    onNavigateToOpac = { showOpac = true },
+                    onNavigateToScanner = { navController.navigate("login_qr_scanner") },
+                    viewModel = authViewModel
+                )
+            }
+            composable("login_qr_scanner") {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Scan QR to Link") },
+                            navigationIcon = {
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(Icons.Default.ArrowBack, "Back")
+                                }
+                            }
+                        )
+                    }
+                ) { p ->
+                    Box(modifier = Modifier.fillMaxSize().padding(p)) {
+                        com.college.library.ui.components.CameraXScanner { qrData ->
+                            try {
+                                val parts = qrData.split("|")
+                                if (parts.size >= 3 && parts[0] == "NEXLIB_LINK") {
+                                    val instId = parts[1]
+                                    val roleStr = parts[2]
+                                    val role = when(roleStr.lowercase()) {
+                                        "admin" -> com.college.library.ui.screens.auth.UserRole.COLLEGE_ADMIN
+                                        "director" -> com.college.library.ui.screens.auth.UserRole.DIRECTOR
+                                        else -> com.college.library.ui.screens.auth.UserRole.LIBRARIAN
+                                    }
+                                    authViewModel.onOnboardingComplete(instId, role)
+                                    navController.navigate("dashboard") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "Invalid Login QR", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
+            }
+            composable("dashboard") {
                 DashboardScreen(
                     onNavigateToOverdue = { navController.navigate("reports") },
                     onNavigateToSettings = { navController.navigate("settings") },
@@ -314,21 +315,24 @@ fun LibraryApp(
                     onNavigateToIssue = { navController.navigate("issue_book") },
                     onNavigateToReturn = { navController.navigate("return_book") },
                     onNavigateToAddMember = { navController.navigate("add_edit_member/0") },
-                    onNavigateToSubjects = { navController.navigate("browse_subjects") }
-                ) 
-            }
-            
-            composable("ai_hub") {
-                AiHubScreen(onNavigateBack = { navController.popBackStack() })
-            }
-            
-            composable("browse_subjects") {
-                SubjectBrowseScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToDetail = { id -> navController.navigate("book_detail/$id") }
+                    onNavigateToSubjects = { navController.navigate("browse_subjects") },
+                    onNavigateToWishlist = { navController.navigate("wishlist") }
                 )
             }
-            
+            composable("books") {
+                BookListScreen(
+                    onNavigateToAddBook = { navController.navigate("add_edit_book/0") },
+                    onNavigateToDetail = { navController.navigate("book_detail/$it") },
+                    onNavigateToEdit = { navController.navigate("add_edit_book/$it") },
+                    onNavigateToWishlist = { navController.navigate("wishlist") }
+                )
+            }
+            composable("members") {
+                MembersScreen(
+                    onNavigateToAddMember = { navController.navigate("add_edit_member/0") },
+                    onNavigateToDetail = { navController.navigate("member_detail/$it") }
+                )
+            }
             composable("settings") {
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -339,126 +343,66 @@ fun LibraryApp(
                     onNavigateToReservations = { navController.navigate("reservations") },
                     onNavigateToNotifications = { navController.navigate("notifications") },
                     onNavigateToCollegeProfile = { navController.navigate("college_profile") },
+                    onNavigateToHeatmap = { navController.navigate("heatmap") },
+                    onNavigateToRecommendations = { navController.navigate("recommendations") },
+                    onNavigateToFineWaiver = { navController.navigate("fine_waiver") },
+                    onNavigateToReadingGoals = { navController.navigate("reading_goals") },
+                    onNavigateToClassification = { navController.navigate("classification") },
+                    onNavigateToSpineLabels = { navController.navigate("spine_labels") },
+                    onNavigateToBiometric = { navController.navigate("biometric") },
+                    onNavigateToUnionCatalog = { navController.navigate("union_catalog") },
                     viewModel = settingsViewModel
                 )
             }
-            
-            composable("about") {
-                AboutScreen(onNavigateBack = { navController.popBackStack() })
-            }
-            
-            composable("books") { 
-                BookListScreen(
-                    onNavigateToAddBook = { navController.navigate("add_edit_book/0") },
-                    onNavigateToDetail = { id -> navController.navigate("book_detail/$id") },
-                    onNavigateToEdit = { id -> navController.navigate("add_edit_book/$id") }
-                ) 
-            }
-            
+            composable("wishlist") { WishlistScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("ai_hub") { AiHubScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("browse_subjects") { SubjectBrowseScreen(onNavigateBack = { navController.popBackStack() }, onNavigateToDetail = { navController.navigate("book_detail/$it") }) }
+            composable("about") { AboutScreen(onNavigateBack = { navController.popBackStack() }) }
             composable("book_detail/{bookId}", arguments = listOf(navArgument("bookId") { type = NavType.LongType })) { backStackEntry ->
-                val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
-                BookDetailScreen(
-                    bookId = bookId,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEdit = { id -> navController.navigate("add_edit_book/$id") },
-                    onNavigateToIssue = { isbn -> navController.navigate("issue_book?isbn=$isbn") }
-                )
+                val id = backStackEntry.arguments?.getLong("bookId") ?: 0L
+                BookDetailScreen(id, onNavigateBack = { navController.popBackStack() }, onNavigateToEdit = { navController.navigate("add_edit_book/$it") }, onNavigateToCopy = { navController.navigate("add_edit_book/$it?isCopy=true") }, onNavigateToIssue = { navController.navigate("issue_book?isbn=$it") })
             }
-
-            composable("add_edit_book/{bookId}", arguments = listOf(navArgument("bookId") { type = NavType.LongType })) { backStackEntry ->
-                val bookId = backStackEntry.arguments?.getLong("bookId") ?: 0L
-                AddEditBookScreen(
-                    bookId = bookId,
-                    onNavigateBack = { navController.popBackStack() }
-                )
+            composable("add_edit_book/{bookId}?isCopy={isCopy}", arguments = listOf(navArgument("bookId") { type = NavType.LongType }, navArgument("isCopy") { type = NavType.BoolType; defaultValue = false })) { backStackEntry ->
+                val id = backStackEntry.arguments?.getLong("bookId") ?: 0L
+                val isCopy = backStackEntry.arguments?.getBoolean("isCopy") ?: false
+                AddEditBookScreen(id, isCopy, onNavigateBack = { navController.popBackStack() })
             }
-
-            composable("members") { 
-                MembersScreen(
-                    onNavigateToAddMember = { navController.navigate("add_edit_member/0") },
-                    onNavigateToDetail = { id -> navController.navigate("member_detail/$id") }
-                ) 
-            }
-
             composable("member_detail/{memberId}", arguments = listOf(navArgument("memberId") { type = NavType.LongType })) { backStackEntry ->
-                val memberId = backStackEntry.arguments?.getLong("memberId") ?: 0L
-                MemberDetailScreen(
-                    memberId = memberId,
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEdit = { id -> navController.navigate("add_edit_member/$id") }
-                )
+                val id = backStackEntry.arguments?.getLong("memberId") ?: 0L
+                MemberDetailScreen(id, onNavigateBack = { navController.popBackStack() }, onNavigateToEdit = { navController.navigate("add_edit_member/$it") })
             }
-
             composable("add_edit_member/{memberId}", arguments = listOf(navArgument("memberId") { type = NavType.LongType })) { backStackEntry ->
-                val memberId = backStackEntry.arguments?.getLong("memberId") ?: 0L
-                AddEditMemberScreen(
-                    memberId = memberId,
-                    onNavigateBack = { navController.popBackStack() }
-                )
+                val id = backStackEntry.arguments?.getLong("memberId") ?: 0L
+                AddEditMemberScreen(id, onNavigateBack = { navController.popBackStack() })
             }
-
-            composable("hub") {
-                IssueReturnHubScreen(
-                    onNavigateToIssue = { navController.navigate("issue_book") },
-                    onNavigateToReturn = { navController.navigate("return_book") },
-                    onNavigateToBulk = { navController.navigate("bulk_issue") }
-                )
+            composable("hub") { IssueReturnHubScreen(onNavigateToIssue = { navController.navigate("issue_book") }, onNavigateToReturn = { navController.navigate("return_book") }, onNavigateToBulk = { navController.navigate("bulk_issue") }, onNavigateToInventory = { navController.navigate("inventory") }) }
+            composable("issue_book?isbn={isbn}", arguments = listOf(navArgument("isbn") { type = NavType.StringType; defaultValue = "" })) { backStackEntry ->
+                IssueBookScreen(backStackEntry.arguments?.getString("isbn") ?: "", onNavigateBack = { navController.popBackStack() })
             }
-
-            composable(
-                "issue_book?isbn={isbn}",
-                arguments = listOf(navArgument("isbn") { type = NavType.StringType; defaultValue = "" })
-            ) { backStackEntry ->
-                val isbn = backStackEntry.arguments?.getString("isbn") ?: ""
-                IssueBookScreen(isbn = isbn, onNavigateBack = { navController.popBackStack() })
+            composable("return_book") { ReturnBookScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("bulk_issue") { BulkIssueScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("inventory") { InventoryScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("reports") { ReportsScreen() }
+            composable("leaderboard") { LeaderboardScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("ebooks") { com.college.library.ui.screens.books.EBooksScreen() }
+            composable("backup_restore") { BackupRestoreScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("export") { ExportScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("reservations") { ReservationScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("notifications") { NotificationCenterScreen(onBack = { navController.popBackStack() }) }
+            composable("library_stats") { LibraryStatsScreen(onBack = { navController.popBackStack() }) }
+            composable("college_profile") { CollegeProfileScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("heatmap") { HeatmapScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("recommendations") { RecommendationScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("fine_waiver") { FineWaiverScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("reading_goals") { ReadingGoalsScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("digital_id/{memberId}", arguments = listOf(navArgument("memberId") { type = NavType.LongType })) { backStackEntry ->
+                DigitalIdScreen(backStackEntry.arguments?.getLong("memberId") ?: 0L, onNavigateBack = { navController.popBackStack() })
             }
-
-            composable("return_book") {
-                ReturnBookScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("bulk_issue") {
-                BulkIssueScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("reports") {
-                ReportsScreen()
-            }
-
-            composable("leaderboard") {
-                LeaderboardScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("ebooks") {
-                com.college.library.ui.screens.books.EBooksScreen()
-            }
-
-            composable("backup_restore") {
-                BackupRestoreScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("export") {
-                ExportScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("reservations") {
-                ReservationScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("notifications") {
-                NotificationCenterScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("library_stats") {
-                LibraryStatsScreen(onNavigateBack = { navController.popBackStack() })
-            }
-
-            composable("college_profile") {
-                CollegeProfileScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-        }
+            composable("classification") { com.college.library.ui.screens.classification.ClassificationScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("spine_labels") { com.college.library.ui.screens.spinelabel.SpineLabelScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("biometric") { com.college.library.ui.screens.biometric.BiometricScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("union_catalog") { com.college.library.ui.screens.unioncatalog.UnionCatalogScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable("login_qr_scanner_placeholder") {} // Removed the old route handler
         }
     }
 }

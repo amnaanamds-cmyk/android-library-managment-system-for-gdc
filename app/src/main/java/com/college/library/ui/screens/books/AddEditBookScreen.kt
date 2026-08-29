@@ -38,13 +38,32 @@ import javax.inject.Inject
 class AddEditBookViewModel @Inject constructor(
     private val bookDao: BookDao
 ) : ViewModel() {
-    private val _bookState = MutableStateFlow(Book(0, "", "", "", "", "", "", "", "", 0, "", "", 0.0, "Available", false, null, "Uncategorized"))
+    private val _bookState = MutableStateFlow(Book(
+        isbn = "",
+        accNo = "",
+        title = "",
+        author = "",
+        publisher = "",
+        publisherPlace = "",
+        publishDate = "",
+        edition = "",
+        pages = 0,
+        procurement = "",
+        volume = "",
+        price = 0.0
+    ))
     val bookState = _bookState.asStateFlow()
 
-    fun loadBook(id: Long) {
+    fun loadBook(id: Long, isCopy: Boolean = false) {
         if (id == 0L) return
         viewModelScope.launch {
-            bookDao.getBookById(id)?.let { _bookState.value = it }
+            bookDao.getBookById(id)?.let {
+                if (isCopy) {
+                    _bookState.value = it.copy(id = 0, accNo = "")
+                } else {
+                    _bookState.value = it
+                }
+            }
         }
     }
 
@@ -115,13 +134,14 @@ class AddEditBookViewModel @Inject constructor(
 @Composable
 fun AddEditBookScreen(
     bookId: Long = 0L,
+    isCopy: Boolean = false,
     onNavigateBack: () -> Unit,
     viewModel: AddEditBookViewModel = hiltViewModel()
 ) {
     val book by viewModel.bookState.collectAsState()
     val context = LocalContext.current
 
-    LaunchedEffect(bookId) { viewModel.loadBook(bookId) }
+    LaunchedEffect(bookId, isCopy) { viewModel.loadBook(bookId, isCopy) }
 
     val scannerOptions = remember {
         GmsBarcodeScannerOptions.Builder()
@@ -149,7 +169,7 @@ fun AddEditBookScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (bookId == 0L) "Add Book" else "Edit Book", color = Color.White) },
+                title = { Text(if (bookId == 0L || isCopy) "Add Book" else "Edit Book", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
                 },
@@ -199,12 +219,22 @@ fun AddEditBookScreen(
                     },
                     modifier = Modifier.padding(top = 8.dp)
                 ) { Text("Scan") }
+                    Button(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) { Text("Gallery") }
+                }
                 Button(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier.padding(top = 8.dp)
-                ) { Text("Gallery") }
-            }
-            if (book.isbn.isNotBlank()) {
+                    onClick = { 
+                        if (book.isbn.isNotBlank()) {
+                            android.widget.Toast.makeText(context, "🌐 Z39.50 Search: Connecting to Library of Congress...", android.widget.Toast.LENGTH_LONG).show()
+                            viewModel.fetchBookDetailsFromIsbn(book.isbn)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2872F0))
+                ) { Text("🌐 Z39.50 Federated Search") }
+                if (book.isbn.isNotBlank()) {
                 val barcodeBitmap = remember(book.isbn) { BarcodeGenerator.generateBarcode(book.isbn) }
                 barcodeBitmap?.let { bmp ->
                     Image(
@@ -307,7 +337,7 @@ fun AddEditBookScreen(
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text(if (bookId == 0L) "Save Book" else "Update Book", fontSize = 16.sp)
+                Text(if (bookId == 0L || isCopy) "Save Book" else "Update Book", fontSize = 16.sp)
             }
             Spacer(modifier = Modifier.height(32.dp))
         }

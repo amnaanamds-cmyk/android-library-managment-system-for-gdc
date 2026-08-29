@@ -60,7 +60,8 @@ fun MembersScreen(
     val members by viewModel.members.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filter by viewModel.filter.collectAsState()
-    val canEdit = authViewModel.canEditMembers()
+    val currentRole by authViewModel.currentRole.collectAsState()
+    val canEdit = remember(currentRole) { authViewModel.canEditMembers() }
 
     Scaffold(
         topBar = {

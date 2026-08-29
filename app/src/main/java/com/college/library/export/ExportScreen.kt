@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -106,7 +108,8 @@ fun ExportScreen(
                     icon = Icons.Default.LibraryBooks,
                     iconColor = NavyBlue,
                     isLoading = state.isExporting && state.currentExport == ExportType.BOOKS,
-                    onExport = { viewModel.exportBooks() }
+                    onExport = { viewModel.exportBooks() },
+                    format = "PDF"
                 )
             }
 
@@ -117,7 +120,8 @@ fun ExportScreen(
                     icon = Icons.Default.Group,
                     iconColor = Color(0xFF4CAF50),
                     isLoading = state.isExporting && state.currentExport == ExportType.MEMBERS,
-                    onExport = { viewModel.exportMembers() }
+                    onExport = { viewModel.exportMembers() },
+                    format = "PDF"
                 )
             }
 
@@ -128,7 +132,8 @@ fun ExportScreen(
                     icon = Icons.Default.SwapHoriz,
                     iconColor = Color(0xFF2196F3),
                     isLoading = state.isExporting && state.currentExport == ExportType.TRANSACTIONS,
-                    onExport = { viewModel.exportTransactions() }
+                    onExport = { viewModel.exportTransactions() },
+                    format = "PDF"
                 )
             }
 
@@ -139,7 +144,32 @@ fun ExportScreen(
                     icon = Icons.Default.Warning,
                     iconColor = DangerRed,
                     isLoading = state.isExporting && state.currentExport == ExportType.OVERDUE,
-                    onExport = { viewModel.exportOverdue() }
+                    onExport = { viewModel.exportOverdue() },
+                    format = "PDF"
+                )
+            }
+
+            item {
+                ExportCard(
+                    title = "Spine Labels Generator",
+                    description = "Generate a PDF of spine labels (Call No, Acc, Author) for printing.",
+                    icon = Icons.Default.Label,
+                    iconColor = Color(0xFF9C27B0),
+                    isLoading = state.isExporting && state.currentExport == ExportType.SPINE_LABELS,
+                    onExport = { viewModel.exportSpineLabels() },
+                    format = "PDF"
+                )
+            }
+
+            item {
+                ExportCard(
+                    title = "MARC21 Interoperability Export",
+                    description = "Export catalog to Koha-compatible MARC21 (.mrc) format.",
+                    icon = Icons.Default.Code,
+                    iconColor = Gold,
+                    isLoading = state.isExporting && state.currentExport == ExportType.MARC21,
+                    onExport = { viewModel.exportMarc21() },
+                    format = "MRC"
                 )
             }
 
@@ -243,7 +273,8 @@ private fun ExportCard(
     icon: ImageVector,
     iconColor: Color,
     isLoading: Boolean,
-    onExport: () -> Unit
+    onExport: () -> Unit,
+    format: String = "PDF"
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -309,7 +340,7 @@ private fun ExportCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("PDF", fontSize = 13.sp)
+                    Text(format, fontSize = 13.sp)
                 }
             }
         }

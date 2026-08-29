@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,8 +40,12 @@ import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import com.college.library.BuildConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.time.LocalDate
@@ -59,7 +64,8 @@ data class ReportsState(
     val mostActiveBorrowers: List<Member> = emptyList(),
     val overdueBooksWithPhone: List<Pair<IssuedBook, String>> = emptyList(),
     val allBooks: List<com.college.library.data.model.Book> = emptyList(),
-    val allMembers: List<Member> = emptyList()
+    val allMembers: List<Member> = emptyList(),
+    val aiTrendAnalysis: String? = null
 )
 
 @HiltViewModel
@@ -69,6 +75,15 @@ class ReportsViewModel @Inject constructor(
     issuedBookDao: IssuedBookDao,
     val calculateFineUseCase: CalculateFineUseCase
 ) : ViewModel() {
+
+    private val _aiAnalysis = MutableStateFlow<String?>(null)
+
+    private val generativeModel by lazy {
+        GenerativeModel(
+            modelName = "gemini-1.5-flash",
+            apiKey = BuildConfig.GEMINI_API_KEY
+        )
+    }
 
     private val today = LocalDate.now()
     private val thisMonthPrefix = today.format(DateTimeFormatter.ofPattern("yyyy-MM"))
@@ -115,9 +130,34 @@ class ReportsViewModel @Inject constructor(
             mostActiveBorrowers = mostActive,
             overdueBooksWithPhone = overdueWithPhones,
             allBooks = books,
-            allMembers = members
+            allMembers = members,
+            aiTrendAnalysis = _aiAnalysis.value
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReportsState())
+
+    init {
+        generateAiAnalysis()
+    }
+
+    fun generateAiAnalysis() {
+        if (BuildConfig.GEMINI_API_KEY.isBlank()) return
+        
+        viewModelScope.launch {
+            try {
+                // Wait for state to be somewhat ready
+                val currentState = state.value
+                val prompt = "Based on these library stats: ${currentState.totalCollectionValue} value, " +
+                             "${currentState.issuedThisMonth} issues this month vs ${currentState.issuedLastMonth} last month, " +
+                             "${currentState.overdueBooksWithPhone.size} overdue books. " +
+                             "Provide a professional 2-sentence executive summary and one strategic recommendation for the librarian."
+                
+                val response = generativeModel.generateContent(prompt)
+                _aiAnalysis.value = response.text
+            } catch (e: Exception) {
+                _aiAnalysis.value = "AI Analysis unavailable."
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -182,6 +222,24 @@ fun OverviewTab(state: ReportsState) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Fine Collected (This Month)", color = DangerRed)
                     Text("Rs. ${state.fineCollectedThisMonth}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = DangerRed)
+                }
+            }
+        }
+        
+        if (state.aiTrendAnalysis != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("AI Executive Trend Analysis", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(state.aiTrendAnalysis!!, fontSize = 14.sp)
                 }
             }
         }

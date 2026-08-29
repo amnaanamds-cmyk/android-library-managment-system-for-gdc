@@ -51,6 +51,15 @@ fun SettingsScreen(
     onNavigateToReservations: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToCollegeProfile: () -> Unit = {},
+    // ── NEW FEATURE NAVIGATION ─────────────────────────────────────
+    onNavigateToHeatmap: () -> Unit = {},
+    onNavigateToRecommendations: () -> Unit = {},
+    onNavigateToFineWaiver: () -> Unit = {},
+    onNavigateToReadingGoals: () -> Unit = {},
+    onNavigateToClassification: () -> Unit = {},
+    onNavigateToSpineLabels: () -> Unit = {},
+    onNavigateToBiometric: () -> Unit = {},
+    onNavigateToUnionCatalog: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -262,6 +271,55 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Cloud Synchronization ──────────────────────────────────────────
+            item {
+                Text(
+                    text = "Cloud Synchronization",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Sync your local data with the cloud to backup books, members, and transactions.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        if (state.isSyncing) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("Syncing with cloud...")
+                            }
+                        } else {
+                            Button(
+                                onClick = { viewModel.triggerSync() },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sync All Data Now", color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     text = "Data Operations",
@@ -296,19 +354,34 @@ fun SettingsScreen(
                                 Text("Parsing & importing books...", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
                             }
                         } else {
-                            Button(
-                                onClick = { 
-                                    // Launch to pick any file type (filters for CSV/Excel are handled inside file chooser or viewmodel)
-                                    filePickerLauncher.launch("*/*") 
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                modifier = Modifier.fillMaxWidth()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Import Books (CSV / Excel)", color = Color.White)
+                                Button(
+                                    onClick = { 
+                                        viewModel.isImportingOrganized = true
+                                        filePickerLauncher.launch("*/*") 
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Import Subject-Wise", color = Color.White, fontSize = 12.sp)
+                                }
+                                Button(
+                                    onClick = { 
+                                        viewModel.isImportingOrganized = false
+                                        filePickerLauncher.launch("*/*") 
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Import Unorganized", color = Color.White, fontSize = 12.sp)
+                                }
                             }
                         }
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                         Text(
                             text = "Maintenance Actions",
@@ -499,6 +572,85 @@ fun SettingsScreen(
                 }
             }
 
+            // ── NEW PREMIUM FEATURES ─────────────────────────────────────
+            item {
+                Text(
+                    text = "🚀 New Premium Features",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(2.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = onNavigateToRecommendations,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🤖  AI Smart Book Recommender", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToHeatmap,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🔥  Library Usage Heatmap", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToFineWaiver,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("⚖️  AI Fine Waiver Judge", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToReadingGoals,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🎯  Reading Goals & Streaks", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToClassification,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🗂️  Classification System", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToSpineLabels,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🏷️  Spine Label Generator", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToBiometric,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🔐  Biometric Verification", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToUnionCatalog,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🌐  Union Catalogue", color = Color.White)
+                        }
+                    }
+                }
+            }
+
             item {
                 Text(
                     text = "App Information",
@@ -583,38 +735,66 @@ fun SettingsScreen(
 private fun shareApp(context: Context, coroutineScope: kotlinx.coroutines.CoroutineScope) {
     coroutineScope.launch {
         try {
+            val isSplit = context.applicationInfo.splitSourceDirs?.isNotEmpty() == true
+            
             val intent = withContext(Dispatchers.IO) {
                 val appInfo = context.applicationInfo
-                val srcFile = File(appInfo.sourceDir)
+                val baseApk = File(appInfo.sourceDir)
+                val splitApks = appInfo.splitSourceDirs?.map { File(it) } ?: emptyList()
                 
-                // Copy APK to cache directory so it can be shared via FileProvider
+                // Copy APKs to cache directory so they can be shared via FileProvider
                 val cachePath = File(context.cacheDir, "shared_apk")
                 cachePath.mkdirs()
-                val destFile = File(cachePath, "GDC_Library.apk")
                 
-                FileInputStream(srcFile).use { inStream ->
-                    FileOutputStream(destFile).use { outStream ->
-                        inStream.copyTo(outStream)
+                if (splitApks.isEmpty()) {
+                    // Single Universal APK, simple copy
+                    val destFile = File(cachePath, "GDC_Library.apk")
+                    FileInputStream(baseApk).use { inStream ->
+                        FileOutputStream(destFile).use { outStream ->
+                            inStream.copyTo(outStream)
+                        }
                     }
-                }
-                
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.provider",
-                    destFile
-                )
-                
-                Intent(Intent.ACTION_SEND).apply {
-                    type = "application/vnd.android.package-archive"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", destFile)
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "application/vnd.android.package-archive"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                } else {
+                    // Split APKs installed (e.g. from Android Studio deployment)
+                    // We must package all splits together so no functionality or resources are missing
+                    val destFile = File(cachePath, "GDC_Library.apks")
+                    java.util.zip.ZipOutputStream(FileOutputStream(destFile)).use { zos ->
+                        val filesToZip = listOf(baseApk) + splitApks
+                        filesToZip.forEach { file ->
+                            FileInputStream(file).use { fis ->
+                                val entry = java.util.zip.ZipEntry(file.name)
+                                zos.putNextEntry(entry)
+                                fis.copyTo(zos)
+                                zos.closeEntry()
+                            }
+                        }
+                    }
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", destFile)
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "application/octet-stream"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
                 }
             }
             
-            context.startActivity(Intent.createChooser(intent, "Share App Via"))
+            withContext(Dispatchers.Main) {
+                if (isSplit) {
+                    Toast.makeText(context, "App is installed as Split APKs. Sharing as .apks (Requires a Split Installer like SAI to install).", Toast.LENGTH_LONG).show()
+                }
+                context.startActivity(Intent.createChooser(intent, "Share App Via"))
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Error sharing app: ${e.message}", Toast.LENGTH_SHORT).show()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Error sharing app: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

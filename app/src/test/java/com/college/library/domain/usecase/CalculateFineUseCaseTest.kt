@@ -1,6 +1,10 @@
 package com.college.library.domain.usecase
 
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import org.junit.After
@@ -12,10 +16,18 @@ import java.time.LocalDate
 class CalculateFineUseCaseTest {
 
     private lateinit var calculateFineUseCase: CalculateFineUseCase
+    private lateinit var application: Application
+    private lateinit var sharedPreferences: SharedPreferences
 
     @Before
     fun setUp() {
-        calculateFineUseCase = CalculateFineUseCase()
+        application = mockk()
+        sharedPreferences = mockk()
+
+        every { application.getSharedPreferences("library_settings", Context.MODE_PRIVATE) } returns sharedPreferences
+        every { sharedPreferences.getFloat("fine_per_day", 1.0f) } returns 1.0f
+
+        calculateFineUseCase = CalculateFineUseCase(application)
         mockkStatic(LocalDate::class)
         every { LocalDate.now() } returns LocalDate.of(2026, 5, 15)
     }

@@ -1,0 +1,75 @@
+CREATE TABLE books (
+    syncId TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    author TEXT NOT NULL,
+    isbn TEXT NOT NULL,
+    isDigital INTEGER NOT NULL,
+    digitalUrl TEXT,
+    marcData TEXT,
+    serverTimestamp INTEGER NOT NULL,
+    softDelete INTEGER NOT NULL DEFAULT 0,
+    isSynced INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE members (
+    syncId TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    rollNumber TEXT NOT NULL,
+    email TEXT NOT NULL,
+    status TEXT NOT NULL,
+    serverTimestamp INTEGER NOT NULL,
+    softDelete INTEGER NOT NULL DEFAULT 0,
+    isSynced INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE transactions (
+    syncId TEXT NOT NULL PRIMARY KEY,
+    bookId TEXT NOT NULL,
+    memberId TEXT NOT NULL,
+    checkoutDate INTEGER NOT NULL,
+    returnDate INTEGER,
+    serverTimestamp INTEGER NOT NULL,
+    isSynced INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE reservations (
+    syncId TEXT NOT NULL PRIMARY KEY,
+    memberId TEXT NOT NULL,
+    bookId TEXT NOT NULL,
+    requestDate INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    serverTimestamp INTEGER NOT NULL,
+    isSynced INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE sync_conflicts (
+    conflictId TEXT NOT NULL PRIMARY KEY,
+    entityType TEXT NOT NULL,
+    entityId TEXT NOT NULL,
+    localVersion TEXT,
+    serverVersion TEXT,
+    conflictTimestamp INTEGER NOT NULL,
+    resolved INTEGER NOT NULL DEFAULT 0
+);
+
+-- Queries
+insertBook:
+INSERT OR REPLACE INTO books (syncId, title, author, isbn, isDigital, digitalUrl, marcData, serverTimestamp, softDelete, isSynced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+getUnsyncedBooks:
+SELECT * FROM books WHERE isSynced = 0;
+
+markBookSynced:
+UPDATE books SET isSynced = 1, serverTimestamp = ? WHERE syncId = ?;
+
+insertMember:
+INSERT OR REPLACE INTO members (syncId, name, rollNumber, email, status, serverTimestamp, softDelete, isSynced)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+getUnsyncedMembers:
+SELECT * FROM members WHERE isSynced = 0;
+
+markMemberSynced:
+UPDATE members SET isSynced = 1, serverTimestamp = ? WHERE syncId = ?;

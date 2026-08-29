@@ -16,5 +16,7 @@ dependencyResolutionManagement {
         maven { url = uri("https://jitpack.io") }
     }
 }
-rootProject.name = "GDC Library"
+rootProject.name = "NEXLIB"
 include(":app")
+include(":shared")
+include(":desktopApp")

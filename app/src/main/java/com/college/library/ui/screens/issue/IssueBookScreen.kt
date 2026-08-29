@@ -38,9 +38,8 @@ import com.college.library.domain.usecase.IssueBookUseCase
 import com.college.library.ui.theme.CardGreen
 import com.college.library.ui.theme.DangerRed
 import com.college.library.utils.ReceiptGenerator
+import com.college.library.ui.components.BarcodeScannerDialog
 import com.college.library.utils.rememberStrings
-import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
-import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -124,18 +123,7 @@ fun IssueBookScreen(
     viewModel: IssueBookViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val scannerOptions = remember {
-        GmsBarcodeScannerOptions.Builder()
-            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
-            .build()
-    }
-    val scanner = remember { GmsBarcodeScanning.getClient(context, scannerOptions) }
-
-    LaunchedEffect(isbn) {
-        if (isbn.isNotBlank()) {
-            viewModel.bookSearchQuery = isbn
-        }
-    }
+    var showScanner by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -151,6 +139,28 @@ fun IssueBookScreen(
                 e.printStackTrace()
             }
         }
+    }
+
+    LaunchedEffect(isbn) {
+        if (isbn.isNotBlank()) {
+            viewModel.bookSearchQuery = isbn
+        }
+    }
+
+    if (showScanner) {
+        BarcodeScannerDialog(
+            title = "Scan Book Barcode",
+            instruction = "Point camera at ISBN/Barcode",
+            onScanSuccess = { scannedIsbn ->
+                viewModel.bookSearchQuery = scannedIsbn
+                showScanner = false
+            },
+            onDismiss = { showScanner = false },
+            onGalleryScan = { 
+                showScanner = false
+                galleryLauncher.launch("image/*") 
+            }
+        )
     }
 
     Scaffold(
@@ -184,12 +194,7 @@ fun IssueBookScreen(
                 when (viewModel.currentStep) {
                     1 -> Step1SelectBook(
                         viewModel = viewModel,
-                        onScanClick = {
-                            scanner.startScan()
-                                .addOnSuccessListener { barcode ->
-                                    barcode.rawValue?.let { viewModel.bookSearchQuery = it }
-                                }
-                        },
+                        onScanClick = { showScanner = true },
                         onGalleryClick = { galleryLauncher.launch("image/*") }
                     )
                     2 -> Step2SelectMember(viewModel = viewModel)

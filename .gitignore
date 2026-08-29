@@ -8,3 +8,7 @@ replay_pid*.log
 .kotlin/
 .idea/
 bigfiles.txt
+
+# Firebase Admin SDK private key — NEVER commit this
+serviceAccountKey.json
+gdc_desktop/.env
