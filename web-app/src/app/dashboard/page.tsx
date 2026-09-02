@@ -1,21 +1,76 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useTenantCollection } from "@/lib/firestore-hooks";
+import { useAuth } from "@/lib/auth-context";
+import { publishSnapshot } from "@/lib/directorate";
+import { COLLECTIONS, isActiveIssue, isOverdue } from "@/lib/schema";
+
+/** Republish the directorate snapshot at most this often per session. */
+const PUBLISH_THROTTLE_MS = 5 * 60 * 1000;
 
 export default function DashboardOverview() {
-  const { data: books, loading: loadingBooks } = useTenantCollection("books");
-  const { data: members, loading: loadingMembers } = useTenantCollection("members");
-  const { data: issues, loading: loadingIssues } = useTenantCollection("issued_books");
+  const { profile } = useAuth();
+  const { data: books, loading: loadingBooks, error: booksError } = useTenantCollection(COLLECTIONS.books);
+  const { data: members, loading: loadingMembers } = useTenantCollection(COLLECTIONS.members);
+  const { data: issues, loading: loadingIssues } = useTenantCollection(COLLECTIONS.issuedBooks);
+  const { data: ebooks } = useTenantCollection(COLLECTIONS.ebooks);
+  const { data: reservations } = useTenantCollection(COLLECTIONS.reservations);
 
-  const totalBooks = books?.length || 0;
-  const totalMembers = members?.length || 0;
-  const activeLoans = issues?.filter(i => !i.returned).length || 0;
+  // A loan is open when status === "Issued". The previous check tested a
+  // `returned` boolean that no platform writes, so every loan ever recorded
+  // counted as active and the figure only ever grew.
+  const activeIssues = useMemo(() => issues.filter(isActiveIssue), [issues]);
+  const overdueIssues = useMemo(() => issues.filter((i) => isOverdue(i)), [issues]);
+
+  const totalBooks = books.length;
+  const totalMembers = members.length;
+  const activeLoans = activeIssues.length;
+
+  const loading = loadingBooks || loadingMembers || loadingIssues;
+
+  // ── Publish this college's aggregate snapshot for the directorate ─────────
+  //
+  // The Spark plan has no Cloud Functions, so the rollup the directorate reads
+  // has to come from the clients. Publishing here means the registry stays
+  // current simply because someone opened the dashboard.
+  const lastPublished = useRef(0);
+  useEffect(() => {
+    if (loading || !profile?.institutionId) return;
+    const now = Date.now();
+    if (now - lastPublished.current < PUBLISH_THROTTLE_MS) return;
+    lastPublished.current = now;
+
+    publishSnapshot(
+      profile.institutionId,
+      {
+        booksCount: totalBooks,
+        ebooksCount: ebooks.length,
+        membersCount: totalMembers,
+        activeLoans,
+        overdueCount: overdueIssues.length,
+        reservationsCount: reservations.length,
+        finesOutstanding: activeIssues.reduce((sum, i) => sum + (Number(i.fine) || 0), 0),
+      },
+      "web",
+    );
+  }, [
+    loading,
+    profile?.institutionId,
+    totalBooks,
+    totalMembers,
+    activeLoans,
+    ebooks.length,
+    reservations.length,
+    overdueIssues.length,
+    activeIssues,
+  ]);
 
   const stats = [
     { name: "Total Books Cataloged", value: totalBooks, icon: "📚", color: "from-blue-600 to-indigo-600" },
     { name: "Registered Members", value: totalMembers, icon: "👥", color: "from-emerald-600 to-teal-600" },
     { name: "Active Book Issues", value: activeLoans, icon: "🔄", color: "from-[#C8A84B] to-amber-600" },
+    { name: "Overdue Loans", value: overdueIssues.length, icon: "⏰", color: "from-red-600 to-rose-600" },
   ];
 
   return (
@@ -25,63 +80,83 @@ export default function DashboardOverview() {
         <p className="text-sm text-slate-400">Real-time statistics for your active institution</p>
       </div>
 
+      {booksError && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          <p className="font-bold">Cannot read this institution&apos;s data.</p>
+          <p className="mt-1 font-mono text-xs opacity-80">{booksError}</p>
+          <p className="mt-2 text-xs text-red-200/70">
+            A permission error here usually means your profile&apos;s{" "}
+            <span className="font-mono">institutionId</span> does not match the institution you are
+            trying to open, or the current <span className="font-mono">firestore.rules</span> have
+            not been deployed.
+          </p>
+        </div>
+      )}
+
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={i} className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 flex items-center justify-between shadow-xl">
+          <div key={i} className="flex items-center justify-between rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.name}</p>
-              <h2 className="text-4xl font-extrabold text-white mt-2">
-                {loadingBooks || loadingMembers || loadingIssues ? (
-                  <span className="inline-block h-6 w-12 animate-pulse bg-slate-800 rounded" />
+              <h2 className="mt-2 text-4xl font-extrabold text-white">
+                {loading ? (
+                  <span className="inline-block h-6 w-12 animate-pulse rounded bg-slate-800" />
                 ) : (
                   stat.value
                 )}
               </h2>
             </div>
-            <span className={`text-4xl p-3 rounded-lg bg-gradient-to-br ${stat.color} text-white`}>
+            <span className={`rounded-lg bg-gradient-to-br p-3 text-4xl text-white ${stat.color}`}>
               {stat.icon}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Recent Books */}
         <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="text-lg font-bold text-white mb-4">Newly Added Books</h3>
+          <h3 className="mb-4 text-lg font-bold text-white">Newly Added Books</h3>
           <div className="space-y-4">
-            {books?.slice(0, 5).map((book, idx) => (
-              <div key={idx} className="flex justify-between items-center border-b border-blue-950/40 pb-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-200">{book.title}</p>
-                  <p className="text-xs text-slate-400">{book.author || "Unknown Author"}</p>
+            {[...books]
+              .sort((a, b) => (Number(b.lastUpdated) || 0) - (Number(a.lastUpdated) || 0))
+              .slice(0, 5)
+              .map((book, idx) => (
+                <div key={book.id || idx} className="flex items-center justify-between border-b border-blue-950/40 pb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-200">{book.title}</p>
+                    <p className="text-xs text-slate-400">{book.author || "Unknown Author"}</p>
+                  </div>
+                  <span className="rounded border border-blue-800 bg-blue-950 px-2 py-0.5 text-xs text-blue-400">
+                    {book.category || book.subject || "General"}
+                  </span>
                 </div>
-                <span className="text-xs bg-blue-950 text-blue-400 border border-blue-800 px-2 py-0.5 rounded">
-                  {book.subject || "General"}
-                </span>
-              </div>
-            ))}
-            {books?.length === 0 && <p className="text-xs text-slate-500">No books cataloged yet.</p>}
+              ))}
+            {books.length === 0 && <p className="text-xs text-slate-500">No books cataloged yet.</p>}
           </div>
         </div>
 
         {/* Active Issues */}
         <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="text-lg font-bold text-white mb-4">Active Issues</h3>
+          <h3 className="mb-4 text-lg font-bold text-white">Active Issues</h3>
           <div className="space-y-4">
-            {issues?.filter(i => !i.returned).slice(0, 5).map((issue, idx) => (
-              <div key={idx} className="flex justify-between items-center border-b border-blue-950/40 pb-2">
+            {activeIssues.slice(0, 5).map((issue, idx) => (
+              <div key={issue.id || idx} className="flex items-center justify-between border-b border-blue-950/40 pb-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-200">{issue.bookTitle || `Book ID: ${issue.bookId}`}</p>
-                  <p className="text-xs text-slate-400">Issued to: {issue.memberName || `Member ID: ${issue.memberId}`}</p>
+                  <p className="text-sm font-semibold text-slate-200">
+                    {issue.bookTitle || `Book ID: ${issue.bookId}`}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Issued to: {issue.memberName || `Member ID: ${issue.memberId}`}
+                  </p>
                 </div>
-                <span className="text-xs text-[#E6C96E]">
+                <span className={`text-xs ${isOverdue(issue) ? "font-bold text-red-400" : "text-[#E6C96E]"}`}>
                   Due: {issue.dueDate || "N/A"}
                 </span>
               </div>
             ))}
-            {issues?.filter(i => !i.returned).length === 0 && (
+            {activeIssues.length === 0 && (
               <p className="text-xs text-slate-500">No active book loans at the moment.</p>
             )}
           </div>

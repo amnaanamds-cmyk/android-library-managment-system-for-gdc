@@ -102,14 +102,20 @@ class DashboardViewModel @Inject constructor(
 
     private fun startPeriodicSync() {
         val authPrefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
-        val instId = authPrefs.getString("institution_id", "gdc11") ?: "gdc11"
-        
+
         viewModelScope.launch(Dispatchers.IO) {
             while (true) {
                 try {
-                    val syncService = com.college.library.data.SyncManager.getSyncService(database)
-                    syncService.currentInstitutionId = instId
-                    syncService.startFullSync()
+                    // Re-read on every tick rather than capturing once: the id is
+                    // empty until login completes, and the old code captured that
+                    // empty value and substituted "gdc11", pinning the background
+                    // sync to another college's data for the rest of the session.
+                    val instId = authPrefs.getString("institution_id", "") ?: ""
+                    if (instId.isNotEmpty()) {
+                        val syncService = com.college.library.data.SyncManager.getSyncService(database)
+                        syncService.currentInstitutionId = instId
+                        syncService.startFullSync()
+                    }
                 } catch (e: Exception) {
                     // Fail silently in background
                 }

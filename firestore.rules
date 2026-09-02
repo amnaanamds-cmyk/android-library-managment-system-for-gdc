@@ -1,28 +1,75 @@
 rules_version = '2';
 
+// =============================================================================
+// NEXLIB — multi-tenant Firestore security rules
+//
+// Canonical layout (see SYNC_ARCHITECTURE.md):
+//
+//   /users/{uid}                          global profile: role + institutionId
+//   /institutions/{collegeId}             tenant metadata (name, inviteCode, ...)
+//   /institutions/{collegeId}/{col}/{doc} ALL tenant data (books, members, ...)
+//   /directorate_index/{collegeId}        aggregate-only snapshot for directors
+//   /colleges/{collegeId}                 LEGACY mirror, read-only compatibility
+//
+// Two rules below are load-bearing and were the cause of the cross-platform
+// sync failure, so they are called out explicitly:
+//
+//   1. Never call `.data` on a `get()` that may not exist. `get()` returns null
+//      for a missing document and `null.data` raises, and a raised rule denies
+//      the request. The old isCollegeDirector() did exactly that against
+//      /colleges/{id} — a registry document the desktop app never creates — so
+//      every write from Android and Web was denied for desktop-created
+//      institutions. Use exists() first, always.
+//
+//   2. Never index a map key that may be absent. `x in profile.collegeIds`
+//      raises when the profile has no collegeIds field. Use
+//      `profile.get('collegeIds', [])` instead.
+//
+// The desktop app talks to Firestore through the firebase-admin SDK, which
+// bypasses these rules entirely. Only Android and Web are constrained here,
+// which is why a rules bug looked like "the desktop app works, the others
+// don't".
+// =============================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // -------------------------------------------------------------
-    // Helpers
+    // Identity helpers
     // -------------------------------------------------------------
 
     function signedIn() {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    // Profile map, or an empty map when the user has no profile document yet
+    // (a freshly signed-up account that has not finished onboarding).
+    function profile() {
+      return signedIn() && exists(userPath()) ? get(userPath()).data : {};
     }
 
     function userRole() {
-      return signedIn() ? getUserData().role : '';
+      return profile().get('role', '');
     }
 
-    // Desktop app writes lowercase roles (owner/staff/admin/librarian/director),
+    // Desktop writes lowercase roles (owner/staff/admin/librarian/director),
     // Android/Kotlin writes capitalized (Librarian/Director). Accept both.
     function isDirector() {
-      return userRole() in ['Director', 'director', 'owner', 'admin', 'college_admin'];
+      return userRole() in [
+        'Director', 'director',
+        'DirectorateAdmin', 'directorate_admin',
+        'owner', 'admin', 'college_admin'
+      ];
+    }
+
+    // Directorate-level oversight: may read aggregates for every college but
+    // never writes tenant data. Kept separate from a college's own director.
+    function isDirectorateAdmin() {
+      return userRole() in ['DirectorateAdmin', 'directorate_admin', 'Director', 'director'];
     }
 
     function isLibrarian() {
@@ -32,25 +79,53 @@ service cloud.firestore {
       ];
     }
 
-    // User explicitly belongs to this college (profile institutionId or collegeIds).
+    // -------------------------------------------------------------
+    // Tenant membership
+    // -------------------------------------------------------------
+
+    // The user's profile places them in this college, either as their single
+    // active institution or through the multi-college collegeIds array.
     function belongsToCollege(collegeId) {
-      let profile = signedIn() ? getUserData() : null;
-      return profile != null &&
-             (profile.institutionId == collegeId || collegeId in profile.collegeIds);
+      return profile().get('institutionId', '') == collegeId
+          || collegeId in profile().get('collegeIds', []);
     }
 
-    // The authenticated user is the director/owner recorded on the college doc.
+    // The user is recorded as director/owner on the legacy /colleges registry.
+    // Guarded by exists() — a missing registry document means "not a director
+    // by this route", never a denied request.
     function isCollegeDirector(collegeId) {
-      let college = signedIn()
-        ? get(/databases/$(database)/documents/colleges/$(collegeId)).data
-        : null;
-      return college != null &&
-             (college.directorUid == request.auth.uid || college.ownerUid == request.auth.uid);
+      return signedIn()
+          && exists(/databases/$(database)/documents/colleges/$(collegeId))
+          && (
+               get(/databases/$(database)/documents/colleges/$(collegeId)).data
+                 .get('directorUid', '') == request.auth.uid
+            || get(/databases/$(database)/documents/colleges/$(collegeId)).data
+                 .get('ownerUid', '') == request.auth.uid
+             );
     }
 
-    // Any signed-in member of the college OR its director.
+    // The user is the owner recorded on the institution document itself. This
+    // is the path the desktop and web onboarding flows actually populate.
+    function isInstitutionOwner(collegeId) {
+      return signedIn()
+          && exists(/databases/$(database)/documents/institutions/$(collegeId))
+          && get(/databases/$(database)/documents/institutions/$(collegeId)).data
+               .get('ownerUid', '') == request.auth.uid;
+    }
+
+    // Read access to a college's own data.
+    function canReadCollege(collegeId) {
+      return signedIn() && (belongsToCollege(collegeId) || isCollegeDirector(collegeId));
+    }
+
+    // Write access to a college's own data. Staff of the college, its recorded
+    // director, or the institution owner.
     function canManageCollege(collegeId) {
-      return isCollegeDirector(collegeId) || (belongsToCollege(collegeId) && isLibrarian());
+      return signedIn() && (
+               (belongsToCollege(collegeId) && isLibrarian())
+            || isCollegeDirector(collegeId)
+            || isInstitutionOwner(collegeId)
+           );
     }
 
     // -------------------------------------------------------------
@@ -58,9 +133,10 @@ service cloud.firestore {
     // -------------------------------------------------------------
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isDirector());
+      allow read: if signedIn() && (request.auth.uid == uid || isDirectorateAdmin());
       allow create: if signedIn() && request.auth.uid == uid;
-      allow update, delete: if signedIn() && request.auth.uid == uid;
+      allow update: if signedIn() && request.auth.uid == uid;
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // -------------------------------------------------------------
@@ -68,83 +144,138 @@ service cloud.firestore {
     // -------------------------------------------------------------
 
     match /directors/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isDirector());
+      allow read: if signedIn() && (request.auth.uid == uid || isDirectorateAdmin());
       allow create, update: if signedIn() && request.auth.uid == uid;
       allow delete: if false;
     }
 
     // -------------------------------------------------------------
-    // College registry (metadata + invite codes)
+    // Directorate index — the canonical aggregate registry.
+    //
+    // One small document per college holding counts and a heartbeat, written
+    // by whichever client last synced. It carries no patron-identifying data,
+    // which is what lets directorate staff read the whole collection while
+    // tenant data stays isolated.
+    // -------------------------------------------------------------
+
+    match /directorate_index/{collegeId} {
+      // Any signed-in user may read the registry: colleges use it for the
+      // union catalogue, directorate staff for oversight.
+      allow read: if signedIn();
+      // Only the college itself publishes its own snapshot.
+      allow create, update: if canManageCollege(collegeId);
+      allow delete: if isCollegeDirector(collegeId) || isInstitutionOwner(collegeId);
+    }
+
+    // -------------------------------------------------------------
+    // Legacy college registry. Retained read-only for older builds that still
+    // resolve invite codes here; new writes go to directorate_index.
     // -------------------------------------------------------------
 
     match /colleges/{collegeId} {
-      allow create: if signedIn();
-      allow read: if signedIn();
-      // Only the recorded director/owner may edit metadata or reassign.
-      allow update, delete: if signedIn() && isCollegeDirector(collegeId);
-    }
-
-    // Institution metadata (name, inviteCode, qrPayload).
-    // Any signed-in user can read (needed to look up invite codes/QR).
-    // Only members of the institution can write.
-    match /institutions/{collegeId} {
       allow read: if signedIn();
       allow create: if signedIn();
-      allow update: if signedIn() && belongsToCollege(collegeId);
-      allow delete: if signedIn() && isCollegeDirector(collegeId);
+      allow update: if canManageCollege(collegeId);
+      allow delete: if isCollegeDirector(collegeId) || isInstitutionOwner(collegeId);
     }
 
     // -------------------------------------------------------------
-    // Tenant data: /institutions/{collegeId}/{books|ebooks|members|issued_books|reservations}
+    // Institution metadata (name, inviteCode, syncCode, qrPayload).
+    // Readable by any signed-in user so that invite codes and QR joins can be
+    // resolved before membership exists. Writable only by its own staff.
+    // -------------------------------------------------------------
+
+    match /institutions/{collegeId} {
+      allow read: if signedIn();
+      // Onboarding: a user with no institution yet creates one. The client
+      // checks for an existing document first; this rule stops an existing
+      // institution from being overwritten by a stranger.
+      allow create: if signedIn()
+                    && !exists(/databases/$(database)/documents/institutions/$(collegeId));
+      allow update: if canManageCollege(collegeId)
+                    // Peer sync links: a partner college may add itself to
+                    // syncedWith without touching anything else.
+                    || (signedIn()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['syncedWith']));
+      allow delete: if isCollegeDirector(collegeId) || isInstitutionOwner(collegeId);
+    }
+
+    // -------------------------------------------------------------
+    // Public catalogue. OPAC browsing works without membership.
     // -------------------------------------------------------------
 
     match /institutions/{collegeId}/books/{bookId} {
-      // Public catalog is browsable.
       allow read: if true;
-      // Writes are restricted to college staff/directors.
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
-    }
-
-    match /institutions/{collegeId}/ebooks/{bookId} {
-      // Digital books are visible to signed-in users of the college.
-      allow read: if signedIn() && belongsToCollege(collegeId);
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
-    }
-
-    match /institutions/{collegeId}/members/{memberId} {
-      // Own college staff can read.
-      allow read: if signedIn() && belongsToCollege(collegeId);
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
-    }
-
-    match /institutions/{collegeId}/issued_books/{issueId} {
-      allow read: if signedIn() && belongsToCollege(collegeId);
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
-    }
-
-    match /institutions/{collegeId}/transactions/{txId} {
-      allow read: if signedIn() && belongsToCollege(collegeId);
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
-    }
-
-    match /institutions/{collegeId}/reservations/{reservationId} {
-      allow read: if signedIn() && belongsToCollege(collegeId);
-      allow create, update, delete: if signedIn() && canManageCollege(collegeId);
+      allow create, update, delete: if canManageCollege(collegeId);
     }
 
     // -------------------------------------------------------------
-    // Settings + audit (director-only)
+    // Settings.
+    //
+    // Previously director-only, which silently broke the fine-rate sync for
+    // every librarian account. Staff read; only admin-level roles write.
     // -------------------------------------------------------------
 
     match /institutions/{collegeId}/settings/{settingId} {
-      allow read: if signedIn() && isCollegeDirector(collegeId);
-      allow write: if signedIn() && isCollegeDirector(collegeId);
+      allow read: if canReadCollege(collegeId);
+      allow write: if canManageCollege(collegeId) && isDirector();
     }
 
+    // -------------------------------------------------------------
+    // Audit trail. Append-only for staff; only admins may amend or purge.
+    //
+    // Note the collection is `audit_log` — the name every client actually
+    // writes. The old rules protected `audit`, so every audit write from
+    // Android and Web was denied.
+    // -------------------------------------------------------------
+
+    match /institutions/{collegeId}/audit_log/{entryId} {
+      allow read: if canReadCollege(collegeId);
+      allow create: if canManageCollege(collegeId);
+      allow update, delete: if canManageCollege(collegeId) && isDirector();
+    }
+
+    // Legacy spelling, kept so older installs keep working.
     match /institutions/{collegeId}/audit/{entryId} {
-      allow read: if signedIn() && isCollegeDirector(collegeId);
-      allow create: if signedIn() && belongsToCollege(collegeId);
-      allow update, delete: if signedIn() && isCollegeDirector(collegeId);
+      allow read: if canReadCollege(collegeId);
+      allow create: if canManageCollege(collegeId);
+      allow update, delete: if canManageCollege(collegeId) && isDirector();
+    }
+
+    // -------------------------------------------------------------
+    // All remaining tenant data.
+    //
+    // A single catch-all so that adding a feature collection on one platform
+    // can never again silently break sync on another. It covers ebooks,
+    // members, issued_books, transactions, reservations, visitor_log,
+    // purchase_orders, book_transfers, ill_requests, serials, and anything
+    // added later. Membership in the college is required for both read and
+    // write, so tenant isolation is unchanged.
+    //
+    // IMPORTANT: Firestore grants access when ANY matching rule allows it —
+    // rules are a union, not a first-match. So this catch-all must explicitly
+    // EXCLUDE the collections given stricter rules above, or it would silently
+    // re-grant what they restrict: staff could write settings and amend the
+    // audit trail despite those rules requiring an admin role.
+    // -------------------------------------------------------------
+
+    function isSpecificallyRuledCollection(collection) {
+      return collection in ['settings', 'audit_log', 'audit'];
+    }
+
+    match /institutions/{collegeId}/{collection}/{docId} {
+      allow read: if canReadCollege(collegeId);
+      allow create, update, delete: if !isSpecificallyRuledCollection(collection)
+                                    && canManageCollege(collegeId);
+    }
+
+    // Nested sub-collections under any tenant collection (e.g. per-document
+    // history or attachments) inherit the same membership requirement.
+    match /institutions/{collegeId}/{collection}/{docId}/{sub=**} {
+      allow read: if canReadCollege(collegeId);
+      allow create, update, delete: if !isSpecificallyRuledCollection(collection)
+                                    && canManageCollege(collegeId);
     }
   }
 }

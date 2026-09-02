@@ -69,19 +69,33 @@ class OnboardingWidget(QWidget):
                     QMessageBox.warning(self, "Error", "This College Unique ID is already in use. Please choose another or join it.")
                     return
                 
-                # Create institution document
+                # Create institution document. ownerUid is what the Firestore
+                # security rules use to recognise this account as the owner —
+                # the Android and Web clients are rule-enforced even though this
+                # desktop app (firebase-admin) is not, so it has to be written
+                # here too or those clients lose privileged access.
+                uid = self.auth.current_user.uid
                 self.auth.fb.db.collection("institutions").document(cid).set({
                     "name": cname,
                     "inviteCode": cid, # Keep this field for backward compatibility if needed, but it's identical to ID
+                    "ownerUid": uid,
                     "createdAt": int(time.time() * 1000)
                 })
                 # Write canonical users/{uid} document (institutionId is the key)
-                uid = self.auth.current_user.uid
                 self.auth.fb.db.collection("users").document(uid).set({
                     "email": self.auth.current_user.email,
                     "institutionId": cid,   # canonical field
                     "role": "owner"
                 }, merge=True)
+
+                # Register in the directorate registry so the college is visible
+                # to the directorate portal immediately, rather than only after
+                # someone happens to open the college profile screen.
+                try:
+                    from services.registry_service import RegistryService
+                    RegistryService(None, self.auth.fb).register_institution(cid, cname, uid)
+                except Exception as e:
+                    print(f"Directorate registration skipped: {e}")
 
                 # Update local session objects
                 self.auth.current_user.institutionId = cid

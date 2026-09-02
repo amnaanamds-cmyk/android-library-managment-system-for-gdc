@@ -84,11 +84,26 @@ class SettingsViewModel @Inject constructor(
             try {
                 // Use the main database provided via Hilt
                 val syncService = com.college.library.data.SyncManager.getSyncService(database)
-                
-                // Get current institutionId from auth or default
-                syncService.currentInstitutionId = "gdc11"
+
+                // Resolve the signed-in user's institution. This used to assign
+                // "gdc11" unconditionally, so pressing "Sync Now" re-pointed the
+                // device at a different college's data and overwrote whatever
+                // the login had correctly resolved.
+                val instId = syncService.currentInstitutionId.ifEmpty {
+                    application.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+                        .getString("institution_id", "") ?: ""
+                }
+                if (instId.isEmpty()) {
+                    _state.value = _state.value.copy(
+                        isSyncing = false,
+                        syncResult = "Not signed in to an institution — sign in first.",
+                    )
+                    return@launch
+                }
+                syncService.currentInstitutionId = instId
                 syncService.startFullSync()
-                
+                syncService.publishDirectorateSnapshot(force = true)
+
                 _state.value = _state.value.copy(isSyncing = false, syncResult = "Sync Successful!")
             } catch (e: Exception) {
                 _state.value = _state.value.copy(isSyncing = false, syncResult = "Sync Failed: ${e.message}")
@@ -481,9 +496,14 @@ class SettingsViewModel @Inject constructor(
                 // 1. Wipe remote Firestore data for current institution
                 try {
                     val syncService = com.college.library.data.SyncManager.getSyncService(database)
-                    val instId = syncService.currentInstitutionId.ifEmpty { "gdc11" }
-                    val firestoreService = com.college.library.data.FirestoreService()
-                    firestoreService.clearAllCloudData(instId)
+                    // Never fall back to a hardcoded tenant here: this wipes every
+                    // document it can reach, so a wrong id would destroy another
+                    // college's catalogue. No resolved institution, nothing to clear.
+                    val instId = syncService.currentInstitutionId
+                    if (instId.isNotEmpty()) {
+                        val firestoreService = com.college.library.data.FirestoreService()
+                        firestoreService.clearAllCloudData(instId)
+                    }
                 } catch (e: Exception) {
                     // Ignore cloud clear error if offline
                 }

@@ -10,6 +10,9 @@ import kotlinx.datetime.Clock
 interface SyncService {
     var currentInstitutionId: String
 
+    /** Display name of the active institution, published with the directorate snapshot. */
+    var currentInstitutionName: String
+
     /** Live sync status consumed by the shared status indicator (green / amber / red). */
     val status: StateFlow<SyncStatus>
 
@@ -27,6 +30,13 @@ interface SyncService {
 
     /** Convenience: pull then push. */
     suspend fun startFullSync()
+
+    /**
+     * Publish this college's aggregate snapshot to the directorate registry.
+     * Called automatically after each real-time batch; [force] bypasses the
+     * republish interval for an explicit "make me current" request.
+     */
+    suspend fun publishDirectorateSnapshot(force: Boolean = false)
 }
 
 class SyncServiceImpl(
@@ -42,6 +52,7 @@ class SyncServiceImpl(
     // safe: sync simply stays idle instead of silently talking to the wrong
     // institution's data.
     override var currentInstitutionId: String = ""
+    override var currentInstitutionName: String = ""
 
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Offline)
     override val status: StateFlow<SyncStatus> get() = _status
@@ -52,6 +63,15 @@ class SyncServiceImpl(
     private var lastSyncTimestamp: Long = 0L
     private var realtimeJob: Job? = null
     private val pushMutex = Mutex()
+
+    // Latest records seen on each real-time stream. The directorate snapshot is
+    // built from these rather than from extra Firestore queries, so publishing
+    // the rollup costs no additional document reads.
+    private var latestBooks: List<Book> = emptyList()
+    private var latestEbooks: List<Book> = emptyList()
+    private var latestMembers: List<Member> = emptyList()
+    private var latestIssues: List<IssuedBook> = emptyList()
+    private var latestReservations: List<Reservation> = emptyList()
 
     private fun nowMillis(): Long = Clock.System.now().toEpochMilliseconds()
 
@@ -79,11 +99,11 @@ class SyncServiceImpl(
 
                 // Immediately attempt pushing any local pending changes on start
                 launch { try { pushChanges() } catch (e: Exception) {} }
-                launch { watchStream({ firestoreService.observeBooks(currentInstitutionId) }, ::applyBooksBatch) }
-                launch { watchStream({ firestoreService.observeEbooks(currentInstitutionId) }, ::applyBooksBatch) }
-                launch { watchStream({ firestoreService.observeMembers(currentInstitutionId) }, ::applyMembersBatch) }
-                launch { watchStream({ firestoreService.observeIssues(currentInstitutionId) }, ::applyTransactionsBatch) }
-                launch { watchStream({ firestoreService.observeReservations(currentInstitutionId) }, ::applyReservationsBatch) }
+                launch { watchStream({ firestoreService.observeBooks(currentInstitutionId) }, ::onBooksStream) }
+                launch { watchStream({ firestoreService.observeEbooks(currentInstitutionId) }, ::onEbooksStream) }
+                launch { watchStream({ firestoreService.observeMembers(currentInstitutionId) }, ::onMembersStream) }
+                launch { watchStream({ firestoreService.observeIssues(currentInstitutionId) }, ::onIssuesStream) }
+                launch { watchStream({ firestoreService.observeReservations(currentInstitutionId) }, ::onReservationsStream) }
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 _status.value = SyncStatus.Error("Sync setup failed")
@@ -138,6 +158,87 @@ class SyncServiceImpl(
     // ─────────────────────────────────────────────────────────────
     // Applying remote records in batch (LWW conflict resolution)
     // ─────────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────────
+    // Stream handlers: persist the batch, then refresh the aggregate
+    // snapshot the directorate portal reads.
+    // ─────────────────────────────────────────────────────────────
+
+    private suspend fun onBooksStream(records: List<Book>) {
+        latestBooks = records
+        applyBooksBatch(records)
+        publishDirectorateSnapshot()
+    }
+
+    private suspend fun onEbooksStream(records: List<Book>) {
+        latestEbooks = records
+        applyBooksBatch(records)
+        publishDirectorateSnapshot()
+    }
+
+    private suspend fun onMembersStream(records: List<Member>) {
+        latestMembers = records
+        applyMembersBatch(records)
+        publishDirectorateSnapshot()
+    }
+
+    private suspend fun onIssuesStream(records: List<IssuedBook>) {
+        latestIssues = records
+        applyTransactionsBatch(records)
+        publishDirectorateSnapshot()
+    }
+
+    private suspend fun onReservationsStream(records: List<Reservation>) {
+        latestReservations = records
+        applyReservationsBatch(records)
+        publishDirectorateSnapshot()
+    }
+
+    override suspend fun publishDirectorateSnapshot(force: Boolean) {
+        if (currentInstitutionId.isEmpty()) return
+        // Never let a registry failure disturb the sync engine: the rollup is
+        // reporting, and a college must be able to run its library without it.
+        try {
+            val today = Clock.System.now()
+                .toEpochMilliseconds()
+                .let { millis -> isoDate(millis) }
+
+            DirectorateRegistry.publish(
+                collegeId = currentInstitutionId,
+                snapshot = DirectorateRegistry.buildSnapshot(
+                    collegeId = currentInstitutionId,
+                    name = currentInstitutionName.ifEmpty { currentInstitutionId },
+                    books = latestBooks,
+                    ebooks = latestEbooks,
+                    members = latestMembers,
+                    issues = latestIssues,
+                    reservations = latestReservations,
+                    today = today,
+                ),
+                force = force,
+            )
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+        }
+    }
+
+    /** Today's date as "YYYY-MM-DD" in UTC, matching the stored dueDate format. */
+    private fun isoDate(epochMillis: Long): String {
+        val days = epochMillis / 86_400_000L
+        // Civil-from-days (Howard Hinnant's algorithm), shifted to an era
+        // starting 0000-03-01 so leap years fall at the end of each cycle.
+        val z = days + 719_468L
+        val era = (if (z >= 0) z else z - 146_096L) / 146_097L
+        val doe = z - era * 146_097L
+        val yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365
+        val y = yoe + era * 400
+        val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+        val mp = (5 * doy + 2) / 153
+        val d = doy - (153 * mp + 2) / 5 + 1
+        val m = if (mp < 10) mp + 3 else mp - 9
+        val year = if (m <= 2) y + 1 else y
+        return "$year-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}"
+    }
 
     private suspend fun applyBooksBatch(records: List<Book>) {
         if (records.isEmpty()) return

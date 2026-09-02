@@ -49,7 +49,9 @@ export default function EnterprisePage() {
 }
 
 function ReadingRoomTab() {
-  const [seats, setSeats] = useState(
+  // Annotate the element type: inferred from the initializer alone, `occupant`
+  // narrows to `null` and assigning a member ID fails to type check.
+  const [seats, setSeats] = useState<{ id: number; occupant: string | null }[]>(
     Array.from({ length: 20 }, (_, i) => ({ id: i + 1, occupant: null }))
   );
 

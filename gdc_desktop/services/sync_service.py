@@ -8,7 +8,11 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from services.database_helper import DatabaseHelper
 from services.firebase_service import FirebaseService
+from services.registry_service import RegistryService
 from models import Book, Member, IssueRecord, Reservation
+
+# How often to republish this college's aggregate snapshot for the directorate.
+REGISTRY_PUBLISH_INTERVAL_MS = 10 * 60 * 1000  # 10 minutes
 
 
 class RealtimeSyncService(QThread):
@@ -22,12 +26,17 @@ class RealtimeSyncService(QThread):
         self.fb = fb_service
         self.running = True
         self._listeners = []
+        self.registry = RegistryService(db_helper, fb_service)
+        self._last_registry_publish = 0
 
     def force_reconnect(self):
         self.sync_status.emit("Force Syncing...")
         self._stop_listeners()
         if self.fb.test_connection():
             self._setup_listeners()
+            # A manual reconnect is an explicit "make me current" request, so
+            # refresh the directorate snapshot without waiting for the interval.
+            self._publish_registry_snapshot(force=True)
             self.sync_status.emit("🟢 Synced")
         else:
             self.sync_status.emit("Offline (Retrying...)")
@@ -63,6 +72,11 @@ class RealtimeSyncService(QThread):
 
                 # Feature 2: Overdue Auto-Reminder Scheduler
                 self._check_overdue_reminders()
+
+                # 3. Publish this college's aggregate snapshot for the
+                #    directorate portal. The Spark plan has no Cloud Functions,
+                #    so the rollup has to come from the clients themselves.
+                self._publish_registry_snapshot()
 
             except Exception as e:
                 self.sync_status.emit(f"Sync Warning: {str(e)[:25]}...")
@@ -118,6 +132,16 @@ class RealtimeSyncService(QThread):
                         self.db.remove_from_sync_queue(entity_type, sync_id)
             except Exception as e:
                 print(f"Error pushing pending item {entity_type} {sync_id}: {e}")
+
+    def _publish_registry_snapshot(self, force: bool = False):
+        """Republish the directorate snapshot, at most once per interval."""
+        if self.fb.mock_mode or not self.fb.college_id:
+            return
+        now_ms = int(time.time() * 1000)
+        if not force and now_ms - self._last_registry_publish < REGISTRY_PUBLISH_INTERVAL_MS:
+            return
+        self._last_registry_publish = now_ms
+        self.registry.publish()
 
     def _check_overdue_reminders(self):
         """Automatically check for overdue books and log reminders once a day."""

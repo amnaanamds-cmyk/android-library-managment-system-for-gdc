@@ -75,27 +75,30 @@ class DirectorateDashboardScreen(QWidget):
                 super().__init__()
                 self.db = db
             def run(self):
+                # Read the aggregate counts straight off the registry document.
+                # The previous implementation streamed every book and member
+                # document of every college on each refresh just to length them,
+                # which is O(all documents in the network) per refresh and burns
+                # through the Spark plan's daily read quota. Each college now
+                # publishes its own counts, so this is one read per college.
                 try:
                     index_docs = self.db.collection("directorate_index").stream()
                     data = []
                     total_b = 0
                     total_m = 0
                     for doc in index_docs:
-                        idx = doc.to_dict()
-                        inst_id = idx.get("institutionId")
-                        inst_snap = self.db.collection("institutions").document(inst_id).get()
-                        if inst_snap.exists:
-                            inst = inst_snap.to_dict()
-                            books_count = len(list(self.db.collection("institutions").document(inst_id).collection("books").stream()))
-                            members_count = len(list(self.db.collection("institutions").document(inst_id).collection("members").stream()))
-                            total_b += books_count
-                            total_m += members_count
-                            data.append({
-                                "name": inst.get("name", idx.get("name", "Unknown")),
-                                "invite": inst.get("inviteCode", "N/A"),
-                                "books": books_count,
-                                "members": members_count
-                            })
+                        idx = doc.to_dict() or {}
+                        inst_id = idx.get("institutionId") or doc.id
+                        books_count = int(idx.get("booksCount") or 0)
+                        members_count = int(idx.get("membersCount") or 0)
+                        total_b += books_count
+                        total_m += members_count
+                        data.append({
+                            "name": idx.get("name") or idx.get("collegeName") or inst_id,
+                            "invite": inst_id,
+                            "books": books_count,
+                            "members": members_count,
+                        })
                     self.finished.emit((data, len(data), total_b, total_m))
                 except Exception as e:
                     print(f"Directorate Fetch Error: {e}")

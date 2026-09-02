@@ -4,13 +4,14 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { useSyncHealth } from "@/lib/firestore-hooks";
+import { canViewDirectorate } from "@/lib/directorate";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, profile, logout, loading, refreshProfile } = useAuth();
+  const { profile, logout, loading } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const sync = useSyncHealth();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("web-theme");
@@ -23,21 +24,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
     localStorage.setItem("web-theme", newMode ? "dark" : "light");
-  };
-
-  const switchToDesktopData = async () => {
-    if (!user) return;
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        institutionId: "gdc11"
-      });
-      await refreshProfile();
-      alert("Switched to Desktop App Data (gdc11)!");
-      window.location.reload();
-    } catch (e) {
-      console.error(e);
-      alert("Failed to switch database.");
-    }
   };
 
   if (loading) {
@@ -99,9 +85,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: "Enterprise Feat.", path: "/dashboard/enterprise", icon: "🚀" },
         { name: "Fine Waiver AI", path: "/dashboard/fine-waiver-ai", icon: "⚖️" },
         { name: "Settings", path: "/dashboard/settings", icon: "⚙️" },
+        // Shown only to director-level accounts; the portal itself re-checks.
+        ...(canViewDirectorate(profile?.role)
+          ? [{ name: "Directorate Portal", path: "/director", icon: "🏛️" }]
+          : []),
       ]
     }
   ];
+
+  // Honest sync indicator. This used to be a hardcoded green dot, so a session
+  // whose writes were all being rejected still looked healthy.
+  const syncIndicator = {
+    live: { dot: "bg-green-500 animate-pulse", label: "Real-time sync active", tone: "text-slate-400" },
+    connecting: { dot: "bg-amber-500 animate-pulse", label: sync.online ? "Reconnecting…" : "Offline — changes queued", tone: "text-amber-400" },
+    error: { dot: "bg-red-500", label: "Sync error — check access", tone: "text-red-400" },
+    idle: { dot: "bg-slate-600", label: "No institution selected", tone: "text-slate-500" },
+  }[sync.state];
 
   return (
     <div className={`flex h-screen transition-colors duration-300 ${isDarkMode ? "bg-[#111827] text-slate-100" : "bg-[#FAFAFA] text-slate-800"} overflow-hidden`}>
@@ -192,21 +191,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">
               Inst-ID: {profile?.institutionId || "..."}
             </span>
-            {profile?.institutionId !== "gdc11" && (
-              <button 
-                onClick={switchToDesktopData}
-                className="ml-2 bg-emerald-600 text-white px-2 py-1 text-[10px] rounded font-bold uppercase hover:bg-emerald-500"
-              >
-                Sync with Desktop (gdc11)
-              </button>
-            )}
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full bg-green-500 animate-pulse`} />
-              <span className={`text-[10px] font-bold uppercase tracking-tighter ${isDarkMode ? "text-slate-400" : "text-slate-500"}`}>
-                Real-time Sync Active
+            <div
+              className="flex items-center gap-2"
+              title={sync.error || (sync.lastSyncAt ? `Last server update ${new Date(sync.lastSyncAt).toLocaleTimeString()}` : undefined)}
+            >
+              <span className={`h-2 w-2 rounded-full ${syncIndicator.dot}`} />
+              <span className={`text-[10px] font-bold uppercase tracking-tighter ${syncIndicator.tone}`}>
+                {syncIndicator.label}
               </span>
             </div>
 

@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import QRScanner from "@/components/qr-scanner";
+import { publishSnapshot } from "@/lib/directorate";
 
 export default function OnboardPage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -51,30 +52,44 @@ export default function OnboardPage() {
         return;
       }
 
-      // Create institution document
+      // Create institution document. ownerUid is what the security rules use
+      // to recognise this account as the institution's owner — without it the
+      // creator has no privileged route to their own settings.
       await setDoc(doc(db, "institutions", cid), {
         name: collegeName.trim(),
         inviteCode: cid, // For backward compatibility if any old code relies on it
+        ownerUid: user?.uid || "",
         createdAt: Date.now(),
       });
 
-      // Also register in the canonical 'colleges' collection for the Director Dashboard
-      await setDoc(doc(db, "colleges", cid), {
-        name: collegeName.trim(),
-        college_id: cid,
-        created_at: Date.now(),
-        booksCount: 0,
-        membersCount: 0,
-        circulationCount: 0
-      });
-
-      // Update user document
+      // Update the user profile BEFORE publishing the registry snapshot: the
+      // rules authorise the snapshot write from this profile's institutionId,
+      // so publishing first would be denied.
       if (user) {
         await updateDoc(doc(db, "users", user.uid), {
           institutionId: cid,
           role: "owner",
         });
       }
+
+      // Register in the canonical directorate registry so the college appears
+      // in the directorate portal immediately, with zeroed counts until its
+      // first real sync publishes them.
+      await publishSnapshot(cid, { name: collegeName.trim() }, "web");
+
+      // Legacy mirror, for older builds that still read /colleges.
+      await setDoc(
+        doc(db, "colleges", cid),
+        {
+          collegeId: cid,
+          collegeName: collegeName.trim(),
+          name: collegeName.trim(),
+          ownerUid: user?.uid || "",
+          directorUid: user?.uid || "",
+          createdAt: Date.now(),
+        },
+        { merge: true },
+      );
 
       await refreshProfile();
       // Instead of navigating immediately, show the QR code

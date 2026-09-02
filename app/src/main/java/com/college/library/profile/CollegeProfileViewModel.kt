@@ -36,8 +36,12 @@ class CollegeProfileViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val prefs = application.getSharedPreferences("auth_prefs", android.content.Context.MODE_PRIVATE)
-                val instId = prefs.getString("institution_id", "gdc11") ?: "gdc11"
-                profileManager.syncToCloud(instId, current)
+                // No "gdc11" fallback: publishing this college's profile into
+                // another college's document is worse than not publishing it.
+                val instId = prefs.getString("institution_id", "") ?: ""
+                if (instId.isNotEmpty()) {
+                    profileManager.syncToCloud(instId, current)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
             }

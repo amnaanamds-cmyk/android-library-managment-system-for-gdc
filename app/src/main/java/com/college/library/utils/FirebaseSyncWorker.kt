@@ -31,7 +31,11 @@ class FirebaseSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val prefs: SharedPreferences =
             context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
-        val institutionId = prefs.getString("institution_id", "gdc11") ?: "gdc11"
+        val institutionId = prefs.getString("institution_id", "") ?: ""
+        // No hardcoded fallback: a background worker that runs before login
+        // would otherwise sync this device against a shared "gdc11" tenant.
+        // Nothing to do yet — succeed so WorkManager keeps the periodic job.
+        if (institutionId.isEmpty()) return Result.success()
 
         return try {
             val db = FirebaseFirestore.getInstance()

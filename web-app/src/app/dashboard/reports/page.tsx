@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useTenantCollection } from "@/lib/firestore-hooks";
+import { isOverdue } from "@/lib/schema";
 
 export default function ReportsPage() {
   const { data: books } = useTenantCollection("books");
@@ -27,13 +28,10 @@ export default function ReportsPage() {
         else if (b.status === "Lost") lost++;
       });
 
-      const today = new Date().toISOString().split('T')[0];
-      let overdueCount = 0;
-      issues.forEach((i: any) => {
-        if (!i.returned && i.dueDate && i.dueDate < today) {
-          overdueCount++;
-        }
-      });
+      // Use the shared predicate: an open loan is status === "Issued".
+      // The old check tested a `returned` boolean that no platform writes,
+      // so returned loans still counted as overdue.
+      const overdueCount = issues.filter((i: any) => isOverdue(i)).length;
 
       setVal({
         totalValue,

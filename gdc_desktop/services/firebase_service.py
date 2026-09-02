@@ -114,7 +114,13 @@ class FirebaseService:
         """Wipe all collections in Firestore for current institution (used during Reset DB)."""
         if self.mock_mode or not self.db:
             return
-        cid = self.college_id or getattr(config, 'COLLEGE_ID', 'gdc11') or 'gdc11'
+        # Never fall back to a hardcoded tenant here: this method deletes every
+        # document it can reach, so a wrong college_id would wipe another
+        # college's catalogue. No resolved institution means nothing to clear.
+        cid = self.college_id
+        if not cid:
+            print("clear_all_cloud_data: no institution resolved — refusing to clear.")
+            return
         inst_ref = self.db.collection("institutions").document(cid)
 
         collections = ["books", "ebooks", "members", "issued_books", "reservations", "audit_log"]

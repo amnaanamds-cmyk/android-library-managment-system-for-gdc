@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useCallback } from "react";
 import { useTenantCollection } from "@/lib/firestore-hooks";
+import { COLLECTIONS } from "@/lib/schema";
 
 interface Recommendation {
   title: string;
@@ -77,8 +78,8 @@ function generateRecommendations(books: any[], issues: any[], memberId: string, 
 }
 
 export default function AIRecommenderPage() {
-  const { data: books } = useTenantCollection("books");
-  const { data: issues } = useTenantCollection("issues");
+  const { data: books } = useTenantCollection(COLLECTIONS.books);
+  const { data: issues } = useTenantCollection(COLLECTIONS.issuedBooks);
   const [memberId, setMemberId] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
