@@ -8,9 +8,16 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
 class SerialsScreen(QWidget):
-    def __init__(self, db_helper):
+    def __init__(self, db_helper, firebase_service=None):
         super().__init__()
         self.db = db_helper
+        # Shared Firestore collection, so records raised here reach the
+        # Android and web apps. These features were local-SQLite-only.
+        self.fb = firebase_service
+        self.ops = None
+        if firebase_service is not None:
+            from services.operations_service import OperationsService
+            self.ops = OperationsService(firebase_service)
         self.init_ui()
 
     def init_ui(self):
@@ -90,7 +97,11 @@ class SerialsScreen(QWidget):
         self.refresh()
 
     def refresh(self):
-        serials = self.db.get_serials()
+        # Prefer the shared collection so a subscription added on any platform
+        # shows here. Fall back to the legacy local table when offline.
+        serials = self.ops.serials() if self.ops is not None else []
+        if not serials:
+            serials = self.db.get_serials()
         
         # Filter
         q = self.search_input.text().lower()
@@ -154,7 +165,20 @@ class SerialsScreen(QWidget):
             if not title.text().strip():
                 QMessageBox.warning(dlg, "Error", "Title is required")
                 return
-            self.db.save_serial(title.text().strip(), issn.text().strip(), freq.currentText(), pub.text().strip(), "Active")
+            saved = False
+            if self.ops is not None:
+                saved = bool(self.ops.add_serial(
+                    title=title.text().strip(),
+                    issn=issn.text().strip(),
+                    frequency=freq.currentText(),
+                    publisher=pub.text().strip(),
+                ))
+            if not saved:
+                # Offline: keep the local record so the librarian is not blocked.
+                self.db.save_serial(
+                    title.text().strip(), issn.text().strip(),
+                    freq.currentText(), pub.text().strip(), "Active",
+                )
             dlg.accept()
             self.refresh()
             

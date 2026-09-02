@@ -6,9 +6,16 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 import config
 
 class EnterpriseFeaturesScreen(QtWidgets.QWidget):
-    def __init__(self, db_helper):
+    def __init__(self, db_helper, firebase_service=None):
         super().__init__()
         self.db = db_helper
+        # Shared Firestore collection, so records raised here reach the
+        # Android and web apps. These features were local-SQLite-only.
+        self.fb = firebase_service
+        self.ops = None
+        if firebase_service is not None:
+            from services.operations_service import OperationsService
+            self.ops = OperationsService(firebase_service)
         self._build_ui()
         
     def _build_ui(self):

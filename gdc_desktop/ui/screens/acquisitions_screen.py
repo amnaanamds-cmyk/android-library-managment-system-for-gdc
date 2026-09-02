@@ -17,9 +17,16 @@ PO_STATUSES = ["Pending", "Approved", "Ordered", "Shipped", "Received", "Cancell
 
 
 class AcquisitionsScreen(QWidget):
-    def __init__(self, db_helper=None):
+    def __init__(self, db_helper=None, firebase_service=None):
         super().__init__()
         self.db = db_helper
+        # Shared Firestore collection, so records raised here reach the
+        # Android and web apps. These features were local-SQLite-only.
+        self.fb = firebase_service
+        self.ops = None
+        if firebase_service is not None:
+            from services.operations_service import OperationsService
+            self.ops = OperationsService(firebase_service)
         self.init_ui()
 
     def init_ui(self):
@@ -147,7 +154,11 @@ class AcquisitionsScreen(QWidget):
     def refresh(self):
         if not self.db:
             return
-        orders = self.db.get_purchase_orders()
+        # Shared collection first, so an order raised on the web or Android
+        # app appears here too; local rows are the offline fallback.
+        orders = self.ops.purchase_orders() if self.ops is not None else []
+        if not orders:
+            orders = self.db.get_purchase_orders()
 
         # Update summary cards
         total_spent = sum(o.get("totalAmount", 0) or 0 for o in orders)
@@ -235,12 +246,23 @@ class AcquisitionsScreen(QWidget):
             if not vendor.text().strip():
                 QMessageBox.warning(dlg, "Required", "Vendor name is required.")
                 return
-            self.db.save_purchase_order(
-                vendor.text().strip(),
-                book_title.text().strip(),
-                qty.value(),
-                unit_price.value()
-            )
+            # Publish to the shared collection so acquisitions are visible on
+            # every platform; fall back to the local table when offline.
+            saved = False
+            if self.ops is not None:
+                saved = bool(self.ops.raise_purchase_order(
+                    vendor=vendor.text().strip(),
+                    book_title=book_title.text().strip(),
+                    quantity=qty.value(),
+                    unit_price=unit_price.value(),
+                ))
+            if not saved:
+                self.db.save_purchase_order(
+                    vendor.text().strip(),
+                    book_title.text().strip(),
+                    qty.value(),
+                    unit_price.value()
+                )
             self.db.log_audit_local("system", "purchase_order",
                                     f"PO created: {vendor.text().strip()} — Rs.{qty.value() * unit_price.value():,.0f}")
             QMessageBox.information(dlg, "Created", "Purchase order created successfully.")

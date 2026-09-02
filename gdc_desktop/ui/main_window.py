@@ -65,6 +65,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ("📦", "Inventory",        "inventory"),
             ("💰", "Acquisitions",     "acquisitions"),
             ("📰", "Serials",          "serials"),
+            ("⭐", "Wishlist",         "wishlist"),
         ]),
         ("Patron Management", [
             ("👥", "Members",          "members"),
@@ -73,6 +74,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ("🌍", "ILL Network",      "ill"),
             ("🔄", "Book Transfers",   "transfers"),
             ("🪪", "Digital ID Cards", "digital_id"),
+            ("🔗", "Sync Network",     "sync_network"),
         ]),
         ("Analytics & Intelligence", [
             ("🔍", "OPAC Monitor",     "opac"),
@@ -339,7 +341,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = DashboardScreen(self.fb, self.db)
             elif key == "visitor_log":
                 from ui.screens.visitor_log_screen import VisitorLogScreen
-                screen = VisitorLogScreen(self.db)
+                screen = VisitorLogScreen(self.db, self.fb)
             elif key == "books":
                 from ui.screens.books_screen import BooksScreen
                 screen = BooksScreen(self.fb, self.db, self.auth, read_only=is_ro)
@@ -363,16 +365,24 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = InventoryScreen(self.db)
             elif key == "ill":
                 from ui.screens.ill_screen import ILLScreen
-                screen = ILLScreen(self.db)
+                screen = ILLScreen(self.db, self.fb)
             elif key == "acquisitions":
                 from ui.screens.acquisitions_screen import AcquisitionsScreen
-                screen = AcquisitionsScreen(self.db)
+                screen = AcquisitionsScreen(self.db, self.fb)
             elif key == "serials":
                 from ui.screens.serials_screen import SerialsScreen
-                screen = SerialsScreen(self.db)
+                screen = SerialsScreen(self.db, self.fb)
+            elif key == "sync_network":
+                # College pairing, so a Windows-only librarian can join the
+                # network without needing the web app.
+                from ui.screens.sync_network_screen import SyncNetworkScreen
+                screen = SyncNetworkScreen(self.fb)
+            elif key == "wishlist":
+                from ui.screens.wishlist_screen import WishlistScreen
+                screen = WishlistScreen(self.fb, self.auth)
             elif key == "enterprise":
                 from ui.screens.enterprise_screen import EnterpriseFeaturesScreen
-                screen = EnterpriseFeaturesScreen(self.db)
+                screen = EnterpriseFeaturesScreen(self.db, self.fb)
             elif key == "college_profile":
                 from ui.screens.college_profile_screen import CollegeProfileScreen
                 screen = CollegeProfileScreen(self.db, self.fb)

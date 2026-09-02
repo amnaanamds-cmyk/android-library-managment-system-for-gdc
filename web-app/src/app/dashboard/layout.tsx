@@ -54,7 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: "Spine Labels", path: "/dashboard/spine-labels", icon: "🏷️" },
         { name: "Inventory", path: "/dashboard/inventory", icon: "📦" },
         { name: "Acquisitions", path: "/dashboard/acquisitions", icon: "💰" },
-        { name: "Serials", path: "#", icon: "📰" },
+        { name: "Serials", path: "/dashboard/serials", icon: "📰" },
+        { name: "Wishlist", path: "/dashboard/wishlist", icon: "⭐" },
       ]
     },
     {

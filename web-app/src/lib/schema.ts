@@ -23,8 +23,29 @@ export const COLLECTIONS = {
   purchaseOrders: "purchase_orders",
   bookTransfers: "book_transfers",
   illRequests: "ill_requests",
+  serials: "serials",
+  wishlist: "wishlist",
+  readingRoom: "reading_room",
+  lostFound: "lost_found",
+  events: "library_events",
   settings: "settings",
 } as const;
+
+/** Status vocabularies, matching the Kotlin companion objects and the Python
+ *  constants in gdc_desktop/services/operations_service.py. */
+export const STATUSES = {
+  purchaseOrder: ["Pending", "Approved", "Ordered", "Shipped", "Received", "Cancelled"],
+  transfer: ["requested", "approved", "dispatched", "received", "rejected"],
+  serial: ["Active", "Lapsed", "Cancelled"],
+  ill: ["Pending", "Approved", "Dispatched", "Fulfilled", "Returned", "Rejected"],
+  wishlist: ["Requested", "UnderReview", "Approved", "Ordered", "Declined"],
+  lostFound: ["Lost", "Found", "Claimed", "Disposed"],
+  event: ["Planned", "Ongoing", "Completed", "Cancelled"],
+} as const;
+
+export const SERIAL_FREQUENCIES = [
+  "Daily", "Weekly", "Fortnightly", "Monthly", "Quarterly", "Annual",
+] as const;
 
 /** Root-level collections, outside any tenant. */
 export const ROOT_COLLECTIONS = {

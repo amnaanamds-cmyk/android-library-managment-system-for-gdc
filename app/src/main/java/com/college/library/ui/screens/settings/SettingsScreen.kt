@@ -60,6 +60,14 @@ fun SettingsScreen(
     onNavigateToSpineLabels: () -> Unit = {},
     onNavigateToBiometric: () -> Unit = {},
     onNavigateToUnionCatalog: () -> Unit = {},
+    // ── Operations screens (parity with the desktop and web apps) ───
+    onNavigateToGateLog: () -> Unit = {},
+    onNavigateToAcquisitions: () -> Unit = {},
+    onNavigateToBookTransfers: () -> Unit = {},
+    onNavigateToSerials: () -> Unit = {},
+    onNavigateToIll: () -> Unit = {},
+    onNavigateToMarcCatalog: () -> Unit = {},
+    onNavigateToEnterprise: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -646,6 +654,55 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("🌐  Union Catalogue", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToGateLog,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🛂  Gate Log", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToAcquisitions,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🧾  Acquisitions", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToBookTransfers,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🔄  Book Transfers", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToSerials,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA855F7)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("📰  Serials", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToIll,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🌍  Inter-Library Loans", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToMarcCatalog,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0891B2)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("📑  MARC Catalogue", color = Color.White)
+                        }
+                        Button(
+                            onClick = onNavigateToEnterprise,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🚀  Enterprise Features", color = Color.White)
                         }
                     }
                 }

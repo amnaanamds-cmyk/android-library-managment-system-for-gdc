@@ -30,9 +30,16 @@ STATUS_OPTIONS = ["Requested", "Approved", "In Transit", "Received", "Returned t
 
 
 class ILLScreen(QWidget):
-    def __init__(self, db_helper=None):
+    def __init__(self, db_helper=None, firebase_service=None):
         super().__init__()
         self.db = db_helper
+        # Shared Firestore collection, so records raised here reach the
+        # Android and web apps. These features were local-SQLite-only.
+        self.fb = firebase_service
+        self.ops = None
+        if firebase_service is not None:
+            from services.operations_service import OperationsService
+            self.ops = OperationsService(firebase_service)
         self.init_ui()
 
     def init_ui(self):
@@ -132,7 +139,10 @@ class ILLScreen(QWidget):
     def refresh(self):
         if not self.db:
             return
-        requests = self.db.get_ill_requests()
+        # Shared collection first; local rows are the offline fallback.
+        requests = self.ops.ill_requests() if self.ops is not None else []
+        if not requests:
+            requests = self.db.get_ill_requests()
 
         # Filter
         q = self.search_input.text().lower()
@@ -211,12 +221,23 @@ class ILLScreen(QWidget):
                 mid = int(member_id.text().strip())
             except ValueError:
                 pass
-            self.db.save_ill_request(
-                book_title.text().strip(),
-                author.text().strip(),
-                mid,
-                institution.currentText()
-            )
+            # Publish to the shared collection so the request is visible on
+            # every platform; fall back to the local table when offline.
+            saved = False
+            if self.ops is not None:
+                saved = bool(self.ops.raise_ill_request(
+                    book_title=book_title.text().strip(),
+                    target_institution=institution.currentText(),
+                    author=author.text().strip(),
+                    member_id=str(mid) if mid else "",
+                ))
+            if not saved:
+                self.db.save_ill_request(
+                    book_title.text().strip(),
+                    author.text().strip(),
+                    mid,
+                    institution.currentText()
+                )
             self.db.log_audit_local("system", "ill_request",
                                     f"ILL requested: {book_title.text().strip()} from {institution.currentText()}")
             QMessageBox.information(dlg, "Submitted",

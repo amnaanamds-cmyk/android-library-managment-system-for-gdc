@@ -360,6 +360,13 @@ fun LibraryApp(
                     onNavigateToSpineLabels = { navController.navigate("spine_labels") },
                     onNavigateToBiometric = { navController.navigate("biometric") },
                     onNavigateToUnionCatalog = { navController.navigate("union_catalog") },
+                    onNavigateToGateLog = { navController.navigate("gate_log") },
+                    onNavigateToAcquisitions = { navController.navigate("acquisitions") },
+                    onNavigateToBookTransfers = { navController.navigate("book_transfers") },
+                    onNavigateToSerials = { navController.navigate("serials") },
+                    onNavigateToIll = { navController.navigate("ill_requests") },
+                    onNavigateToMarcCatalog = { navController.navigate("marc_catalog") },
+                    onNavigateToEnterprise = { navController.navigate("enterprise") },
                     viewModel = settingsViewModel
                 )
             }
@@ -411,6 +418,32 @@ fun LibraryApp(
             composable("spine_labels") { com.college.library.ui.screens.spinelabel.SpineLabelScreen(onNavigateBack = { navController.popBackStack() }) }
             composable("biometric") { com.college.library.ui.screens.biometric.BiometricScreen(onNavigateBack = { navController.popBackStack() }) }
             composable("union_catalog") { com.college.library.ui.screens.unioncatalog.UnionCatalogScreen(onNavigateBack = { navController.popBackStack() }) }
+            // ── Operations screens ────────────────────────────────────────
+            // Gate log, acquisitions, transfers, serials, ILL, MARC catalogue
+            // and enterprise. These existed on the desktop and web apps but
+            // had no Android equivalent, so the three platforms were not
+            // interchangeable for a librarian.
+            composable("gate_log") {
+                com.college.library.ui.screens.operations.GateLogScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("acquisitions") {
+                com.college.library.ui.screens.operations.AcquisitionsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("book_transfers") {
+                com.college.library.ui.screens.operations.BookTransfersScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("serials") {
+                com.college.library.ui.screens.operations.SerialsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("ill_requests") {
+                com.college.library.ui.screens.operations.IllScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("marc_catalog") {
+                com.college.library.ui.screens.operations.MarcCatalogScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable("enterprise") {
+                com.college.library.ui.screens.operations.EnterpriseScreen(onNavigateBack = { navController.popBackStack() })
+            }
             composable("login_qr_scanner_placeholder") {} // Removed the old route handler
         }
     }
