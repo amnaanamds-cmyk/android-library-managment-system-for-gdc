@@ -182,6 +182,23 @@ class LoadIssueDataWorker(QThread):
         self.finished.emit(members, books, issues, fine_rate)
 
 
+def compute_fine(fb_service, days_overdue: int, fallback_rate: float) -> float:
+    """Fine for a loan `days_overdue` days late, under the institution's policy.
+
+    Routes through LibrarySettings.fine_for() so the grace period and per-loan
+    cap are applied, and so a return processed here matches the same return
+    processed on Android or the web. `days * rate` alone ignored both, and only
+    happened to agree while grace and cap were unset.
+    """
+    if days_overdue <= 0:
+        return 0.0
+    try:
+        return fb_service.get_library_settings().fine_for(days_overdue)
+    except Exception:
+        # Offline or settings unreadable — fall back to the rate already loaded.
+        return round(days_overdue * fallback_rate, 2)
+
+
 class IssueReturnScreen(QWidget):
     ISSUE_COLS  = ["Member ID", "Member Name", "Book", "ISBN",
                    "Issue Date", "Due Date", "Days Left", "Status"]
@@ -431,7 +448,7 @@ class IssueReturnScreen(QWidget):
 
         days = days_diff(issue.dueDate)
         fine_rate = self._fine_rate
-        fine = abs(days) * fine_rate if days < 0 else 0.0
+        fine = compute_fine(self.fb, abs(days) if days < 0 else 0, fine_rate)
 
         msg = f"Return '{issue.bookTitle}' from {issue.memberName}?"
         if fine > 0:
@@ -546,7 +563,7 @@ class IssueReturnScreen(QWidget):
         # Calculate fine
         days = days_diff(issue.dueDate)
         fine_rate = self._fine_rate
-        fine = abs(days) * fine_rate if days < 0 else 0.0
+        fine = compute_fine(self.fb, abs(days) if days < 0 else 0, fine_rate)
 
         # Find the member object
         members = [m for m in self._all_members if m.id == issue.memberId]
@@ -683,7 +700,7 @@ class IssueReturnScreen(QWidget):
                     issue = issues[0]
                     days = days_diff(issue.dueDate)
                     fine_rate = screen._fine_rate
-                    fine = abs(days) * fine_rate if days < 0 else 0.0
+                    fine = compute_fine(screen.fb, abs(days) if days < 0 else 0, fine_rate)
                     fine_msg = f"Fine: Rs.{fine:.0f}" if fine > 0 else "No fine"
                     self._log(
                         f"🔄 Returning <b>{book.title}</b> from <b>{issue.memberName}</b>. {fine_msg}",

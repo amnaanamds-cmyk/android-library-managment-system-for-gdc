@@ -688,7 +688,8 @@ class AdvancedService:
 
 
     # ─── Enterprise Feature: Overdue Members Report ────────────────────────────
-    def generate_overdue_report(self, issues: list, fine_rate: float, output_path: str):
+    def generate_overdue_report(self, issues: list, fine_rate: float, output_path: str,
+                                settings=None):
         """Generate a full overdue books report PDF listing all overdue members and fine totals."""
         if not HAS_REPORTLAB:
             raise ImportError("reportlab is required. Run: pip install reportlab")
@@ -715,7 +716,14 @@ class AdvancedService:
                 due = datetime.strptime(i.dueDate, "%Y-%m-%d").date()
                 days = (today - due).days
                 if days > 0:
-                    overdue.append((i, days, days * fine_rate))
+                    # Use the institution's full fine policy (grace period and
+                    # per-loan cap), so the report agrees with what the desk
+                    # actually charges rather than re-deriving days * rate.
+                    if settings is not None:
+                        amount = settings.fine_for(days)
+                    else:
+                        amount = round(days * fine_rate, 2)
+                    overdue.append((i, days, amount))
             except Exception:
                 continue
 

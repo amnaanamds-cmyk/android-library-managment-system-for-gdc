@@ -356,23 +356,50 @@ class FirebaseService:
             self._log_audit(user_email, "reservation_fulfilled", f"SyncId: {sync_id}")
 
     # ── Settings ──────────────────────────────────────────────────────────────
+    #
+    # Backed by SettingsService, which owns the full LibrarySettings document.
+    # These two methods stay as the fine-rate shortcut the existing screens
+    # already call, so nothing else has to change.
+
+    @property
+    def settings(self):
+        """Lazily-created SettingsService bound to this Firebase connection."""
+        if not hasattr(self, "_settings_service") or self._settings_service is None:
+            from services.settings_service import SettingsService
+            self._settings_service = SettingsService(self)
+        return self._settings_service
+
+    def get_library_settings(self, refresh: bool = False):
+        """Full institution policy (fine rate, loan period, limits)."""
+        return self.settings.get(refresh=refresh)
+
     def get_fine_rate(self) -> float:
-        ref = self._settings_ref()
-        if not ref:
-            return config.DEFAULT_FINE_RATE
-        try:
-            doc = ref.get()
-            if doc.exists:
-                return float(doc.to_dict().get("fineRatePerDay", config.DEFAULT_FINE_RATE))
-        except Exception:
-            pass
-        return config.DEFAULT_FINE_RATE
+        return self.get_library_settings().fineRatePerDay
 
     def save_settings(self, fine_rate: float, user_email: str = ""):
-        ref = self._settings_ref()
-        if ref:
-            ref.set({"fineRatePerDay": fine_rate}, merge=True)
-            self._log_audit(user_email, "settings_update", f"fineRate: {fine_rate}")
+        """Update the fine rate, preserving every other policy field.
+
+        This used to overwrite the settings document with only fineRatePerDay,
+        which discarded the loan period and borrowing limit that the Android and
+        web apps write to the same document.
+        """
+        current = self.get_library_settings(refresh=True)
+        current.fineRatePerDay = fine_rate
+        ok = self.settings.save(current, user_email)
+        self._log_audit(user_email, "settings_update", f"fineRate: {fine_rate}")
+        return ok
+
+    def save_library_settings(self, settings, user_email: str = "") -> bool:
+        """Publish the complete policy document."""
+        ok = self.settings.save(settings, user_email)
+        self._log_audit(
+            user_email,
+            "settings_update",
+            f"fineRate: {settings.fineRatePerDay}, "
+            f"loanDays: {settings.borrowDurationDays}, "
+            f"maxBooks: {settings.maxBooksPerMember}",
+        )
+        return ok
 
     # ── Audit Log ─────────────────────────────────────────────────────────────
     def _log_audit(self, user_email: str, action: str, detail: str):

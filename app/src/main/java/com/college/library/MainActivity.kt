@@ -316,7 +316,16 @@ fun LibraryApp(
                     onNavigateToReturn = { navController.navigate("return_book") },
                     onNavigateToAddMember = { navController.navigate("add_edit_member/0") },
                     onNavigateToSubjects = { navController.navigate("browse_subjects") },
-                    onNavigateToWishlist = { navController.navigate("wishlist") }
+                    onNavigateToWishlist = { navController.navigate("wishlist") },
+                    onNavigateToSearch = { navController.navigate("global_search") }
+                )
+            }
+            // Global search across books and members, with barcode lookup.
+            // The screen existed but had no route, so nothing could reach it.
+            composable("global_search") {
+                com.college.library.ui.screens.search.GlobalSearchScreen(
+                    onNavigateToBookDetail = { navController.navigate("book_detail/$it") },
+                    onNavigateToMemberDetail = { navController.navigate("member_detail/$it") }
                 )
             }
             composable("books") {

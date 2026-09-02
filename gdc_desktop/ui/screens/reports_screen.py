@@ -41,13 +41,17 @@ class ReportWorker(QThread):
             elif self.report_type == "overdue":
                 issues = self.db.get_issues()
                 fine_rate = 5.0
+                settings = None
                 try:
-                    fine_rate = self.fb.get_fine_rate()
+                    settings = self.fb.get_library_settings()
+                    fine_rate = settings.fineRatePerDay
                 except Exception:
                     pass
                 from services.advanced_service import AdvancedService
                 adv = AdvancedService(self.db)
-                adv.generate_overdue_report(issues, fine_rate, self.path)
+                # Pass the policy so the report applies the same grace period
+                # and cap the circulation desk applies.
+                adv.generate_overdue_report(issues, fine_rate, self.path, settings)
             self.finished.emit(True, self.path)
         except Exception as e:
             self.finished.emit(False, str(e))

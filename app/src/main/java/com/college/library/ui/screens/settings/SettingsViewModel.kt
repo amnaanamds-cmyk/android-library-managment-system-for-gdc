@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.DataSeeder
 import com.college.library.data.db.LibraryDatabase
+import com.college.library.data.SettingsRepository
 import com.college.library.data.model.Book
+import com.college.library.data.model.LibrarySettings
 import com.college.library.utils.AppLanguage
 import com.college.library.utils.LanguageManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,9 +27,12 @@ import java.util.UUID
 import javax.inject.Inject
 
 data class SettingsState(
-    val finePerDay: Float = 1.0f,
-    val borrowDuration: Int = 14,
-    val maxBooks: Int = 3,
+    // Defaults come from the shared LibrarySettings model so Android, desktop
+    // and web start from the same numbers instead of three different literals.
+    val finePerDay: Float = LibrarySettings.DEFAULT_FINE_RATE.toFloat(),
+    val borrowDuration: Int = LibrarySettings.DEFAULT_BORROW_DAYS,
+    val maxBooks: Int = LibrarySettings.DEFAULT_MAX_BOOKS,
+    val settingsSyncMessage: String? = null,
     val isImporting: Boolean = false,
     val importSuccessCount: Int = -1,
     val importError: String? = null,
@@ -52,16 +57,66 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val prefs = application.getSharedPreferences("library_settings", Context.MODE_PRIVATE)
+    private val settingsRepo = SettingsRepository()
+
+    private fun institutionId(): String =
+        application.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+            .getString("institution_id", "") ?: ""
 
     private val _state = MutableStateFlow(SettingsState())
     val state = _state.asStateFlow()
 
     init {
         loadSettings()
+        observeCloudSettings()
+    }
+
+    /**
+     * Keep local policy in step with the institution's settings document.
+     *
+     * These values decide fines and due dates, so a librarian changing the fine
+     * rate on the desktop app must reach every device. Previously each platform
+     * kept its own SharedPreferences copy and they silently diverged.
+     */
+    private fun observeCloudSettings() {
+        val instId = institutionId()
+        if (instId.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                settingsRepo.observe(instId).collect { remote ->
+                    cacheLocally(remote)
+                    _state.value = _state.value.copy(
+                        finePerDay = remote.fineRatePerDay.toFloat(),
+                        borrowDuration = remote.borrowDurationDays,
+                        maxBooks = remote.maxBooksPerMember,
+                    )
+                }
+            } catch (e: Exception) {
+                // Offline, or no permission to read settings. The cached values
+                // stay in force, which is the correct offline-first behaviour.
+            }
+        }
+    }
+
+    /**
+     * Mirror settings into SharedPreferences.
+     *
+     * CalculateFineUseCase reads these keys synchronously, so the cache is what
+     * makes an offline return charge the right amount.
+     */
+    private fun cacheLocally(settings: LibrarySettings) {
+        prefs.edit()
+            .putFloat("fine_per_day", settings.fineRatePerDay.toFloat())
+            .putInt("borrow_duration", settings.borrowDurationDays)
+            .putInt("max_books", settings.maxBooksPerMember)
+            .putInt("fine_grace_days", settings.fineGraceDays)
+            .putFloat("max_fine_per_loan", settings.maxFinePerLoan.toFloat())
+            .putString("currency_symbol", settings.currencySymbol)
+            .apply()
     }
 
     private fun loadSettings() {
-        val fine = prefs.getFloat("fine_per_day", 1.0f)
+        val fine = prefs.getFloat("fine_per_day", LibrarySettings.DEFAULT_FINE_RATE.toFloat())
         val duration = prefs.getInt("borrow_duration", 14)
         val max = prefs.getInt("max_books", 3)
         val darkModeEnabled = prefs.getBoolean("dark_mode_enabled", false)
@@ -139,18 +194,47 @@ class SettingsViewModel @Inject constructor(
         // Preserve existing UI settings when saving core settings
         val darkMode = _state.value.darkModeEnabled
         val scale = _state.value.fontScale
-        prefs.edit()
-            .putFloat("fine_per_day", fine)
-            .putInt("borrow_duration", duration)
-            .putInt("max_books", max)
-            .apply()
+
+        val settings = LibrarySettings(
+            fineRatePerDay = fine.toDouble(),
+            borrowDurationDays = duration,
+            maxBooksPerMember = max,
+            fineGraceDays = prefs.getInt("fine_grace_days", 0),
+            maxFinePerLoan = prefs.getFloat("max_fine_per_loan", 0f).toDouble(),
+            currencySymbol = prefs.getString("currency_symbol", "Rs") ?: "Rs",
+        ).sanitised()
+
+        // Apply locally first so the change takes effect even with no network.
+        cacheLocally(settings)
         _state.value = _state.value.copy(
-            finePerDay = fine,
-            borrowDuration = duration,
-            maxBooks = max,
+            finePerDay = settings.fineRatePerDay.toFloat(),
+            borrowDuration = settings.borrowDurationDays,
+            maxBooks = settings.maxBooksPerMember,
             darkModeEnabled = darkMode,
-            fontScale = scale
+            fontScale = scale,
+            settingsSyncMessage = null,
         )
+
+        // Then publish so the desktop and web apps charge the same fine. This
+        // used to write to SharedPreferences only, which is why each platform
+        // ended up with its own rate.
+        val instId = institutionId()
+        if (instId.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val ok = settingsRepo.save(instId, settings)
+            _state.value = _state.value.copy(
+                settingsSyncMessage = if (ok) {
+                    "Saved and shared with all devices."
+                } else {
+                    "Saved on this device only — could not reach the server, " +
+                        "or your role cannot change library policy."
+                }
+            )
+        }
+    }
+
+    fun clearSettingsSyncMessage() {
+        _state.value = _state.value.copy(settingsSyncMessage = null)
     }
 
     var isImportingOrganized = false

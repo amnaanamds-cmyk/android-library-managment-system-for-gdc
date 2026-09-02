@@ -53,6 +53,7 @@ fun DashboardScreen(
     onNavigateToAddMember: () -> Unit,
     onNavigateToSubjects: () -> Unit,
     onNavigateToWishlist: () -> Unit,
+    onNavigateToSearch: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
     authViewModel: com.college.library.ui.screens.auth.AuthViewModel = hiltViewModel()
 ) {
@@ -108,6 +109,11 @@ fun DashboardScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
                 actions = {
+                    // Entry point for global search across books and members.
+                    // The search screen was previously unreachable.
+                    IconButton(onClick = onNavigateToSearch) {
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = Gold)
+                    }
                     IconButton(onClick = onNavigateToAiHub) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "AI Hub", tint = Gold)
                     }
