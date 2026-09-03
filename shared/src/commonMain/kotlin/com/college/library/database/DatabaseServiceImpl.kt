@@ -26,6 +26,10 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
             digitalUrl = book.digitalUrl,
             category = book.category,
             marcData = book.marcData,
+            callNumber = book.callNumber,
+            authorCutter = book.authorCutter,
+            collegeId = book.collegeId,
+            syncStatus = book.syncStatus,
             lastUpdated = book.lastUpdated,
             deleted = book.deleted
         )
@@ -51,6 +55,11 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
             designation = member.designation,
             bps = member.bps,
             pin = member.pin,
+            biometricHash = member.biometricHash,
+            biometricEnrolDate = member.biometricEnrolDate,
+            biometricLastVerified = member.biometricLastVerified,
+            collegeId = member.collegeId,
+            syncStatus = member.syncStatus,
             lastUpdated = member.lastUpdated,
             deleted = member.deleted
         )
@@ -72,7 +81,9 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
             fine = transaction.fine,
             status = transaction.status,
             lastUpdated = transaction.lastUpdated,
-            deleted = transaction.deleted
+            deleted = transaction.deleted,
+            syncStatus = transaction.syncStatus,
+            collegeId = transaction.collegeId
         )
     }
 
@@ -87,7 +98,9 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
             status = reservation.status,
             notifiedDate = reservation.notifiedDate,
             lastUpdated = reservation.lastUpdated,
-            deleted = reservation.deleted
+            deleted = reservation.deleted,
+            syncStatus = reservation.syncStatus,
+            collegeId = reservation.collegeId
         )
     }
 
@@ -113,6 +126,10 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                 digitalUrl = it.digitalUrl,
                 category = it.category,
                 marcData = it.marcData,
+                callNumber = it.callNumber,
+                authorCutter = it.authorCutter,
+                collegeId = it.collegeId,
+                syncStatus = it.syncStatus,
                 lastUpdated = it.lastUpdated,
                 deleted = it.deleted
             )
@@ -141,6 +158,11 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                 designation = it.designation,
                 bps = it.bps,
                 pin = it.pin,
+                biometricHash = it.biometricHash,
+                biometricEnrolDate = it.biometricEnrolDate,
+                biometricLastVerified = it.biometricLastVerified,
+                collegeId = it.collegeId,
+                syncStatus = it.syncStatus,
                 lastUpdated = it.lastUpdated,
                 deleted = it.deleted
             )
@@ -164,7 +186,9 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                 fine = it.fine,
                 status = it.status,
                 lastUpdated = it.lastUpdated,
-                deleted = it.deleted
+                deleted = it.deleted,
+                syncStatus = it.syncStatus,
+                collegeId = it.collegeId
             )
         }
     }
@@ -182,15 +206,15 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                 status = it.status,
                 notifiedDate = it.notifiedDate,
                 lastUpdated = it.lastUpdated,
-                deleted = it.deleted
+                deleted = it.deleted,
+                syncStatus = it.syncStatus,
+                collegeId = it.collegeId
             )
         }
     }
 
     override suspend fun getUnsyncedBooks(): List<Book> {
-        val lastSync = getLastSyncTimestamp()
-        return libraryDatabase.bookQueriesQueries.getAllBooksStatic().executeAsList()
-            .filter { lastSync == 0L || it.lastUpdated > lastSync }
+        return libraryDatabase.bookQueriesQueries.getUnsyncedBooks().executeAsList()
             .map {
                 Book(
                     id = it.id,
@@ -212,6 +236,10 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                     digitalUrl = it.digitalUrl,
                     category = it.category,
                     marcData = it.marcData,
+                    callNumber = it.callNumber,
+                    authorCutter = it.authorCutter,
+                    collegeId = it.collegeId,
+                    syncStatus = it.syncStatus,
                     lastUpdated = it.lastUpdated,
                     deleted = it.deleted
                 )
@@ -219,9 +247,7 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
     }
 
     override suspend fun getUnsyncedMembers(): List<Member> {
-        val lastSync = getLastSyncTimestamp()
-        return libraryDatabase.memberQueriesQueries.getAllMembersStatic().executeAsList()
-            .filter { lastSync == 0L || it.lastUpdated > lastSync }
+        return libraryDatabase.memberQueriesQueries.getUnsyncedMembers().executeAsList()
             .map {
                 Member(
                     id = it.id,
@@ -243,6 +269,11 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                     designation = it.designation,
                     bps = it.bps,
                     pin = it.pin,
+                    biometricHash = it.biometricHash,
+                    biometricEnrolDate = it.biometricEnrolDate,
+                    biometricLastVerified = it.biometricLastVerified,
+                    collegeId = it.collegeId,
+                    syncStatus = it.syncStatus,
                     lastUpdated = it.lastUpdated,
                     deleted = it.deleted
                 )
@@ -250,9 +281,7 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
     }
 
     override suspend fun getUnsyncedTransactions(): List<IssuedBook> {
-        val lastSync = getLastSyncTimestamp()
-        return libraryDatabase.issuedBookQueriesQueries.getAllTransactions().executeAsList()
-            .filter { lastSync == 0L || it.lastUpdated > lastSync }
+        return libraryDatabase.issuedBookQueriesQueries.getUnsyncedIssuedBooks().executeAsList()
             .map {
                 IssuedBook(
                     id = it.id,
@@ -269,15 +298,15 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                     fine = it.fine,
                     status = it.status,
                     lastUpdated = it.lastUpdated,
-                    deleted = it.deleted
+                    deleted = it.deleted,
+                    syncStatus = it.syncStatus,
+                    collegeId = it.collegeId
                 )
             }
     }
 
     override suspend fun getUnsyncedReservations(): List<Reservation> {
-        val lastSync = getLastSyncTimestamp()
-        return libraryDatabase.reservationQueriesQueries.getAllReservations().executeAsList()
-            .filter { lastSync == 0L || it.lastUpdated > lastSync }
+        return libraryDatabase.reservationQueriesQueries.getUnsyncedReservations().executeAsList()
             .map {
                 Reservation(
                     id = it.id,
@@ -290,7 +319,9 @@ class DatabaseServiceImpl(val libraryDatabase: LibraryDatabase) : DatabaseServic
                     status = it.status,
                     notifiedDate = it.notifiedDate,
                     lastUpdated = it.lastUpdated,
-                    deleted = it.deleted
+                    deleted = it.deleted,
+                    syncStatus = it.syncStatus,
+                    collegeId = it.collegeId
                 )
             }
     }

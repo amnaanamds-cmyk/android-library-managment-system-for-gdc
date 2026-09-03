@@ -47,6 +47,11 @@ class MemberDaoAdapter(private val db: SQLDelightDb) : MemberDao {
             classNo = member.classNo, address = member.address,
             photoUri = member.photoUri, designation = member.designation,
             bps = member.bps, pin = member.pin,
+            biometricHash = member.biometricHash,
+            biometricEnrolDate = member.biometricEnrolDate,
+            biometricLastVerified = member.biometricLastVerified,
+            collegeId = member.collegeId,
+            syncStatus = "pending", // Always mark as pending — push engine flips to 'synced' after upload
             lastUpdated = System.currentTimeMillis(), deleted = false
         )
         runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
@@ -64,6 +69,11 @@ class MemberDaoAdapter(private val db: SQLDelightDb) : MemberDao {
             classNo = member.classNo, address = member.address,
             photoUri = member.photoUri, designation = member.designation,
             bps = member.bps, pin = member.pin,
+            biometricHash = member.biometricHash,
+            biometricEnrolDate = member.biometricEnrolDate,
+            biometricLastVerified = member.biometricLastVerified,
+            collegeId = member.collegeId,
+            syncStatus = "pending", // Mark as pending so the push engine re-uploads this member
             lastUpdated = System.currentTimeMillis(), deleted = member.deleted,
             id = member.id
         )

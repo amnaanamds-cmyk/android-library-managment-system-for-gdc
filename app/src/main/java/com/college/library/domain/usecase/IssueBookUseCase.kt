@@ -60,6 +60,11 @@ class IssueBookUseCase @Inject constructor(
                     designation = memberRow.designation,
                     bps = memberRow.bps,
                     pin = memberRow.pin,
+                    biometricHash = memberRow.biometricHash,
+                    biometricEnrolDate = memberRow.biometricEnrolDate,
+                    biometricLastVerified = memberRow.biometricLastVerified,
+                    collegeId = memberRow.collegeId,
+                    syncStatus = memberRow.syncStatus,
                     lastUpdated = System.currentTimeMillis(),
                     deleted = memberRow.deleted,
                     id = memberRow.id
@@ -86,7 +91,9 @@ class IssueBookUseCase @Inject constructor(
                     fine = 0.0,
                     status = "Issued",
                     lastUpdated = System.currentTimeMillis(),
-                    deleted = false
+                    deleted = false,
+                    syncStatus = "pending",
+                    collegeId = memberRow.collegeId
                 )
 
                 Result.success(Unit)

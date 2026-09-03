@@ -58,7 +58,7 @@ fun DashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val currentRole by authViewModel.currentRole.collectAsState()
-    val canAccessSettings = remember(currentRole) { authViewModel.canAccessSettings() }
+    val canAccessSettings by remember { derivedStateOf { authViewModel.canAccessSettings() } }
 
     val syncService = remember { SyncManager.getSyncService(viewModel.database) }
     val syncStatus by syncService.status.collectAsState()

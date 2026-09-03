@@ -261,6 +261,19 @@ class DatabaseHelper:
                 )
             """)
 
+            # ── Cached User Session (offline persistent login) ──
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS cached_session (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    uid TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    name TEXT,
+                    role TEXT NOT NULL DEFAULT 'admin',
+                    institutionId TEXT NOT NULL,
+                    cached_at INTEGER NOT NULL
+                )
+            """)
+
             # ── New Feature Tables ──
             # 1. Inventory Audits
             conn.execute("""
@@ -1116,3 +1129,36 @@ class DatabaseHelper:
             results["expired_members_with_books"] = [dict(r) for r in expired_active]
 
         return results
+
+    # ── Cached Session (Offline Persistent Login) ─────────────────────────────
+    def save_cached_session(self, uid: str, email: str, name: str,
+                            role: str, institution_id: str):
+        """Cache the authenticated user's profile locally so the app can
+        start fully offline on subsequent launches without re-entering
+        credentials."""
+        now = int(time.time() * 1000)
+        with self._get_conn() as conn:
+            conn.execute("""
+                INSERT INTO cached_session (id, uid, email, name, role, institutionId, cached_at)
+                VALUES (1, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    uid = excluded.uid,
+                    email = excluded.email,
+                    name = excluded.name,
+                    role = excluded.role,
+                    institutionId = excluded.institutionId,
+                    cached_at = excluded.cached_at
+            """, (uid, email, name, role, institution_id, now))
+            conn.commit()
+
+    def load_cached_session(self) -> Optional[Dict[str, Any]]:
+        """Return the cached user profile dict, or None if no session is stored."""
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT * FROM cached_session WHERE id = 1").fetchone()
+            return dict(row) if row else None
+
+    def clear_cached_session(self):
+        """Remove the cached session (called on explicit sign-out)."""
+        with self._get_conn() as conn:
+            conn.execute("DELETE FROM cached_session")
+            conn.commit()

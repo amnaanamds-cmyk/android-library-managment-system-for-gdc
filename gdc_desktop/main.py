@@ -99,6 +99,7 @@ class LibraryApp(QApplication):
             self.fb_service = MockFB()
             
         self.auth_service = AuthService(self.fb_service)
+        self.auth_service.set_db_helper(self.db_helper)
         
         # Setup sync service (background thread)
         self.sync_service = SyncService(self.db_helper, self.fb_service)

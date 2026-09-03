@@ -4,6 +4,9 @@ SELECT * FROM books ORDER BY id DESC;
 getAllBooksStatic:
 SELECT * FROM books;
 
+getUnsyncedBooks:
+SELECT * FROM books WHERE syncStatus = 'pending' AND deleted = 0;
+
 getAvailableBooks:
 SELECT * FROM books WHERE status = 'Available' ORDER BY id DESC;
 
@@ -20,12 +23,14 @@ insertBook:
 INSERT OR REPLACE INTO books (
     syncId, isbn, accNo, title, author, publisher, publisherPlace,
     publishDate, edition, pages, procurement, volume, price,
-    status, isDigital, digitalUrl, category, marcData, lastUpdated, deleted
+    status, isDigital, digitalUrl, category, marcData,
+    callNumber, authorCutter, collegeId, syncStatus, lastUpdated, deleted
 )
 VALUES (
     :syncId, :isbn, :accNo, :title, :author, :publisher, :publisherPlace,
     :publishDate, :edition, :pages, :procurement, :volume, :price,
-    :status, :isDigital, :digitalUrl, :category, :marcData, :lastUpdated, :deleted
+    :status, :isDigital, :digitalUrl, :category, :marcData,
+    :callNumber, :authorCutter, :collegeId, :syncStatus, :lastUpdated, :deleted
 );
 
 updateBook:
@@ -34,7 +39,10 @@ SET syncId = :syncId, isbn = :isbn, accNo = :accNo, title = :title, author = :au
     publisher = :publisher, publisherPlace = :publisherPlace, publishDate = :publishDate,
     edition = :edition, pages = :pages, procurement = :procurement, volume = :volume,
     price = :price, status = :status, isDigital = :isDigital, digitalUrl = :digitalUrl,
-    category = :category, marcData = :marcData, lastUpdated = :lastUpdated, deleted = :deleted
+    category = :category, marcData = :marcData,
+    callNumber = :callNumber, authorCutter = :authorCutter,
+    collegeId = :collegeId, syncStatus = :syncStatus,
+    lastUpdated = :lastUpdated, deleted = :deleted
 WHERE id = :id;
 
 deleteBook:
@@ -50,7 +58,7 @@ updateBookStatus:
 UPDATE books SET status = :status, lastUpdated = :lastUpdated WHERE id = :id;
 
 updateTimestamp:
-UPDATE books SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+UPDATE books SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;
 
 getTotalCount:
 SELECT COUNT(*) FROM books;

@@ -25,7 +25,9 @@ class ReservationDaoAdapter(private val db: SQLDelightDb) : ReservationDao {
             memberId = reservation.memberId, memberName = reservation.memberName,
             reservedDate = reservation.reservedDate, status = reservation.status,
             notifiedDate = reservation.notifiedDate,
-            lastUpdated = System.currentTimeMillis(), deleted = false
+            lastUpdated = System.currentTimeMillis(), deleted = false,
+            syncStatus = "pending", // Mark pending so push engine uploads this reservation
+            collegeId = reservation.collegeId
         )
         runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         Unit

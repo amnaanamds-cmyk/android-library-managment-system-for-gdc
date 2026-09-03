@@ -470,3 +470,4 @@ AssertionError
            ~~~~~~~~~~^^^^^^^^^^^^^^^^^
 AssertionError
 
+2026-09-02 17:01:45,984 - services.auth_service - INFO - Cached user session locally for offline access.

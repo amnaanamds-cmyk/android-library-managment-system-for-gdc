@@ -1,5 +1,6 @@
 package com.college.library.ui.screens.unioncatalog
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,22 +20,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.college.library.data.CollegeService
 import com.college.library.data.model.Book
 import com.college.library.data.model.College
 import com.college.library.profile.CollegeProfileManager
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // ── ViewModel ───────────────────────────────────────────────────────────────
-class UnionCatalogViewModel : ViewModel() {
+@HiltViewModel
+class UnionCatalogViewModel @Inject constructor(
+    @ApplicationContext private val context: Context
+) : ViewModel() {
     private val collegeService = CollegeService()
-    private val profileManager = CollegeProfileManager.getInstance()
+    private val profileManager = CollegeProfileManager.getInstance(context)
 
     private val _colleges = MutableStateFlow<List<College>>(emptyList())
     val colleges: StateFlow<List<College>> = _colleges.asStateFlow()
@@ -97,7 +104,7 @@ class UnionCatalogViewModel : ViewModel() {
 @Composable
 fun UnionCatalogScreen(
     onNavigateBack: () -> Unit,
-    viewModel: UnionCatalogViewModel = viewModel()
+    viewModel: UnionCatalogViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
     

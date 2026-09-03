@@ -162,6 +162,6 @@ class AuthViewModel @Inject constructor(
     // ── Authorization helpers (unchanged API) ──────────────────────────────
     fun canEditBooks()     = currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.LIBRARIAN, UserRole.OWNER)
     fun canEditMembers()   = currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.LIBRARIAN, UserRole.OWNER)
-    fun canAccessSettings()= currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.OWNER)
+    fun canAccessSettings()= currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.OWNER, UserRole.LIBRARIAN, UserRole.STAFF)
     fun canViewReports()   = currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.DIRECTORATE_ADMIN, UserRole.OWNER)
 }

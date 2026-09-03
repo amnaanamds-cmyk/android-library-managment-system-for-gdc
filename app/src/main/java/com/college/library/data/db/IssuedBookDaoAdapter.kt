@@ -40,14 +40,34 @@ class IssuedBookDaoAdapter(private val db: SQLDelightDb) : IssuedBookDao {
             issueDate = issuedBook.issueDate, dueDate = issuedBook.dueDate,
             returnDate = issuedBook.returnDate, fine = issuedBook.fine,
             status = issuedBook.status,
-            lastUpdated = System.currentTimeMillis(), deleted = false
+            lastUpdated = System.currentTimeMillis(), deleted = false,
+            syncStatus = "pending", // Mark pending so the push engine will upload this issue record
+            collegeId = issuedBook.collegeId
         )
         runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         Unit
     }
 
     override suspend fun returnBook(id: Long, returnDate: String, fine: Double): Unit = withContext(Dispatchers.IO) {
-        queries.returnBook(returnDate = returnDate, fine = fine, id = id, lastUpdated = System.currentTimeMillis())
+        // returnBook SQL only updates returnDate/fine/status, not syncStatus. We mark the record pending
+        // by calling the full insertIssuedBook (INSERT OR REPLACE) instead so syncStatus gets written.
+        val existing = queries.getIssuedBookById(id).executeAsOneOrNull()
+        if (existing != null) {
+            queries.insertIssuedBook(
+                syncId = existing.syncId,
+                bookId = existing.bookId, bookTitle = existing.bookTitle,
+                bookIsbn = existing.bookIsbn, memberId = existing.memberId,
+                memberName = existing.memberName, memberMemberId = existing.memberMemberId,
+                issueDate = existing.issueDate, dueDate = existing.dueDate,
+                returnDate = returnDate, fine = fine,
+                status = "Returned",
+                lastUpdated = System.currentTimeMillis(), deleted = existing.deleted,
+                syncStatus = "pending",
+                collegeId = existing.collegeId
+            )
+        } else {
+            queries.returnBook(returnDate = returnDate, fine = fine, id = id, lastUpdated = System.currentTimeMillis())
+        }
         runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         Unit
     }

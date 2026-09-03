@@ -40,11 +40,10 @@ android {
 
     signingConfigs {
         create("release") {
-            // Using debug keystore for easy sharing, in a real production app you'd use a real release keystore.
-            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            storeFile = file("E:/android library managment system/android library management system for gdc11/nexlib-release.jks")
+            storePassword = "AMINAKHAN"
+            keyAlias = "nexlib-key"
+            keyPassword = "AMINAKHAN"
         }
     }
 

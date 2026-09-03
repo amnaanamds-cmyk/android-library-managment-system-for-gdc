@@ -7,6 +7,9 @@ SELECT * FROM issued_books WHERE status = 'Issued' AND dueDate < :today ORDER BY
 getAllTransactions:
 SELECT * FROM issued_books ORDER BY issueDate DESC;
 
+getUnsyncedIssuedBooks:
+SELECT * FROM issued_books WHERE syncStatus = 'pending' AND deleted = 0;
+
 getIssuedBookById:
 SELECT * FROM issued_books WHERE id = :id LIMIT 1;
 
@@ -17,12 +20,12 @@ insertIssuedBook:
 INSERT OR REPLACE INTO issued_books(
     syncId, bookId, bookTitle, bookIsbn, memberId, memberName,
     memberMemberId, issueDate, dueDate, returnDate, fine,
-    status, lastUpdated, deleted
+    status, lastUpdated, deleted, syncStatus, collegeId
 )
 VALUES (
     :syncId, :bookId, :bookTitle, :bookIsbn, :memberId, :memberName,
     :memberMemberId, :issueDate, :dueDate, :returnDate, :fine,
-    :status, :lastUpdated, :deleted
+    :status, :lastUpdated, :deleted, :syncStatus, :collegeId
 );
 
 returnBook:
@@ -47,7 +50,7 @@ deleteAllIssuedBooks:
 DELETE FROM issued_books;
 
 updateTimestamp:
-UPDATE issued_books SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+UPDATE issued_books SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;
 
 markDeleted:
 UPDATE issued_books SET deleted = 1, lastUpdated = :lastUpdated WHERE syncId = :syncId;

@@ -1,6 +1,6 @@
 insert:
-INSERT OR REPLACE INTO reservations(syncId, bookId, bookTitle, memberId, memberName, reservedDate, status, notifiedDate, lastUpdated, deleted)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO reservations(syncId, bookId, bookTitle, memberId, memberName, reservedDate, status, notifiedDate, lastUpdated, deleted, syncStatus, collegeId)
+VALUES (:syncId, :bookId, :bookTitle, :memberId, :memberName, :reservedDate, :status, :notifiedDate, :lastUpdated, :deleted, :syncStatus, :collegeId);
 
 getByBook:
 SELECT * FROM reservations WHERE bookId = :bookId ORDER BY reservedDate ASC;
@@ -32,11 +32,14 @@ SELECT * FROM reservations WHERE bookId = :bookId AND status = 'Pending' ORDER B
 getAllReservations:
 SELECT * FROM reservations;
 
+getUnsyncedReservations:
+SELECT * FROM reservations WHERE syncStatus = 'pending' AND deleted = 0;
+
 getBySyncId:
 SELECT * FROM reservations WHERE syncId = :syncId LIMIT 1;
 
 updateTimestamp:
-UPDATE reservations SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+UPDATE reservations SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;
 
 deleteAllReservations:
 DELETE FROM reservations;

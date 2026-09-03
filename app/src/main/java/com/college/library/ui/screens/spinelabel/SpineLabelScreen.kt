@@ -30,36 +30,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.college.library.data.db.BookDao
 import com.college.library.data.model.Book
+import com.college.library.utils.DDC_MAP
+import com.college.library.utils.getSuggestedDdc
+import com.college.library.utils.buildAuthorCutter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// ── DDC Suggestion map ───────────────────────────────────────────────────────
-val DDC_MAP = mapOf(
-    "computer" to "004", "software" to "005", "science" to "500",
-    "math" to "510", "physics" to "530", "chemistry" to "540",
-    "biology" to "570", "history" to "900", "geography" to "910",
-    "literature" to "800", "fiction" to "823", "poetry" to "811",
-    "religion" to "200", "islam" to "297", "social" to "300",
-    "economics" to "330", "law" to "340", "education" to "370",
-    "language" to "400", "english" to "420", "urdu" to "491",
-    "technology" to "600", "medicine" to "610", "engineering" to "620",
-    "art" to "700", "music" to "780", "management" to "658"
-)
 
-fun suggestDdc(category: String): String {
-    val cat = category.lowercase()
-    return DDC_MAP.entries.firstOrNull { cat.contains(it.key) }?.value ?: "020"
-}
-
-fun buildCutter(author: String): String {
-    val parts = author.trim().split(" ")
-    if (parts.isEmpty()) return ""
-    val last = parts.last().take(3).uppercase()
-    val first = if (parts.size > 1) parts.first().take(1).uppercase() else ""
-    return last + first
-}
 
 // ── ViewModel ───────────────────────────────────────────────────────────────
 @HiltViewModel
@@ -141,9 +120,9 @@ fun EditLabelDialog(
     onSave: (callNumber: String, authorCutter: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val suggested = remember { suggestDdc(book.category) }
+    val suggested = remember { getSuggestedDdc(book.title, book.category) }
     var callNo by remember { mutableStateOf(book.callNumber.ifBlank { suggested }) }
-    var cutter by remember { mutableStateOf(book.authorCutter.ifBlank { buildCutter(book.author) }) }
+    var cutter by remember { mutableStateOf(book.authorCutter.ifBlank { buildAuthorCutter(book.author) }) }
     val year = remember { book.publishDate.take(4).ifBlank { "2024" } }
 
     Dialog(onDismissRequest = onDismiss) {

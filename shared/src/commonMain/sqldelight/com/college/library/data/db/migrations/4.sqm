@@ -1,0 +1,11 @@
+-- Migration 4: Sync Status Fix
+-- The issued_books and reservations tables were missing the syncStatus column that exists
+-- in their Kotlin data models. This caused getUnsyncedTransactions/Reservations to fall
+-- back to a broken timestamp-comparison heuristic that re-uploaded already-synced records
+-- on every push cycle, leading to redundant Firestore writes and incorrect sync status.
+
+ALTER TABLE issued_books ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'synced';
+ALTER TABLE issued_books ADD COLUMN collegeId  TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE reservations ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'synced';
+ALTER TABLE reservations ADD COLUMN collegeId  TEXT NOT NULL DEFAULT '';

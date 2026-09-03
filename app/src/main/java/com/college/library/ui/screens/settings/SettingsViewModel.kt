@@ -282,6 +282,10 @@ class SettingsViewModel @Inject constructor(
                         digitalUrl = book.digitalUrl,
                         category = book.category,
                         marcData = book.marcData,
+                        callNumber = book.callNumber,
+                        authorCutter = book.authorCutter,
+                        collegeId = book.collegeId,
+                        syncStatus = book.syncStatus,
                         lastUpdated = System.currentTimeMillis(),
                         deleted = false
                     )
@@ -406,6 +410,10 @@ class SettingsViewModel @Inject constructor(
                         digitalUrl = book.digitalUrl,
                         category = book.category,
                         marcData = book.marcData,
+                        callNumber = book.callNumber,
+                        authorCutter = book.authorCutter,
+                        collegeId = book.collegeId,
+                        syncStatus = book.syncStatus,
                         lastUpdated = System.currentTimeMillis(),
                         deleted = false
                     )

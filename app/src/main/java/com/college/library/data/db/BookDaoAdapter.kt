@@ -49,6 +49,10 @@ class BookDaoAdapter(private val db: SQLDelightDb) : BookDao {
                 isDigital = book.isDigital, digitalUrl = book.digitalUrl,
                 category = book.category,
                 marcData = book.marcData,
+                callNumber = book.callNumber,
+                authorCutter = book.authorCutter,
+                collegeId = book.collegeId,
+                syncStatus = "pending", // Always mark as pending — the push engine will flip it to 'synced'
                 lastUpdated = System.currentTimeMillis(),
                 deleted = false
             )
@@ -68,6 +72,10 @@ class BookDaoAdapter(private val db: SQLDelightDb) : BookDao {
                 isDigital = book.isDigital, digitalUrl = book.digitalUrl,
                 category = book.category,
                 marcData = book.marcData,
+                callNumber = book.callNumber,
+                authorCutter = book.authorCutter,
+                collegeId = book.collegeId,
+                syncStatus = "pending", // Mark as pending so the push engine re-uploads this record
                 lastUpdated = System.currentTimeMillis(),
                 deleted = book.deleted,
                 id = book.id
@@ -85,7 +93,28 @@ class BookDaoAdapter(private val db: SQLDelightDb) : BookDao {
 
     override suspend fun updateBookStatus(id: Long, status: String) {
         withContext(Dispatchers.IO) {
-            queries.updateBookStatus(status = status, id = id, lastUpdated = System.currentTimeMillis())
+            // Update the book row then immediately re-mark it as pending so the push engine picks it up.
+            val book = queries.getBookById(id).executeAsOneOrNull()
+            if (book != null) {
+                queries.updateBook(
+                    syncId = book.syncId, isbn = book.isbn, accNo = book.accNo,
+                    title = book.title, author = book.author, publisher = book.publisher,
+                    publisherPlace = book.publisherPlace, publishDate = book.publishDate,
+                    edition = book.edition, pages = book.pages,
+                    procurement = book.procurement, volume = book.volume,
+                    price = book.price, status = status,
+                    isDigital = book.isDigital, digitalUrl = book.digitalUrl,
+                    category = book.category, marcData = book.marcData,
+                    callNumber = book.callNumber, authorCutter = book.authorCutter,
+                    collegeId = book.collegeId,
+                    syncStatus = "pending",
+                    lastUpdated = System.currentTimeMillis(),
+                    deleted = book.deleted,
+                    id = id
+                )
+            } else {
+                queries.updateBookStatus(status = status, id = id, lastUpdated = System.currentTimeMillis())
+            }
             runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         }
     }

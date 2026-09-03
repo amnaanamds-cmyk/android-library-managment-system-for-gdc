@@ -1,0 +1,17 @@
+-- Migration 3: Premium Features Fix
+-- Adds biometric fields to members table and spine-label / classification
+-- fields to the books table. These columns existed in the Kotlin data model
+-- but were missing from the SQLite schema, causing silent data loss when
+-- BiometricScreen tried to enrol fingerprints and when SpineLabelScreen /
+-- ClassificationScreen tried to save call numbers.
+
+ALTER TABLE members ADD COLUMN biometricHash        TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN biometricEnrolDate   TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN biometricLastVerified TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN collegeId            TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN syncStatus           TEXT NOT NULL DEFAULT 'synced';
+
+ALTER TABLE books ADD COLUMN callNumber   TEXT NOT NULL DEFAULT '';
+ALTER TABLE books ADD COLUMN authorCutter TEXT NOT NULL DEFAULT '';
+ALTER TABLE books ADD COLUMN collegeId   TEXT NOT NULL DEFAULT '';
+ALTER TABLE books ADD COLUMN syncStatus  TEXT NOT NULL DEFAULT 'synced';

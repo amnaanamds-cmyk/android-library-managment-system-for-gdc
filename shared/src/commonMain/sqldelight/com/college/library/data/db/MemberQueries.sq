@@ -4,6 +4,9 @@ SELECT * FROM members ORDER BY id DESC;
 getAllMembersStatic:
 SELECT * FROM members;
 
+getUnsyncedMembers:
+SELECT * FROM members WHERE syncStatus = 'pending' AND deleted = 0;
+
 searchMembers:
 SELECT * FROM members WHERE name LIKE '%' || :query || '%' OR memberId LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%' ORDER BY id DESC;
 
@@ -20,12 +23,16 @@ insertMember:
 INSERT OR REPLACE INTO members(
     syncId, memberId, name, email, phone, department, memberType,
     joinDate, expiryDate, booksIssued, fatherName, className,
-    classNo, address, photoUri, designation, bps, pin, lastUpdated, deleted
+    classNo, address, photoUri, designation, bps, pin,
+    biometricHash, biometricEnrolDate, biometricLastVerified,
+    collegeId, syncStatus, lastUpdated, deleted
 )
 VALUES (
     :syncId, :memberId, :name, :email, :phone, :department, :memberType,
     :joinDate, :expiryDate, :booksIssued, :fatherName, :className,
-    :classNo, :address, :photoUri, :designation, :bps, :pin, :lastUpdated, :deleted
+    :classNo, :address, :photoUri, :designation, :bps, :pin,
+    :biometricHash, :biometricEnrolDate, :biometricLastVerified,
+    :collegeId, :syncStatus, :lastUpdated, :deleted
 );
 
 updateMember:
@@ -35,7 +42,11 @@ SET syncId = :syncId, memberId = :memberId, name = :name, email = :email,
     joinDate = :joinDate, expiryDate = :expiryDate, booksIssued = :booksIssued,
     fatherName = :fatherName, className = :className, classNo = :classNo,
     address = :address, photoUri = :photoUri, designation = :designation,
-    bps = :bps, pin = :pin, lastUpdated = :lastUpdated, deleted = :deleted
+    bps = :bps, pin = :pin,
+    biometricHash = :biometricHash, biometricEnrolDate = :biometricEnrolDate,
+    biometricLastVerified = :biometricLastVerified,
+    collegeId = :collegeId, syncStatus = :syncStatus,
+    lastUpdated = :lastUpdated, deleted = :deleted
 WHERE id = :id;
 
 deleteMember:
@@ -54,4 +65,4 @@ getTotalCount:
 SELECT COUNT(*) FROM members;
 
 updateTimestamp:
-UPDATE members SET lastUpdated = :lastUpdated WHERE syncId = :syncId;
+UPDATE members SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;

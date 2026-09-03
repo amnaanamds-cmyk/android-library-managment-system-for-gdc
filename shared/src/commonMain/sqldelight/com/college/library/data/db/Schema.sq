@@ -18,6 +18,10 @@ CREATE TABLE books (
     digitalUrl TEXT,
     category TEXT NOT NULL DEFAULT 'Uncategorized',
     marcData TEXT,
+    callNumber TEXT NOT NULL DEFAULT '',
+    authorCutter TEXT NOT NULL DEFAULT '',
+    collegeId TEXT NOT NULL DEFAULT '',
+    syncStatus TEXT NOT NULL DEFAULT 'synced',
     lastUpdated INTEGER NOT NULL DEFAULT 0,
     deleted INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
 );
@@ -42,6 +46,11 @@ CREATE TABLE members (
     designation TEXT NOT NULL DEFAULT '',
     bps TEXT NOT NULL DEFAULT '',
     pin TEXT NOT NULL DEFAULT '',
+    biometricHash TEXT NOT NULL DEFAULT '',
+    biometricEnrolDate TEXT NOT NULL DEFAULT '',
+    biometricLastVerified TEXT NOT NULL DEFAULT '',
+    collegeId TEXT NOT NULL DEFAULT '',
+    syncStatus TEXT NOT NULL DEFAULT 'synced',
     lastUpdated INTEGER NOT NULL DEFAULT 0,
     deleted INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
 );
@@ -62,6 +71,8 @@ CREATE TABLE issued_books (
     status TEXT NOT NULL DEFAULT 'Issued',
     lastUpdated INTEGER NOT NULL DEFAULT 0,
     deleted INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    syncStatus TEXT NOT NULL DEFAULT 'pending',
+    collegeId TEXT NOT NULL DEFAULT '',
     FOREIGN KEY(bookId) REFERENCES books(id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY(memberId) REFERENCES members(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -77,7 +88,9 @@ CREATE TABLE reservations (
     status TEXT NOT NULL DEFAULT 'Pending',
     notifiedDate TEXT,
     lastUpdated INTEGER NOT NULL DEFAULT 0,
-    deleted INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0
+    deleted INTEGER AS kotlin.Boolean NOT NULL DEFAULT 0,
+    syncStatus TEXT NOT NULL DEFAULT 'pending',
+    collegeId TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE sync_conflicts (

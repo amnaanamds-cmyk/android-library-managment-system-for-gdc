@@ -45,15 +45,15 @@ export default function ClassificationPage() {
   const filtered = (books || []).filter((b: any) => {
     const q = search.toLowerCase();
     const matchQ = !q || (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q);
-    const matchF = filter === "All" || (filter === "Classified" && b.classificationNo) || (filter === "Unclassified" && !b.classificationNo);
+    const matchF = filter === "All" || (filter === "Classified" && b.callNumber) || (filter === "Unclassified" && !b.callNumber);
     return matchQ && matchF;
   });
 
-  const classified = (books || []).filter((b: any) => b.classificationNo).length;
+  const classified = (books || []).filter((b: any) => b.callNumber).length;
 
   const openEdit = (book: any) => {
     setEditingBook(book);
-    setClassNo(book.classificationNo || autoClassify(book.title || "", book.category || ""));
+    setClassNo(book.callNumber || autoClassify(book.title || "", book.category || ""));
     setSubject(book.subjectHeading || "");
     setSystem(book.classificationSystem || "DDC");
   };
@@ -61,19 +61,19 @@ export default function ClassificationPage() {
   const saveClassification = async () => {
     if (!editingBook) return;
     setSaving(true);
-    await updateRecord(editingBook.id, { classificationNo: classNo, subjectHeading: subject, classificationSystem: system });
+    await updateRecord(editingBook.id, { callNumber: classNo, subjectHeading: subject, classificationSystem: system });
     setSaving(false);
     setEditingBook(null);
   };
 
   const autoClassifyAll = async () => {
-    const unclassified = (books || []).filter((b: any) => !b.classificationNo);
+    const unclassified = (books || []).filter((b: any) => !b.callNumber);
     if (!unclassified.length) { alert("All books are already classified!"); return; }
     if (!confirm(`Auto-classify ${unclassified.length} unclassified books using AI keyword analysis?`)) return;
     setAutoRunning(true);
     for (const book of unclassified) {
       const code = autoClassify(book.title || "", book.category || "");
-      await updateRecord(book.id, { classificationNo: code, classificationSystem: "DDC" });
+      await updateRecord(book.id, { callNumber: code, classificationSystem: "DDC" });
     }
     setAutoRunning(false);
     alert(`✅ Auto-classified ${unclassified.length} books!`);
@@ -200,10 +200,10 @@ export default function ClassificationPage() {
                   <td className="px-4 py-3 font-semibold text-white">{book.title}</td>
                   <td className="px-4 py-3">{book.author || "—"}</td>
                   <td className="px-4 py-3">{book.category || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-blue-300">{book.classificationNo || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-blue-300">{book.callNumber || "—"}</td>
                   <td className="px-4 py-3">{book.classificationSystem || "—"}</td>
                   <td className="px-4 py-3">
-                    {book.classificationNo
+                    {book.callNumber
                       ? <span className="text-xs font-bold text-emerald-400">✅ Done</span>
                       : <span className="text-xs font-bold text-amber-400">⏳ Pending</span>}
                   </td>

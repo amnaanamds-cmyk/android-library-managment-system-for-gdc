@@ -29,6 +29,10 @@ fun Books.toModel() = Book(
     digitalUrl = digitalUrl,
     category = category,
     marcData = marcData,
+    callNumber = callNumber,
+    authorCutter = authorCutter,
+    collegeId = collegeId,
+    syncStatus = syncStatus,
     lastUpdated = lastUpdated,
     deleted = deleted
 )
@@ -53,6 +57,11 @@ fun Members.toModel() = Member(
     designation = designation,
     bps = bps,
     pin = pin,
+    biometricHash = biometricHash,
+    biometricEnrolDate = biometricEnrolDate,
+    biometricLastVerified = biometricLastVerified,
+    collegeId = collegeId,
+    syncStatus = syncStatus,
     lastUpdated = lastUpdated,
     deleted = deleted
 )
