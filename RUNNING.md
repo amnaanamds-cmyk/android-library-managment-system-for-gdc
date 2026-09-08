@@ -58,7 +58,7 @@ android-library-managment-system-for-gdc/
 │       ├── ui/screens/              ~50 feature screens.
 │       └── utils/                   Barcodes, receipts, overdue workers.
 │
-├── shared/                      ← KOTLIN MULTIPLATFORM (used by app + desktopApp)
+├── shared/                      ← KOTLIN MULTIPLATFORM (used by :app)
 │   └── src/commonMain/
 │       ├── kotlin/.../data/         Models, SyncService, ConflictResolver.
 │       └── sqldelight/              .sq schema + migrations.
@@ -101,15 +101,11 @@ android-library-managment-system-for-gdc/
 └── RUNNING.md                      this file
 ```
 
-### Two directories that are NOT part of the system
-
-- **`desktopApp/`** — a Compose Desktop (Kotlin) client. It is **superseded** by
-  the Python `gdc_desktop/`. It still compiles and is still in
-  `settings.gradle.kts`, so Android Studio will show it, but the Python client
-  is the one that ships. Ignore it, and ignore KMP-desktop references in older
-  planning files.
-- **`web/`** — an abandoned Next.js starter scaffold. `web-app/` is the real
-  one. Safe to delete.
+> Two directories were **deleted** because they were not part of the system and
+> caused repeated confusion: `desktopApp/` (a Compose Desktop client superseded
+> by the Python `gdc_desktop/`, which Android Studio kept showing as a module)
+> and `web/` (an abandoned Next.js starter scaffold beside the real
+> `web-app/`). Ignore any reference to either in older planning files.
 
 ---
 
@@ -368,8 +364,7 @@ only as "sync doesn't work" on Android and web.
 Android Studio will index three Gradle modules:
 
 - `:app` — the Android application
-- `:shared` — Kotlin Multiplatform, shared with the desktop module
-- `:desktopApp` — the superseded Compose Desktop client (§2)
+- `:shared` — Kotlin Multiplatform models and sync engine
 
 ### 6.2 Configure
 
@@ -417,13 +412,6 @@ installs fine and can then never be upgraded by a properly signed one.
 > The previously committed keystore must be treated as compromised. See
 > DEPLOYMENT.md §0.1 before publishing anything.
 
-### 6.5 Running the Kotlin desktop module (optional)
-
-```bash
-./gradlew :desktopApp:run
-```
-
-Superseded by the Python client. Useful only for inspecting the shared KMP code.
 
 ---
 

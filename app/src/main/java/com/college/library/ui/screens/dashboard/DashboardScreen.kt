@@ -60,14 +60,6 @@ fun DashboardScreen(
     val state by viewModel.state.collectAsState()
     val currentRole by authViewModel.currentRole.collectAsState()
 
-    // Currency label as last synced from the institution's LibrarySettings.
-    // SettingsViewModel mirrors it into these preferences, so reading it here
-    // keeps the dashboard consistent with every other money figure in the app.
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val currencySymbol = remember {
-        context.getSharedPreferences("library_settings", android.content.Context.MODE_PRIVATE)
-            .getString("currency_symbol", "Rs") ?: "Rs"
-    }
     val canAccessSettings by remember { derivedStateOf { authViewModel.canAccessSettings() } }
 
     val syncService = remember { SyncManager.getSyncService(viewModel.database) }
@@ -83,7 +75,16 @@ fun DashboardScreen(
     }
 
     val context = LocalContext.current
-    
+
+    // Currency label as last synced from the institution's LibrarySettings.
+    // SettingsViewModel mirrors it into these preferences, so the dashboard
+    // agrees with every other money figure in the app instead of hardcoding a
+    // glyph — it previously printed the Indian rupee sign.
+    val currencySymbol = remember {
+        context.getSharedPreferences("library_settings", android.content.Context.MODE_PRIVATE)
+            .getString("currency_symbol", "Rs") ?: "Rs"
+    }
+
     // Refresh profile every time the screen is displayed
     LaunchedEffect(Unit) {
         viewModel.refreshProfile()

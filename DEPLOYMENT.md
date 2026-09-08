@@ -356,5 +356,6 @@ Carried deliberately, and worth tracking:
 - **Android build unverified.** The claims change in `AuthViewModel` was
   reviewed but not compiled; no Android SDK was available. Run
   `./gradlew :app:compileDebugKotlin` before shipping.
-- **`web/`** is an abandoned Next.js scaffold, separate from `web-app/`. It is
-  not deployed and can be deleted.
+- **Removed:** `web/` (abandoned Next.js scaffold) and `desktopApp/` (Compose
+  Desktop client superseded by the Python one) have been deleted from the
+  repository.

@@ -8,7 +8,7 @@ so the required lambda is left unfilled and the compiler says
 """
 import re, pathlib, sys, collections
 
-ROOTS = ["app/src/main", "shared/src", "desktopApp/src"]
+ROOTS = ["app/src/main", "shared/src"]
 files = [p for r in ROOTS for p in pathlib.Path(r).rglob("*.kt")]
 
 decl_re = re.compile(

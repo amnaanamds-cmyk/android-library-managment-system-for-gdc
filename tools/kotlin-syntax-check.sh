@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 # ===================================================================
-#  Parse every Kotlin file with the real Kotlin compiler and report
-#  SYNTAX errors only.
+#  Compile every Kotlin file with the real Kotlin compiler and report the
+#  errors that do NOT require the Android SDK to detect:
+#
+#    * syntax errors            "Expecting an element", "Expecting '}'"
+#    * declaration conflicts    "conflicting declarations", "redeclaration"
+#
+#  The second class was added after a duplicate `val context` in one composable
+#  shipped and broke the build. It is a RESOLUTION error, not a syntax error,
+#  so a syntax-only filter reported a clean tree while the app would not
+#  compile. Both classes are about names in the file itself, so neither needs
+#  Android, Compose or Firebase on the classpath.
 #
 #      ./tools/kotlin-syntax-check.sh
 #
@@ -53,21 +62,33 @@ OUT=$(mktemp -d)
 LOG=$(mktemp)
 trap 'rm -rf "$SRC" "$OUT" "$LOG"' EXIT
 
-find app/src/main shared/src desktopApp/src -name '*.kt' > "$SRC"
+find app/src/main shared/src -name '*.kt' > "$SRC"
 echo "Parsing $(wc -l < "$SRC" | tr -d ' ') Kotlin files..."
 
 java -Xmx2g -cp "$CP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler \
   -no-stdlib -no-reflect -cp "$CACHE/kotlin-stdlib.jar" \
   "@$SRC" -d "$OUT" -nowarn 2>&1 | grep -v '^Picked up' > "$LOG" || true
 
-COUNT=$(grep -c 'syntax error' "$LOG" || true)
+SYNTAX=$(grep -c 'syntax error' "$LOG" || true)
+CONFLICT=$(grep -ic 'conflicting declaration\|redeclaration' "$LOG" || true)
+
 echo
-if [ "$COUNT" -eq 0 ]; then
-  echo "No syntax errors in any Kotlin file."
+if [ "$SYNTAX" -eq 0 ] && [ "$CONFLICT" -eq 0 ]; then
+  echo "No syntax errors and no declaration conflicts in any Kotlin file."
   exit 0
 fi
 
-echo "$COUNT syntax error(s):"
-echo
-grep -B1 -A2 'syntax error' "$LOG"
+if [ "$SYNTAX" -ne 0 ]; then
+  echo "$SYNTAX syntax error(s):"
+  echo
+  grep -B1 -A2 'syntax error' "$LOG"
+  echo
+fi
+
+if [ "$CONFLICT" -ne 0 ]; then
+  echo "$CONFLICT declaration conflict(s) — the same name declared twice in one scope:"
+  echo
+  grep -i -A3 'conflicting declaration\|redeclaration' "$LOG"
+  echo
+fi
 exit 1

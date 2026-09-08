@@ -20,7 +20,8 @@ are onboarded rather than forked.
 
 | Document | What it covers |
 |---|---|
-| **[RUNNING.md](RUNNING.md)** | Repository structure, running everything from Android Studio and VS Code, and how syncing works. **Start here.** |
+| **[SETUP.md](SETUP.md)** | Setting the system up from scratch, in order: tools, clone, run each app, Firebase, first directorate account, onboarding a college. **Start here.** |
+| **[RUNNING.md](RUNNING.md)** | Repository structure, running everything day to day, and how syncing works. |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production runbook: Firebase setup, signing, Vercel, onboarding a college, and the items that block a real rollout. |
 | **[SYNC_ARCHITECTURE.md](SYNC_ARCHITECTURE.md)** | Canonical Firestore layout and the sync envelope. |
 
