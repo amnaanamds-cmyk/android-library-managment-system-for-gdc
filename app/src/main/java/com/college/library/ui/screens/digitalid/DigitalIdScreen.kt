@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import com.college.library.profile.CollegeProfileManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -95,6 +96,11 @@ fun DigitalIdScreen(
     val qrBitmap by viewModel.qrBitmap.collectAsState()
     val context = LocalContext.current
 
+    // The card must carry THIS college's identity. It previously printed a
+    // fixed "Government Degree College", which is wrong on a system serving
+    // every Government Degree College in Khyber Pakhtunkhwa.
+    val profile = remember { CollegeProfileManager.getInstance(context).getProfile() }
+
     LaunchedEffect(memberId) { viewModel.loadMember(memberId) }
 
     Scaffold(
@@ -158,12 +164,12 @@ fun DigitalIdScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        "GDC LIBRARY50",
+                                        profile.libraryName.uppercase(),
                                         fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
                                         color = Color(0xFFC8A84B), letterSpacing = 1.sp
                                     )
                                     Text(
-                                        "Government Degree College",
+                                        profile.collegeFullName,
                                         fontSize = 11.sp, color = Color(0xFF94A3B8)
                                     )
                                 }

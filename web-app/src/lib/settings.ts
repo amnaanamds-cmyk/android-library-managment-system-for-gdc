@@ -186,3 +186,61 @@ export function useLibrarySettings() {
 
   return { settings, loading, error, save };
 }
+
+// ─── Institution identity ────────────────────────────────────────────────────
+
+export interface InstitutionProfile {
+  /** The college's own name, e.g. "Government Degree College Ziam Sherpao". */
+  name: string;
+  district: string;
+  /** Short label for ID cards and receipt headers. */
+  libraryName: string;
+}
+
+const DEFAULT_INSTITUTION: InstitutionProfile = {
+  // Deliberately generic. This system serves every Government Degree College in
+  // Khyber Pakhtunkhwa, so a default naming one particular college would print
+  // the wrong name on another college's ID cards until somebody noticed.
+  name: "Government Degree College",
+  district: "",
+  libraryName: "College Library",
+};
+
+/**
+ * The signed-in college's own identity, for anything that displays its name.
+ *
+ * ID cards, receipts and report headers previously hardcoded a single college.
+ * They must show whichever institution the current user belongs to.
+ */
+export function useInstitutionProfile() {
+  const { profile } = useAuth();
+  const [institution, setInstitution] = useState<InstitutionProfile>(DEFAULT_INSTITUTION);
+  const institutionId = profile?.institutionId;
+
+  useEffect(() => {
+    if (!institutionId) {
+      setInstitution(DEFAULT_INSTITUTION);
+      return;
+    }
+    const unsub = onSnapshot(
+      doc(db, ROOT_COLLECTIONS.institutions, institutionId),
+      (snap) => {
+        const d = snap.data();
+        if (!d) {
+          setInstitution(DEFAULT_INSTITUTION);
+          return;
+        }
+        setInstitution({
+          name: d.name || d.collegeName || DEFAULT_INSTITUTION.name,
+          district: d.district || "",
+          libraryName: d.libraryName || DEFAULT_INSTITUTION.libraryName,
+        });
+      },
+      // A read failure must not blank the card; fall back to the generic label.
+      () => setInstitution(DEFAULT_INSTITUTION),
+    );
+    return () => unsub();
+  }, [institutionId]);
+
+  return { institution, institutionId };
+}

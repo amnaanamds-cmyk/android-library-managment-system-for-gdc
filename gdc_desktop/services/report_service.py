@@ -23,6 +23,7 @@ except ImportError:
     HAS_REPORTS = False
 
 from models import Book, Member, IssueRecord
+import config
 
 
 class ReportService:
@@ -39,12 +40,12 @@ class ReportService:
         dark = colors.HexColor("#0D1B2A")
 
         story.append(Paragraph(
-            "🏛 Government Degree College", 
+            f"🏛 {getattr(config, 'COLLEGE_NAME', '') or 'Government Degree College'}", 
             ParagraphStyle("header", fontSize=20, textColor=dark,
                            fontName="Helvetica-Bold", alignment=TA_CENTER)
         ))
         story.append(Paragraph(
-            "Ziam Sherpao — Library Management System",
+            "NEXLIB — Library Management System",
             ParagraphStyle("sub", fontSize=11, textColor=colors.grey,
                            alignment=TA_CENTER)
         ))

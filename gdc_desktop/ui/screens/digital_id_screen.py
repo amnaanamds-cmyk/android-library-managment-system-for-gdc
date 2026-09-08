@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QFont, QPainter
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+import config
 
 try:
     import qrcode
@@ -118,7 +119,7 @@ class DigitalIdScreen(QWidget):
         library_title.setFont(QFont("Segoe UI", 14, QFont.Weight.ExtraBold))
         library_title.setStyleSheet("color: #C8A84B;")
         
-        inst_sub = QLabel("Government Degree College")
+        inst_sub = QLabel(getattr(config, "COLLEGE_NAME", "") or "Government Degree College")
         inst_sub.setFont(QFont("Segoe UI", 9))
         inst_sub.setStyleSheet("color: #94A3B8;")
         title_box.addWidget(library_title)

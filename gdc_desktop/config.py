@@ -40,7 +40,9 @@ LOCAL_DB_PATH: str = str(
 # ─── App Info ────────────────────────────────────────────────────────────────
 APP_NAME: str = "NEXLIB Desktop"
 APP_VERSION: str = "1.0.0"
-APP_ORG: str = "Government Degree College"
+# Neutral: this build serves every Government Degree College in KPK. The
+# specific college comes from COLLEGE_NAME in .env.
+APP_ORG: str = "Higher Education Department, Khyber Pakhtunkhwa"
 
 # ─── Directorate Central Sync ─────────────────────────────────────────────────
 DIRECTORATE_API_URL: str = os.getenv("DIRECTORATE_API_URL", "http://localhost:8000")

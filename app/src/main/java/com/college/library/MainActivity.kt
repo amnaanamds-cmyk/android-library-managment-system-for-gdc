@@ -86,7 +86,12 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val darkModeEnabled = settingsViewModel.state.collectAsState().value.darkModeEnabled
+            val settingsState = settingsViewModel.state.collectAsState().value
+            val darkModeEnabled = settingsState.darkModeEnabled
+            // Urdu lays out right-to-left; English left-to-right.
+            val layoutDirection =
+                if (settingsState.currentLanguage.isRtl) androidx.compose.ui.unit.LayoutDirection.Rtl
+                else androidx.compose.ui.unit.LayoutDirection.Ltr
             val context = androidx.compose.ui.platform.LocalContext.current
 
             var isProfileSetup by remember { mutableStateOf<Boolean?>(null) }
@@ -108,7 +113,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            AppTheme(darkModeEnabled = darkModeEnabled) {
+            AppTheme(darkModeEnabled = darkModeEnabled, layoutDirection = layoutDirection) {
                 if (isProfileSetup == null) {
                     Surface(color = MaterialTheme.colorScheme.background) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

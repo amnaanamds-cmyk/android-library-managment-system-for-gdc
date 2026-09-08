@@ -122,7 +122,9 @@ class SettingsScreen(QtWidgets.QWidget):
         ui_form = QtWidgets.QFormLayout()
         
         self.lang_cb = QtWidgets.QComboBox()
-        self.lang_cb.addItems(["English", "Hindi"])
+        # Urdu, not Hindi: this system serves the Government Degree Colleges of
+        # Khyber Pakhtunkhwa, where the language is Urdu.
+        self.lang_cb.addItems(["English", "اردو (Urdu)"])
         self.lang_cb.currentTextChanged.connect(self._toggle_lang)
         ui_form.addRow("Language", self.lang_cb)
 

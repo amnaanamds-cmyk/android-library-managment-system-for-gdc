@@ -1,8 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import { useTenantCollection } from "@/lib/firestore-hooks";
+import { useInstitutionProfile } from "@/lib/settings";
 
 export default function DigitalIdCardsPage() {
+  // The card must carry the signed-in college's own name, not a fixed one.
+  const { institution } = useInstitutionProfile();
   const { data: members, loading } = useTenantCollection("members");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any>(null);
@@ -22,8 +25,8 @@ export default function DigitalIdCardsPage() {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="270">
       <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0F1E3D"/><stop offset="50%" stop-color="#1A3A6E"/><stop offset="100%" stop-color="#0F1E3D"/></linearGradient></defs>
       <rect width="420" height="270" rx="18" fill="url(#bg)" stroke="#C8A84B" stroke-width="2"/>
-      <text x="24" y="44" fill="#C8A84B" font-size="22" font-family="Arial" font-weight="bold">📚 GDC LIBRARY</text>
-      <text x="24" y="64" fill="#94A3B8" font-size="11" font-family="Arial">Government Degree College</text>
+      <text x="24" y="44" fill="#C8A84B" font-size="22" font-family="Arial" font-weight="bold">📚 ${institution.libraryName.toUpperCase()}</text>
+      <text x="24" y="64" fill="#94A3B8" font-size="11" font-family="Arial">${institution.name}</text>
       <line x1="20" y1="78" x2="400" y2="78" stroke="#C8A84B" stroke-opacity="0.4" stroke-width="1"/>
       <text x="24" y="115" fill="white" font-size="18" font-family="Arial" font-weight="bold">${selected.name}</text>
       <text x="24" y="138" fill="#94A3B8" font-size="12" font-family="Arial">MEMBER ID: ${selected.id?.slice(0, 8).toUpperCase()}</text>
@@ -88,8 +91,8 @@ export default function DigitalIdCardsPage() {
             <div className="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-[#C8A84B]/30">
               <span className="text-2xl">📚</span>
               <div>
-                <p className="font-extrabold text-[#C8A84B] text-sm tracking-wide">GDC LIBRARY</p>
-                <p className="text-[10px] text-slate-400">Government Degree College</p>
+                <p className="font-extrabold text-[#C8A84B] text-sm tracking-wide">{institution.libraryName.toUpperCase()}</p>
+                <p className="text-[10px] text-slate-400">{institution.name}</p>
               </div>
               <div className="ml-auto">
                 <span className="bg-emerald-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full">ACTIVE</span>

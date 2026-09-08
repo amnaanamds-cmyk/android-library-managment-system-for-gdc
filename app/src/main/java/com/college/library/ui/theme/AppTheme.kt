@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -33,6 +35,12 @@ fun AppTheme(
     // Font scaling factor from settings (default 1.0 = normal size)
     fontScale: Float = 1f,
     dynamicColor: Boolean = true,
+    /**
+     * Reading direction for the active language. Urdu is written right-to-left,
+     * and an Urdu UI laid out left-to-right is not merely untidy — labels sit on
+     * the wrong side of their values and every row reads backwards.
+     */
+    layoutDirection: LayoutDirection = LayoutDirection.Ltr,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -67,7 +75,8 @@ fun AppTheme(
         LocalDensity provides Density(
             density = currentDensity.density,
             fontScale = fontScale
-        )
+        ),
+        LocalLayoutDirection provides layoutDirection,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

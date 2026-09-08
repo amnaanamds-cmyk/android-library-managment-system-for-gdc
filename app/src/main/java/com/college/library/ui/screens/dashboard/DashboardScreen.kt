@@ -59,6 +59,15 @@ fun DashboardScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val currentRole by authViewModel.currentRole.collectAsState()
+
+    // Currency label as last synced from the institution's LibrarySettings.
+    // SettingsViewModel mirrors it into these preferences, so reading it here
+    // keeps the dashboard consistent with every other money figure in the app.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val currencySymbol = remember {
+        context.getSharedPreferences("library_settings", android.content.Context.MODE_PRIVATE)
+            .getString("currency_symbol", "Rs") ?: "Rs"
+    }
     val canAccessSettings by remember { derivedStateOf { authViewModel.canAccessSettings() } }
 
     val syncService = remember { SyncManager.getSyncService(viewModel.database) }
@@ -212,7 +221,13 @@ fun DashboardScreen(
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DoubleStatCard(title = "Fine Collected", value = state.totalFineCollected, color = DangerRed, modifier = Modifier.fillMaxWidth())
+                    DoubleStatCard(
+                        title = "Fine Collected",
+                        value = state.totalFineCollected,
+                        color = DangerRed,
+                        modifier = Modifier.fillMaxWidth(),
+                        currencySymbol = currencySymbol,
+                    )
                 }
             }
 
@@ -340,7 +355,18 @@ fun StatCard(title: String, value: Int, color: Color, modifier: Modifier = Modif
 }
 
 @Composable
-fun DoubleStatCard(title: String, value: Double, color: Color, modifier: Modifier = Modifier) {
+fun DoubleStatCard(
+    title: String,
+    value: Double,
+    color: Color,
+    modifier: Modifier = Modifier,
+    /**
+     * Currency label from the institution's LibrarySettings. Defaults to the
+     * Pakistani rupee — this deployment previously printed the INDIAN rupee
+     * sign (U+20B9), which is a different currency.
+     */
+    currencySymbol: String = "Rs",
+) {
     Card(
         modifier = modifier.height(100.dp),
         colors = CardDefaults.cardColors(containerColor = color),
@@ -355,7 +381,12 @@ fun DoubleStatCard(title: String, value: Double, color: Color, modifier: Modifie
         ) {
             Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("₹${String.format("%.2f", value)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "$currencySymbol ${String.format("%.2f", value)}",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

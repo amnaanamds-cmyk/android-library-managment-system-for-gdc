@@ -303,7 +303,13 @@ class LoginScreen(QWidget):
 
         root_layout.addWidget(card)
 
-        note = QLabel("Government Degree College Ziam Sherpao  \u00b7  Library System v1.0")
+        # The login screen must not name one college: this build is installed at
+        # every Government Degree College in Khyber Pakhtunkhwa. The signed-in
+        # college's own name comes from its profile after login.
+        note = QLabel(
+            f"{getattr(config, 'COLLEGE_NAME', '') or 'Government Degree Colleges, Khyber Pakhtunkhwa'}"
+            "  \u00b7  NEXLIB Library System v1.0"
+        )
         note.setStyleSheet("color: #2A3A50; font-size: 10px; font-family: 'Segoe UI';")
         note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root_layout.addWidget(note)
