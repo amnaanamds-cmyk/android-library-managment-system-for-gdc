@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Emulators (firestore, auth, functions)",
+      "type": "shell",
+      "command": "firebase emulators:start --only firestore,auth,functions --project demo-nexlib",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: security rules",
+      "type": "shell",
+      "command": "npm test",
+      "options": { "cwd": "${workspaceFolder}/tests/firestore" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: directorate rollup",
+      "type": "shell",
+      "command": "npm test",
+      "options": { "cwd": "${workspaceFolder}/functions" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: end-to-end (two institutions)",
+      "type": "shell",
+      "command": "npm run test:e2e",
+      "options": { "cwd": "${workspaceFolder}/functions" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: desktop offline sync",
+      "type": "shell",
+      "command": "python3 tests/desktop/test_sync_engine.py",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "test",
+      "problemMatcher": []
+    }
+  ]
+}

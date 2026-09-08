@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Desktop client (PyQt6)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/gdc_desktop/main.py",
+      "cwd": "${workspaceFolder}/gdc_desktop",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Web + director portal (next dev)",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/web-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Desktop sync tests",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/desktop/test_sync_engine.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}
