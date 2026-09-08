@@ -229,7 +229,17 @@ fun DirectorDashboardScreen(
                         isLoading = true
                         message = null
                         scope.launch {
-                            collegeService.createCollege(createName.trim(), directorUid)
+                            // createCollege takes (collegeId, collegeName, ownerUid). The
+                            // dialog only asks for a name — it promises the id and invite
+                            // code are generated — so derive a readable id from it, in the
+                            // same shape registerInstitution produces (GDC-ZIAM-SHERPAO).
+                            val collegeName = createName.trim()
+                            val collegeId = collegeName
+                                .uppercase()
+                                .replace(Regex("[^A-Z0-9]+"), "-")
+                                .trim('-')
+                                .take(40)
+                            collegeService.createCollege(collegeId, collegeName, directorUid)
                                 .onSuccess { college ->
                                     showCreateDialog = false
                                     createName = ""

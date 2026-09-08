@@ -1,0 +1,26 @@
+# Normalise line endings.
+#
+# Windows batch files MUST be checked out with CRLF. A .bat with bare LF
+# endings can misbehave on Windows — `goto` labels and multi-line blocks are
+# the usual casualties — and the failure looks like a broken script, not a
+# line-ending problem.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+
+# Shell scripts and the Gradle wrapper must stay LF, or they will not run.
+*.sh            text eol=lf
+gradlew         text eol=lf
+
+# Everything else: normalise in the repo, native on checkout.
+*               text=auto
+
+# Binary — never touch.
+*.jks           binary
+*.keystore      binary
+*.png           binary
+*.jpg           binary
+*.ico           binary
+*.pdf           binary
+*.xlsx          binary
+*.jar           binary
+*.mrc           binary

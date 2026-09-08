@@ -45,6 +45,18 @@ cd web-app && npm run dev          # http://localhost:3000
 Android: open the repository root in Android Studio, set the Gradle JDK to 17,
 and run the `app` configuration.
 
+## Running it on Windows
+
+Double-click one of these at the repository root:
+
+| File | What it does |
+|---|---|
+| `run.bat` | menu for everything below |
+| `run-android.bat` | build, install and launch the Android app |
+| `run-desktop.bat` | the Python/PyQt6 desktop client |
+| `run-web.bat` | web dashboard + director portal |
+| `update.bat` | pull the latest changes |
+
 ## Tests
 
 ```bash

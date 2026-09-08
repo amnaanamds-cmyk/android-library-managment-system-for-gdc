@@ -168,6 +168,45 @@ Invalidate and Restart**.
 
 ---
 
+## 2b. Running it from a .bat file (Windows)
+
+Five double-clickable scripts at the repository root. Nothing to type.
+
+| File | What it does |
+|---|---|
+| **`run.bat`** | A menu — pick any of the below |
+| **`run-android.bat`** | Builds, installs and launches the Android app |
+| **`run-desktop.bat`** | Runs the Python/PyQt6 desktop client |
+| **`run-web.bat`** | Runs the web dashboard + director portal |
+| **`update.bat`** | Pulls the latest changes |
+
+`run-android.bat` does the fiddly parts for you:
+
+- finds **Java**, falling back to the JDK bundled with Android Studio;
+- finds **adb** — from `PATH`, then `ANDROID_HOME`, then the `sdk.dir` written
+  into `local.properties` by Android Studio (unescaping the `C\:\\Users\\…`
+  form it is stored in), then the default SDK location;
+- checks a **device or emulator is actually attached** and says how to start one
+  if not, rather than failing inside Gradle;
+- runs `gradlew :app:installDebug`, then launches
+  `com.college.library/.MainActivity`.
+
+The first run downloads Gradle and the dependencies, so it takes several
+minutes. Later runs are quick.
+
+To watch the app's logs while it runs:
+
+```bat
+adb logcat -s NEXLIB RealtimeSyncManager AndroidRuntime
+```
+
+> Batch files are checked out with **CRLF** endings, enforced by
+> `.gitattributes`. A `.bat` with bare LF endings misbehaves on Windows —
+> `goto` labels and multi-line blocks are the usual casualties — and it looks
+> like a broken script rather than a line-ending problem.
+
+---
+
 ## 3. Prerequisites
 
 | Tool | Version | Needed for |
@@ -304,6 +343,12 @@ python3 tests/desktop/test_sync_engine.py   # offline sync          29 cases
 # trailing lambda binding to the wrong parameter. Worth running before pushing
 # Kotlin changes, since :app cannot be compiled in every environment.
 python3 tools/check_kotlin_trailing_lambda.py
+
+# Kotlin syntax check — parses every .kt file with the real Kotlin compiler and
+# reports syntax errors only ("Expecting an element", "Expecting '}'"). Needs no
+# Android SDK, so it works where a full build cannot run. It does NOT type-check;
+# for that, run ./gradlew :app:compileDebugKotlin
+./tools/kotlin-syntax-check.sh
 ```
 
 All four run against emulators with no credentials and no real project. Run the
