@@ -35,3 +35,7 @@ desktop.ini
 
 # Backup files
 backups/
+
+# The PyInstaller build spec is checked in deliberately — it IS the build.
+# (The rule above is meant for specs PyInstaller generates itself.)
+!gdc_desktop.spec
