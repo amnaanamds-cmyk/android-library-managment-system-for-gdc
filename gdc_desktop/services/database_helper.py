@@ -28,10 +28,12 @@ def db_transaction(db_helper):
 
 
 class DatabaseHelper:
-    def __init__(self):
-        db_path = Path(config.LOCAL_DB_PATH)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.db_path = str(db_path)
+    def __init__(self, db_path: str = ""):
+        # db_path is overridable so the sync tests can run against a throwaway
+        # database instead of the librarian's real one.
+        path = Path(db_path or config.LOCAL_DB_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.db_path = str(path)
         self._init_db()
 
     def _get_conn(self):
@@ -116,6 +118,9 @@ class DatabaseHelper:
                 ("deleted", "issued_books", "INTEGER DEFAULT 0"),
                 ("lastUpdated", "reservations", "INTEGER"),
                 ("deleted", "reservations", "INTEGER DEFAULT 0"),
+                ("retryCount", "sync_queue", "INTEGER DEFAULT 0"),
+                ("nextAttemptAt", "sync_queue", "INTEGER DEFAULT 0"),
+                ("lastError", "sync_queue", "TEXT DEFAULT ''"),
             ]
             for col, tbl, dtype in migrations:
                 try:
@@ -179,6 +184,42 @@ class DatabaseHelper:
                     syncId TEXT,
                     action TEXT,     -- 'upsert', 'delete'
                     timestamp INTEGER,
+                    -- Retry state. A push that fails must never be dropped, and
+                    -- must not be retried in a tight loop against a dead
+                    -- connection either, so each failure records when it is next
+                    -- worth attempting.
+                    retryCount INTEGER DEFAULT 0,
+                    nextAttemptAt INTEGER DEFAULT 0,
+                    lastError TEXT DEFAULT '',
+                    PRIMARY KEY (entityType, syncId)
+                )
+            """)
+
+            # ── Known server versions ──
+            # The `lastUpdated` this device last saw on the server for a record,
+            # updated on every successful pull and push. It is the base a local
+            # edit is measured against: if the server has moved past it by the
+            # time we push, another device wrote first and that is a real
+            # conflict rather than something to overwrite.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS sync_server_versions (
+                    entityType TEXT,
+                    syncId TEXT,
+                    serverLastUpdated INTEGER,
+                    PRIMARY KEY (entityType, syncId)
+                )
+            """)
+
+            # ── Records awaiting manual conflict review ──
+            # Kept in its own table rather than as a column on each entity table
+            # so the record models stay untouched.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS sync_review (
+                    entityType TEXT,
+                    syncId TEXT,
+                    conflictId TEXT,
+                    detectedAt INTEGER,
+                    resolved INTEGER DEFAULT 0,
                     PRIMARY KEY (entityType, syncId)
                 )
             """)
@@ -736,6 +777,131 @@ class DatabaseHelper:
     def remove_from_sync_queue(self, entity_type: str, sync_id: str):
         with self._get_conn() as conn:
             conn.execute("DELETE FROM sync_queue WHERE entityType = ? AND syncId = ?", (entity_type, sync_id))
+            conn.commit()
+
+    # ── Retry-aware queue access ─────────────────────────────────────────────
+
+    def get_due_sync_items(self, limit: int = 400) -> List[Dict[str, Any]]:
+        """Queued pushes whose backoff has elapsed, oldest first.
+
+        Items still inside their backoff window stay in the queue and are simply
+        not returned yet, so a college with one permanently failing record does
+        not have every other change stuck behind it.
+        """
+        now = int(time.time() * 1000)
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM sync_queue
+                WHERE COALESCE(nextAttemptAt, 0) <= ?
+                ORDER BY timestamp ASC
+                LIMIT ?
+                """,
+                (now, limit),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def record_sync_failure(self, entity_type: str, sync_id: str, error: str,
+                            backoff_schedule=(5, 15, 60, 300)) -> int:
+        """Increment the retry counter and set the next attempt time.
+
+        Returns the new retry count. The row is never removed: a push that fails
+        is retried later, never silently dropped.
+        """
+        now = int(time.time() * 1000)
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT retryCount FROM sync_queue WHERE entityType = ? AND syncId = ?",
+                (entity_type, sync_id),
+            ).fetchone()
+            attempts = (int(row["retryCount"]) if row and row["retryCount"] else 0) + 1
+            delay = backoff_schedule[min(attempts - 1, len(backoff_schedule) - 1)]
+            conn.execute(
+                """
+                UPDATE sync_queue
+                SET retryCount = ?, nextAttemptAt = ?, lastError = ?
+                WHERE entityType = ? AND syncId = ?
+                """,
+                (attempts, now + delay * 1000, str(error)[:300], entity_type, sync_id),
+            )
+            conn.commit()
+            return attempts
+
+    def count_pending_sync(self) -> int:
+        with self._get_conn() as conn:
+            row = conn.execute("SELECT COUNT(*) AS n FROM sync_queue").fetchone()
+            return int(row["n"]) if row else 0
+
+    # ── Known server versions ────────────────────────────────────────────────
+
+    def set_known_server_version(self, entity_type: str, sync_id: str, last_updated: int):
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO sync_server_versions (entityType, syncId, serverLastUpdated)
+                VALUES (?, ?, ?)
+                ON CONFLICT(entityType, syncId) DO UPDATE SET
+                    serverLastUpdated = excluded.serverLastUpdated
+                """,
+                (entity_type, sync_id, int(last_updated or 0)),
+            )
+            conn.commit()
+
+    def set_known_server_versions_batch(self, entity_type: str, pairs):
+        """Bulk form of set_known_server_version, for a realtime snapshot."""
+        pairs = list(pairs)
+        if not pairs:
+            return
+        with self._get_conn() as conn:
+            conn.executemany(
+                """
+                INSERT INTO sync_server_versions (entityType, syncId, serverLastUpdated)
+                VALUES (?, ?, ?)
+                ON CONFLICT(entityType, syncId) DO UPDATE SET
+                    serverLastUpdated = excluded.serverLastUpdated
+                """,
+                [(entity_type, sid, int(ts or 0)) for sid, ts in pairs],
+            )
+            conn.commit()
+
+    def get_known_server_version(self, entity_type: str, sync_id: str) -> int:
+        with self._get_conn() as conn:
+            row = conn.execute(
+                "SELECT serverLastUpdated FROM sync_server_versions WHERE entityType = ? AND syncId = ?",
+                (entity_type, sync_id),
+            ).fetchone()
+            return int(row["serverLastUpdated"]) if row else 0
+
+    # ── Conflict review queue ────────────────────────────────────────────────
+
+    def flag_for_review(self, entity_type: str, sync_id: str, conflict_id: str):
+        with self._get_conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO sync_review (entityType, syncId, conflictId, detectedAt, resolved)
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(entityType, syncId) DO UPDATE SET
+                    conflictId = excluded.conflictId,
+                    detectedAt = excluded.detectedAt,
+                    resolved = 0
+                """,
+                (entity_type, sync_id, conflict_id, int(time.time() * 1000)),
+            )
+            conn.commit()
+
+    def get_records_needing_review(self) -> List[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM sync_review WHERE resolved = 0 ORDER BY detectedAt DESC"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def clear_review_flag(self, entity_type: str, sync_id: str):
+        with self._get_conn() as conn:
+            conn.execute(
+                "UPDATE sync_review SET resolved = 1 WHERE entityType = ? AND syncId = ?",
+                (entity_type, sync_id),
+            )
             conn.commit()
 
     # ── Audit Log ─────────────────────────────────────────────────────────────
