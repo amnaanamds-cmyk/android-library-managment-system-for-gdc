@@ -51,6 +51,11 @@ export const SERIAL_FREQUENCIES = [
 export const ROOT_COLLECTIONS = {
   users: "users",
   institutions: "institutions",
+  /** Province-wide index: name, district, region, approval status. */
+  institutionRegistry: "institution_registry",
+  /** Denormalized rollup written by the scheduled Cloud Function. Read-only. */
+  directorateSummary: "directorate_summary",
+  /** LEGACY client-published rollup, read only as a fallback. */
   directorateIndex: "directorate_index",
   colleges: "colleges",
 } as const;

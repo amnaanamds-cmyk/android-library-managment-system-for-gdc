@@ -38,9 +38,16 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
             directorate portal is limited to director and directorate administrator accounts.
           </p>
           <p className="mt-4 text-xs text-slate-500">
-            To grant access, set <span className="font-mono">role</span> to{" "}
-            <span className="font-mono text-slate-400">director</span> on this user&apos;s{" "}
-            <span className="font-mono">users/&#123;uid&#125;</span> document in Firestore.
+            This portal is limited to the <span className="font-mono text-slate-400">directorate</span>{" "}
+            role. A college&apos;s own <span className="font-mono">director</span> or{" "}
+            <span className="font-mono">admin</span> administers that college only — it is not
+            province-wide oversight, and the security rules draw the same line.
+          </p>
+          <p className="mt-2 text-xs text-slate-600">
+            To grant access, an existing directorate account calls the{" "}
+            <span className="font-mono">setUserRole</span> function with{" "}
+            <span className="font-mono">role: &quot;directorate&quot;</span>. Bootstrapping the
+            first one is described in DEPLOYMENT.md.
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Link
@@ -63,7 +70,7 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
 
   const tabs = [
     { name: "Network Overview", href: "/director" },
-    { name: "My Library", href: "/dashboard" },
+    { name: "Onboard College", href: "/director/register" },
   ];
 
   return (
@@ -122,8 +129,8 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
       <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
 
       <footer className="mx-auto max-w-7xl px-6 pb-10 pt-4 text-[11px] text-slate-600">
-        Read-only aggregated view. Figures are published by each college&apos;s own app and reflect
-        that college&apos;s most recent sync.
+        Read-only aggregated view. Figures are computed server-side by the scheduled rollup from
+        each college&apos;s own data; no patron-level record leaves the college that owns it.
       </footer>
     </div>
   );

@@ -89,6 +89,9 @@ export interface InstitutionSummary {
   district: string;
   region: string;
   status: string;
+  /** Carried from the registry so the directorate can contact a college. */
+  contactEmail: string;
+  phone: string;
 
   totalBooks: number;
   totalEbooks: number;
@@ -188,6 +191,8 @@ export async function summariseInstitution(
     district: registry.district ?? "",
     region: registry.region ?? "",
     status: registry.status ?? STATUS.active,
+    contactEmail: registry.contactEmail ?? "",
+    phone: registry.adminPhone ?? registry.phone ?? "",
 
     // Printed stock only, so the printed and digital figures do not double-count.
     totalBooks: Math.max(0, liveBooks - digitalBooks),

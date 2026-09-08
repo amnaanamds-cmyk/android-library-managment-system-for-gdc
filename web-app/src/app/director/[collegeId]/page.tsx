@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { collection, doc, getDoc, getDocs, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ROOT_COLLECTIONS, COLLECTIONS } from "@/lib/schema";
-import { isStale, DirectorateSnapshot } from "@/lib/directorate";
+import { isStale, fetchSnapshot, DirectorateSnapshot } from "@/lib/directorate";
 
 const numberFmt = new Intl.NumberFormat("en-PK");
 
@@ -44,33 +44,13 @@ export default function CollegeDetail() {
     (async () => {
       setLoading(true);
       try {
-        const [idxSnap, instSnap] = await Promise.all([
-          getDoc(doc(db, ROOT_COLLECTIONS.directorateIndex, collegeId)),
+        const [snap, instSnap] = await Promise.all([
+          fetchSnapshot(collegeId),
           getDoc(doc(db, ROOT_COLLECTIONS.institutions, collegeId)),
         ]);
         if (cancelled) return;
 
-        if (idxSnap.exists()) {
-          const d = idxSnap.data();
-          setSnapshot({
-            institutionId: collegeId,
-            name: d.name || d.collegeName || collegeId,
-            location: d.location || d.address || "",
-            district: d.district || "",
-            contactEmail: d.contactEmail || d.email || "",
-            phone: d.phone || "",
-            booksCount: Number(d.booksCount ?? 0),
-            ebooksCount: Number(d.ebooksCount ?? 0),
-            membersCount: Number(d.membersCount ?? 0),
-            activeLoans: Number(d.activeLoans ?? 0),
-            overdueCount: Number(d.overdueCount ?? 0),
-            reservationsCount: Number(d.reservationsCount ?? 0),
-            finesOutstanding: Number(d.finesOutstanding ?? 0),
-            lastSyncAt: Number(d.lastSyncAt ?? d.lastSeen ?? 0),
-            lastSyncPlatform: d.lastSyncPlatform || "unknown",
-            schemaVersion: Number(d.schemaVersion ?? 1),
-          });
-        }
+        if (snap) setSnapshot(snap);
         if (instSnap.exists()) setInstitution(instSnap.data());
       } finally {
         if (!cancelled) setLoading(false);
@@ -136,7 +116,7 @@ export default function CollegeDetail() {
             <h1 className="text-3xl font-extrabold tracking-tight text-white">{name}</h1>
             <p className="mt-1 font-mono text-xs uppercase tracking-wider text-slate-500">
               {collegeId}
-              {snapshot?.location ? ` · ${snapshot.location}` : ""}
+              {snapshot?.district ? ` · ${snapshot.district}` : ""}
             </p>
           </div>
           {snapshot && (
@@ -149,12 +129,12 @@ export default function CollegeDetail() {
                   isStale(snapshot) ? "text-amber-400" : "text-emerald-400"
                 }`}
               >
-                {snapshot.lastSyncAt
-                  ? new Date(snapshot.lastSyncAt).toLocaleString("en-PK")
+                {snapshot.lastSynced
+                  ? new Date(snapshot.lastSynced).toLocaleString("en-PK")
                   : "Never"}
               </p>
               <p className="text-[10px] uppercase tracking-wider text-slate-600">
-                via {snapshot.lastSyncPlatform}
+                {snapshot.source === "summary" ? "server rollup" : snapshot.source}
               </p>
             </div>
           )}
@@ -173,27 +153,28 @@ export default function CollegeDetail() {
 
       {snapshot && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Books" value={snapshot.booksCount} />
-          <Stat label="Members" value={snapshot.membersCount} />
-          <Stat label="Active Loans" value={snapshot.activeLoans} accent="text-blue-400" />
+          <Stat label="Books" value={snapshot.totalBooks} />
+          <Stat label="Members" value={snapshot.members} />
+          <Stat label="Active Loans" value={snapshot.issued} accent="text-blue-400" />
           <Stat
             label="Overdue"
-            value={snapshot.overdueCount}
-            accent={snapshot.overdueCount > 0 ? "text-red-400" : "text-slate-400"}
+            value={snapshot.overdue}
+            accent={snapshot.overdue > 0 ? "text-red-400" : "text-slate-400"}
           />
-          <Stat label="E-Books" value={snapshot.ebooksCount} />
-          <Stat label="Reservations" value={snapshot.reservationsCount} />
+          <Stat label="E-Books" value={snapshot.totalEbooks} />
+          <Stat label="Reservations" value={snapshot.reservations} />
           <Stat
-            label="Fines Outstanding"
-            value={snapshot.finesOutstanding}
-            prefix="Rs "
-            accent="text-[#E6C96E]"
+            label="Unsynced Records"
+            value={snapshot.recordsMissingSyncEnvelope}
+            accent={
+              snapshot.recordsMissingSyncEnvelope > 0 ? "text-amber-400" : "text-slate-400"
+            }
           />
           <Stat
             label="Utilisation"
             value={
-              snapshot.booksCount > 0
-                ? Math.round((snapshot.activeLoans / snapshot.booksCount) * 100)
+              snapshot.totalBooks > 0
+                ? Math.round((snapshot.issued / snapshot.totalBooks) * 100)
                 : 0
             }
             suffix="%"
@@ -287,10 +268,10 @@ export default function CollegeDetail() {
                 <dd className="text-slate-300">{snapshot?.phone || institution?.phone}</dd>
               </div>
             )}
-            {(snapshot?.location || institution?.address) && (
+            {(snapshot?.district || institution?.address) && (
               <div>
                 <dt className="text-[10px] uppercase tracking-widest text-slate-600">Address</dt>
-                <dd className="text-slate-300">{snapshot?.location || institution?.address}</dd>
+                <dd className="text-slate-300">{snapshot?.district || institution?.address}</dd>
               </div>
             )}
           </dl>
