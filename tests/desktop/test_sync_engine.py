@@ -288,13 +288,27 @@ check("a backoff was scheduled", int(item["nextAttemptAt"] or 0) > int(time.time
 check("the item is held back until its backoff elapses",
       survivor.syncId not in {i["syncId"] for i in db2.get_due_sync_items()})
 
-# Backoff grows rather than hammering a dead connection.
+# Backoff grows rather than hammering a dead connection, and caps rather than
+# growing without bound. The record already carries one failure from the push
+# above, so these four take it to attempts 2..5 -> 15s, 60s, 300s, 300s.
+EXPECTED_BACKOFF = [15, 60, 300, 300]
 delays = []
 for _ in range(4):
+    before = int(time.time() * 1000)
     db2.record_sync_failure("books", survivor.syncId, "still down")
     row = next(i for i in db2.get_pending_sync() if i["syncId"] == survivor.syncId)
-    delays.append(int(row["nextAttemptAt"]) - int(time.time() * 1000))
-check("backoff increases with each failure", delays == sorted(delays), str(delays))
+    delays.append((int(row["nextAttemptAt"]) - before) / 1000.0)
+
+# Checked against the schedule with a tolerance, NOT by sorting. The last two
+# entries both sit at the 300s cap, so a millisecond of jitter between the
+# write and the read is enough to make a strict "is sorted" assertion fail at
+# random — which it duly did.
+check("backoff follows 15s, 60s, 300s, then caps at 300s",
+      all(abs(d - e) < 2 for d, e in zip(delays, EXPECTED_BACKOFF)),
+      f"{[round(d, 1) for d in delays]} vs {EXPECTED_BACKOFF}")
+check("backoff never decreases",
+      all(b >= a - 2 for a, b in zip(delays, delays[1:])),
+      str([round(d, 1) for d in delays]))
 
 # Once the network returns and the backoff is cleared, it goes through.
 fb.fail_writes = False
