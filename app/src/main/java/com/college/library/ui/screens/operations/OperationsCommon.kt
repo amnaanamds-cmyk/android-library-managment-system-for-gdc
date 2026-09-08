@@ -203,8 +203,13 @@ fun DialogDropdown(
     label: String,
     options: List<String>,
     selected: String,
-    onSelect: (String) -> Unit,
+    // `modifier` comes BEFORE `onSelect` so that onSelect is the last parameter
+    // and every call site's trailing lambda binds to it. With the two the other
+    // way round the trailing lambda binds to `modifier` instead, and the
+    // compiler reports "No value passed for parameter 'onSelect'" — which was
+    // breaking all three call sites.
     modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
