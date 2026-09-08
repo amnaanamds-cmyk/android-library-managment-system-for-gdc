@@ -112,13 +112,41 @@ class AuthViewModel @Inject constructor(
      * attaching the device to the wrong institution.
      */
     suspend fun resolveUserProfile(uid: String) {
+        // ── Custom claims first ───────────────────────────────────────────────
+        //
+        // firestore.rules authorises this device from request.auth.token, so the
+        // claims ARE what the server will enforce. Reading them here means the
+        // app and the rules cannot disagree about who this user is, and it
+        // needs no document read at all.
+        //
+        // Claims are minted by the syncUserClaims function whenever users/{uid}
+        // is written. Accounts that predate claims fall through to the profile
+        // document below and are migrated the next time their profile changes
+        // (or immediately, if they sign in on the web, which calls
+        // refreshMyClaims).
+        val claims = runCatching {
+            auth?.currentUser?.getIdToken(false)?.await()?.claims
+        }.getOrNull().orEmpty()
+
+        val claimInstitution = claims["institutionId"] as? String ?: ""
+        val claimRole = claims["role"] as? String ?: ""
+
+        if (claimInstitution.isNotEmpty() && claimRole.isNotEmpty()) {
+            val role = mapRoleString(claimRole)
+            persistSession(claimInstitution, role)
+            _authState.value = AuthState.Authenticated(role, claimInstitution)
+            return
+        }
+
+        // ── Fallback: the profile document ────────────────────────────────────
         val firestoreDb = db ?: run {
             _authState.value = AuthState.Error("Cannot connect to server. Check your internet connection and try again.")
             return
         }
         val userDoc = firestoreDb.collection("users").document(uid).get().await()
         val instId = userDoc.getString("institutionId") ?: userDoc.getString("collegeId") ?: ""
-        val roleStr = userDoc.getString("role") ?: "staff"
+        // No role anywhere means the LEAST privilege, not a default staff seat.
+        val roleStr = userDoc.getString("role") ?: claimRole.ifEmpty { "student" }
         val role = mapRoleString(roleStr)
 
         if (instId.isEmpty()) {
@@ -150,13 +178,24 @@ class AuthViewModel @Inject constructor(
             .apply()
     }
 
+    /**
+     * Map any role spelling the backend has ever written onto this app's enum.
+     *
+     * "directorate" is the canonical province-wide oversight role;
+     * "directorate_admin" is its older spelling. A college's own "director" is
+     * that college's administrator and is deliberately NOT directorate.
+     *
+     * An unrecognised role falls to GUEST, the least privilege. It previously
+     * fell to STAFF, so a typo in a role name silently granted a working seat.
+     */
     private fun mapRoleString(roleStr: String): UserRole = when (roleStr.lowercase()) {
-        "owner"              -> UserRole.OWNER
-        "college_admin", "admin" -> UserRole.COLLEGE_ADMIN
-        "librarian"          -> UserRole.LIBRARIAN
-        "director"           -> UserRole.DIRECTOR
-        "directorate_admin"  -> UserRole.DIRECTORATE_ADMIN
-        else                 -> UserRole.STAFF
+        "owner"                              -> UserRole.OWNER
+        "college_admin", "admin"             -> UserRole.COLLEGE_ADMIN
+        "librarian"                          -> UserRole.LIBRARIAN
+        "director"                           -> UserRole.DIRECTOR
+        "directorate", "directorate_admin"   -> UserRole.DIRECTORATE_ADMIN
+        "staff"                              -> UserRole.STAFF
+        else                                 -> UserRole.GUEST
     }
 
     // ── Authorization helpers (unchanged API) ──────────────────────────────

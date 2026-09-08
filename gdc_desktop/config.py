@@ -22,7 +22,8 @@ GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 COLLEGE_ID: str = os.getenv("COLLEGE_ID", "gdc11")
 
 # ─── Security ────────────────────────────────────────────────────────────────
-INACTIVITY_TIMEOUT: int = int(os.getenv("INACTIVITY_TIMEOUT", "900"))  # seconds
+# 30 minutes, matching the web and Android clients (KPK spec section 4).
+INACTIVITY_TIMEOUT: int = int(os.getenv("INACTIVITY_TIMEOUT", "1800"))  # seconds
 KEYRING_SERVICE_NAME: str = "NEXLIBDesktop"
 
 # ─── Library Settings ────────────────────────────────────────────────────────

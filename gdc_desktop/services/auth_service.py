@@ -6,6 +6,7 @@ Roles are stored in Firestore users collection.
 Offline Persistent Login: caches full user profile in local SQLite so the app
 can start without internet after the first successful login.
 """
+import base64
 import json
 import time
 import logging
@@ -17,6 +18,24 @@ import config
 from models.reservation import User
 
 logger = logging.getLogger(__name__)
+
+def _claims_from_id_token(id_token: str) -> dict:
+    """Decode the custom claims out of a Firebase ID token.
+
+    The signature is not verified here, and does not need to be: the token came
+    straight from Google's identitytoolkit endpoint over TLS moments earlier,
+    and the desktop client authorises against Firestore with the Admin SDK
+    regardless. This read exists so the desktop resolves role and institutionId
+    from the SAME source the security rules use on Android and web, rather than
+    from a third opinion that can disagree with them.
+    """
+    try:
+        payload = id_token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)  # restore stripped base64 padding
+        return json.loads(base64.urlsafe_b64decode(payload).decode("utf-8"))
+    except Exception:
+        return {}
+
 
 KEYRING_SERVICE = config.KEYRING_SERVICE_NAME
 KEYRING_USER = "refresh_token"
@@ -59,7 +78,9 @@ class AuthService:
 
     @property
     def is_directorate_admin(self) -> bool:
-        return self._current_user is not None and self._current_user.role in ("directorate_admin",)
+        return self._current_user is not None and self._current_user.role in (
+            "directorate", "directorate_admin", "DirectorateAdmin",
+        )
 
     @property 
     def is_college_admin(self) -> bool:
@@ -87,7 +108,15 @@ class AuthService:
         return self.role in ("admin", "college_admin", "director", "directorate_admin")
 
     def can_view_directorate_dashboard(self) -> bool:
-        return self.role in ("director", "college_admin", "directorate_admin")
+        """Province-wide oversight. Deliberately NOT a college administrator.
+
+        This previously admitted "director" and "college_admin" — that is, every
+        college's own head could open the cross-college view. A college's
+        director administers that college; the directorate is a separate role
+        with no institution of its own. firestore.rules draws the same line, so
+        widening this again would only produce a screen whose queries all fail.
+        """
+        return self.role in ("directorate", "directorate_admin", "DirectorateAdmin")
 
     # ── Cache user profile to SQLite ─────────────────────────────────────────
     def _cache_session_locally(self):
@@ -137,17 +166,49 @@ class AuthService:
             uid = data["localId"]
             refresh_token = data.get("refreshToken", "")
 
-            # Fetch role + institutionId from Firestore users collection
+            # ── Resolve role and institution ──────────────────────────────
+            #
+            # Custom claims are authoritative: they are what firestore.rules
+            # enforces for the Android and web clients, so resolving from
+            # anything else here would let the desktop believe something the
+            # rest of the system does not.
+            claims = _claims_from_id_token(self._id_token)
+            claim_role = str(claims.get("role") or "")
+            claim_institution = str(claims.get("institutionId") or "")
+
+            profile = {}
             if self.fb.db:
                 user_doc = self.fb.db.collection("users").document(uid).get()
                 if user_doc.exists:
-                    user_data = user_doc.to_dict()
-                    user_data["uid"] = uid
-                    self._current_user = User.from_dict(user_data)
-                else:
-                    self._current_user = User(uid=uid, email=email, role="admin")
-            else:
-                self._current_user = User(uid=uid, email=email, role="admin")
+                    profile = user_doc.to_dict() or {}
+
+            role = claim_role or str(profile.get("role") or "")
+            institution = (
+                claim_institution
+                or str(profile.get("institutionId") or profile.get("collegeId") or "")
+            )
+
+            # An account with no role anywhere is NOT an administrator. This
+            # previously defaulted to "admin", so any Firebase account that
+            # could sign in — including one created for a student — became a
+            # full administrator of whichever institution the desktop was
+            # configured for. Refuse instead, and say what is missing.
+            if not role:
+                return False, (
+                    "This account has no role assigned. An administrator must set "
+                    "its role on users/{uid} (or via the setUserRole function) "
+                    "before it can sign in."
+                )
+            if not institution and role not in ("directorate", "directorate_admin"):
+                return False, (
+                    "This account is not attached to any institution. Ask an "
+                    "administrator to set its institutionId."
+                )
+
+            self._current_user = User.from_dict(
+                {**profile, "uid": uid, "email": email,
+                 "role": role, "institutionId": institution}
+            )
 
             # Seed firebase_service with the resolved institutionId
             self._apply_institution(self._current_user.institutionId)
