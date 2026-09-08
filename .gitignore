@@ -20,3 +20,28 @@ ui-debug.log
 
 # Rules test deps
 tests/firestore/node_modules/
+
+# ── Signing and credentials — never commit ───────────────────────────────────
+# nexlib-release.jks WAS committed, together with its password in
+# app/build.gradle.kts. It remains in git history: the key must be treated as
+# compromised, rotated, and the history purged. See DEPLOYMENT.md.
+*.jks
+*.keystore
+keystore.properties
+
+# Cloud Functions
+functions/node_modules/
+functions/lib/
+
+# Web
+web-app/node_modules/
+web-app/.next/
+web/node_modules/
+web/.next/
+
+# Python desktop
+__pycache__/
+*.pyc
+.venv/
+gdc_desktop/dist/
+gdc_desktop/build/

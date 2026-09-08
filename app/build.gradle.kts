@@ -38,12 +38,55 @@ android {
         buildConfigField("String", "GEMINI_API_KEY", formattedApiKey)
     }
 
+    // ── Release signing ───────────────────────────────────────────────────────
+    //
+    // Credentials come from keystore.properties (git-ignored) or, in CI, from
+    // the environment. They were previously hardcoded here in plaintext next to
+    // an absolute Windows path, which meant the signing password was in the
+    // repository and release builds only worked on one machine.
+    //
+    // keystore.properties, beside this file or at the repo root:
+    //
+    //     storeFile=/absolute/path/to/nexlib-release.jks
+    //     storePassword=...
+    //     keyAlias=nexlib-key
+    //     keyPassword=...
+    //
+    // Or set NEXLIB_STORE_FILE / NEXLIB_STORE_PASSWORD / NEXLIB_KEY_ALIAS /
+    // NEXLIB_KEY_PASSWORD. See DEPLOYMENT.md.
+    val keystoreProperties = Properties().apply {
+        listOf(rootProject.file("keystore.properties"), file("keystore.properties"))
+            .firstOrNull { it.exists() }
+            ?.inputStream()
+            ?.use { load(it) }
+    }
+
+    fun signingValue(propertyKey: String, envKey: String): String? =
+        keystoreProperties.getProperty(propertyKey)?.takeIf { it.isNotBlank() }
+            ?: System.getenv(envKey)?.takeIf { it.isNotBlank() }
+
+    val releaseStoreFile = signingValue("storeFile", "NEXLIB_STORE_FILE")
+    val releaseStorePassword = signingValue("storePassword", "NEXLIB_STORE_PASSWORD")
+    val releaseKeyAlias = signingValue("keyAlias", "NEXLIB_KEY_ALIAS") ?: "nexlib-key"
+    val releaseKeyPassword = signingValue("keyPassword", "NEXLIB_KEY_PASSWORD")
+
+    // Configured only when credentials are actually present. Declaring the
+    // config unconditionally makes every debug build fail on a machine that has
+    // no keystore, which is every contributor's machine.
+    val hasReleaseSigning =
+        releaseStoreFile != null &&
+        releaseStorePassword != null &&
+        releaseKeyPassword != null &&
+        file(releaseStoreFile!!).exists()
+
     signingConfigs {
-        create("release") {
-            storeFile = file("E:/android library managment system/android library management system for gdc11/nexlib-release.jks")
-            storePassword = "AMINAKHAN"
-            keyAlias = "nexlib-key"
-            keyPassword = "AMINAKHAN"
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
@@ -58,7 +101,17 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                // Leave it unsigned rather than silently falling back to the
+                // debug key: a debug-signed APK installs fine and then cannot
+                // ever be upgraded by a properly signed one.
+                logger.warn(
+                    "No release signing credentials found — :app:assembleRelease will produce " +
+                    "an UNSIGNED APK. See DEPLOYMENT.md."
+                )
+            }
         }
     }
     compileOptions {
