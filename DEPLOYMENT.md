@@ -291,11 +291,22 @@ cd tests/firestore && npm ci && npm test
 # Directorate rollup — 17 cases against the Firestore emulator
 cd functions && npm ci && npm test
 
+# End-to-end, section 9.7 — 28 cases: two institutions registered, a loan
+# recorded, another client reading it, the rollup, and tenant isolation
+npm run test:e2e        # (also: npm run test:all)
+
 # Desktop offline sync — 29 cases, including the four scenarios in spec 5.1
 python3 tests/desktop/test_sync_engine.py
 ```
 
-All three must be green. They run without a real Firebase project.
+All four must be green. They run against the emulators, with no real Firebase
+project and no credentials.
+
+`functions/test/e2e.test.mjs` automates most of section 7.2 below: it
+registers two institutions, records loans at each, and asserts that the
+director dashboard's figures for one college never absorb the other's. What it
+cannot cover is the offline behaviour of the real clients, so still walk
+through 7.2 by hand before a rollout.
 
 ### 7.2 Manual, two institutions (spec section 9.7)
 

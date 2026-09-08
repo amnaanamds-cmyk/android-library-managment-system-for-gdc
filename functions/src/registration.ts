@@ -95,19 +95,16 @@ function requireText(value: unknown, field: string, max = 200): string {
 }
 
 /**
- * Register a new institution.
+ * Create an institution. The whole of registration, minus the callable wrapper.
  *
- * Callable by any signed-in user — the college always lands in `pending`, so an
- * unapproved registration grants nothing until the directorate approves it. A
- * directorate caller may pass `autoApprove` to skip the queue.
+ * Split out from the callable so the end-to-end test can drive it directly
+ * against the emulators rather than only through an authenticated HTTPS call.
  */
-export const registerInstitution = onCall({ region: REGION }, async (request) => {
-  const callerUid = request.auth?.uid;
-  if (!callerUid) {
-    throw new HttpsError("unauthenticated", "Sign in before registering an institution.");
-  }
-
-  const input = (request.data ?? {}) as RegisterInput & { autoApprove?: boolean };
+export async function createInstitution(
+  input: RegisterInput & { autoApprove?: boolean },
+  callerUid: string,
+  callerIsDirectorate: boolean,
+) {
 
   const collegeName = requireText(input.collegeName, "collegeName");
   const district = requireText(input.district, "district", 80);
@@ -119,7 +116,6 @@ export const registerInstitution = onCall({ region: REGION }, async (request) =>
     throw new HttpsError("invalid-argument", "adminEmail is not a valid email address.");
   }
 
-  const callerIsDirectorate = normaliseRole(request.auth?.token?.role) === ROLES.directorate;
   const status =
     callerIsDirectorate && input.autoApprove === true ? STATUS.active : STATUS.pending;
 
@@ -253,6 +249,25 @@ export const registerInstitution = onCall({ region: REGION }, async (request) =>
     // college over a trusted channel and have them change it on first sign-in.
     temporaryPassword,
   };
+}
+
+/**
+ * Register a new institution.
+ *
+ * Callable by any signed-in user — the college always lands in `pending`, so an
+ * unapproved registration grants nothing until the directorate approves it. A
+ * directorate caller may pass `autoApprove` to skip the queue.
+ */
+export const registerInstitution = onCall({ region: REGION }, async (request) => {
+  const callerUid = request.auth?.uid;
+  if (!callerUid) {
+    throw new HttpsError("unauthenticated", "Sign in before registering an institution.");
+  }
+  return createInstitution(
+    (request.data ?? {}) as RegisterInput & { autoApprove?: boolean },
+    callerUid,
+    normaliseRole(request.auth?.token?.role) === ROLES.directorate,
+  );
 });
 
 /**

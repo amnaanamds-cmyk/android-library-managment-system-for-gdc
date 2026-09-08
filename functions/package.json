@@ -14,7 +14,9 @@
     "serve": "npm run build && firebase emulators:start --only functions,firestore,auth",
     "deploy": "npm run build && firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "test": "firebase emulators:exec --only firestore --project demo-nexlib \"node test/summary.test.mjs\""
+    "test": "firebase emulators:exec --only firestore --project demo-nexlib \"node test/summary.test.mjs\"",
+    "test:e2e": "firebase emulators:exec --only firestore,auth --project demo-nexlib \"node test/e2e.test.mjs\"",
+    "test:all": "npm run build && npm test && npm run test:e2e"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",
