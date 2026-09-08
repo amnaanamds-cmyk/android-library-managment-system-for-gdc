@@ -113,6 +113,61 @@ android-library-managment-system-for-gdc/
 
 ---
 
+## 2a. Pulling the latest changes
+
+Everything is on the branch **`claude/repo-contents-review-6e0ub3`**, not
+`main`. A fresh `git clone` lands you on `main`, which does **not** have any of
+it — so the first thing to do is switch.
+
+### The one-step way
+
+From the repository root:
+
+| Platform | Command |
+|---|---|
+| Windows | double-click **`update.bat`**, or run it in a terminal |
+| macOS / Linux | `./update.sh` |
+
+It fetches, switches to the working branch, and fast-forwards. Then in Android
+Studio: **File → Sync Project with Gradle Files**.
+
+The script **refuses to run if you have uncommitted changes**, and tells you the
+three ways out (commit / stash / discard) rather than silently stashing or
+overwriting your edits. Your local config — `local.properties`, `.env`,
+`keystore.properties`, `serviceAccountKey.json` — is git-ignored and is never
+touched.
+
+### From inside Android Studio
+
+1. **Git → Fetch**
+2. Bottom-right **branch selector** → `origin/claude/repo-contents-review-6e0ub3`
+   → **Checkout** (only needed the first time)
+3. Afterwards, just **Git → Pull** (or `Ctrl+T` / `⌘T`)
+4. **File → Sync Project with Gradle Files**
+
+### By hand
+
+```bash
+git fetch origin
+git checkout claude/repo-contents-review-6e0ub3   # first time only
+git pull --ff-only
+```
+
+### When a pull is not enough
+
+| After a change to | Also run |
+|---|---|
+| `functions/` | `cd functions && npm install && npm run build` |
+| `web-app/` | `cd web-app && npm install` |
+| `gdc_desktop/requirements.txt` | `pip install -r gdc_desktop/requirements.txt` |
+| `firestore.rules` / indexes | `firebase deploy --only firestore:rules,firestore:indexes` |
+| Gradle files | **Sync Project with Gradle Files** in Android Studio |
+
+If Gradle still misbehaves after a sync: **File → Invalidate Caches… →
+Invalidate and Restart**.
+
+---
+
 ## 3. Prerequisites
 
 | Tool | Version | Needed for |
@@ -244,6 +299,11 @@ cd tests/firestore && npm test          # security rules            67 cases
 cd functions && npm test                # directorate rollup        17 cases
 cd functions && npm run test:e2e        # two-institution E2E       28 cases
 python3 tests/desktop/test_sync_engine.py   # offline sync          29 cases
+
+# Kotlin static check — catches "No value passed for parameter 'x'" caused by a
+# trailing lambda binding to the wrong parameter. Worth running before pushing
+# Kotlin changes, since :app cannot be compiled in every environment.
+python3 tools/check_kotlin_trailing_lambda.py
 ```
 
 All four run against emulators with no credentials and no real project. Run the

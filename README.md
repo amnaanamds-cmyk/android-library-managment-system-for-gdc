@@ -24,6 +24,13 @@ are onboarded rather than forked.
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production runbook: Firebase setup, signing, Vercel, onboarding a college, and the items that block a real rollout. |
 | **[SYNC_ARCHITECTURE.md](SYNC_ARCHITECTURE.md)** | Canonical Firestore layout and the sync envelope. |
 
+## Getting the code
+
+All current work is on the branch **`claude/repo-contents-review-6e0ub3`**, not
+`main`. After cloning, switch to it — `update.bat` (Windows) or `./update.sh`
+does it in one step, and is also how you pull later changes. See
+[RUNNING.md §2a](RUNNING.md).
+
 ## Quick start
 
 ```bash
