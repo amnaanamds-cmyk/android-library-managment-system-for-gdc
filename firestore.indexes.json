@@ -1,15 +1,68 @@
 {
+  "//": [
+    "Composite indexes for NEXLIB. Every entry below backs a query some client",
+    "or Cloud Function actually issues — an unbacked query fails outright at",
+    "province scale rather than merely running slowly, so this file must stay in",
+    "step with the code.",
+    "",
+    "Naming note: the sync envelope's soft-delete flag is `deleted` on every",
+    "platform. The KPK spec writes it `isDeleted`; both spellings are indexed so",
+    "a client migrated to the spec name keeps working. See SYNC_ARCHITECTURE.md.",
+    "",
+    "Tenant collections live at institutions/{id}/<name>, so COLLECTION scope",
+    "here applies the index within each institution independently."
+  ],
   "indexes": [
     {
+      "//": "Incremental sync pull: everything changed since the last cursor.",
       "collectionGroup": "books",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "collegeId", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" },
         { "fieldPath": "lastUpdated", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Subject/category browse in the OPAC and desktop catalogue screen.",
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Availability filter on the circulation and catalogue screens.",
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "title", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Digital-library screen: e-books split out of the printed catalogue.",
+      "collectionGroup": "books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "isDigital", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "members",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "deleted", "order": "ASCENDING" },
@@ -20,10 +73,20 @@
       "collectionGroup": "members",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
         { "fieldPath": "lastUpdated", "order": "DESCENDING" }
       ]
     },
+    {
+      "//": "Student self-service: a patron reading their own record by auth uid.",
+      "collectionGroup": "members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "deleted", "order": "ASCENDING" }
+      ]
+    },
+
     {
       "collectionGroup": "issued_books",
       "queryScope": "COLLECTION",
@@ -36,16 +99,55 @@
       "collectionGroup": "issued_books",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Active-loan count for the directorate summary and the dashboard.",
+      "collectionGroup": "issued_books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Overdue rollup: open loans whose dueDate is before today. This is the",
+      "//2": "single hottest query in the summary function — one per institution.",
+      "collectionGroup": "issued_books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "deleted", "order": "ASCENDING" }
+        { "fieldPath": "dueDate", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "A patron's own loan history, newest first.",
+      "collectionGroup": "issued_books",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "issueDate", "order": "DESCENDING" }
+      ]
+    },
+
+    {
+      "collectionGroup": "reservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "deleted", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "reservations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "deleted", "order": "ASCENDING" }
+        { "fieldPath": "isDeleted", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
       ]
     },
     {
@@ -53,7 +155,65 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "deleted", "order": "ASCENDING" },
-        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "//": "Unresolved offline-edit collisions, oldest first, for the review UI.",
+      "collectionGroup": "sync_conflicts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "resolved", "order": "ASCENDING" },
+        { "fieldPath": "detectedAt", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "//": "Approval queue: pending institutions awaiting directorate sign-off.",
+      "collectionGroup": "institution_registry",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "District rollups on the director dashboard.",
+      "collectionGroup": "institution_registry",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "district", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "The summary function pages over active institutions by id.",
+      "collectionGroup": "institution_registry",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "region", "order": "ASCENDING" }
+      ]
+    },
+
+    {
+      "//": "Director dashboard: rank institutions within a district.",
+      "collectionGroup": "directorate_summary",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "district", "order": "ASCENDING" },
+        { "fieldPath": "totalBooks", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Stale-reporting view: which colleges have not synced recently.",
+      "collectionGroup": "directorate_summary",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "lastSynced", "order": "ASCENDING" }
       ]
     }
   ],
