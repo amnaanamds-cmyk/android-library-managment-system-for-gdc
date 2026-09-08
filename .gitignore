@@ -45,3 +45,23 @@ __pycache__/
 .venv/
 gdc_desktop/dist/
 gdc_desktop/build/
+
+# ── Runtime output — never track ─────────────────────────────────────────────
+# These are produced by RUNNING the app, not by writing it. Tracking them means
+# every launch of the desktop client dirties the working tree, which blocks
+# update.bat and turns an ordinary `git pull` into a merge conflict over a log
+# file. gdc_library.log is written by logging.FileHandler on every start; the
+# PDFs, CSVs and the workbook are the default filenames of the report save
+# dialogs and were committed by accident.
+gdc_library.log
+*.log
+gdc_desktop/*.pdf
+gdc_desktop/*.csv
+gdc_desktop/*.xlsx
+Library_Statistics_Report.pdf
+Book_Catalog_Export.csv
+Book_Catalog.mrc
+nexlibcomplete.patch
+
+# Keep the seed/sample data that IS source.
+!sample_books.csv
