@@ -22,6 +22,7 @@ are onboarded rather than forked.
 |---|---|
 | **[SETUP.md](SETUP.md)** | Setting the system up from scratch, in order: tools, clone, run each app, Firebase, first directorate account, onboarding a college. **Start here.** |
 | **[RUNNING.md](RUNNING.md)** | Repository structure, running everything day to day, and how syncing works. |
+| **[DIRECTORATE.md](DIRECTORATE.md)** | Running the province-wide director portal: the two things that usually stop it, a fully local route needing no Firebase project, and what works on the free plan. |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production runbook: Firebase setup, signing, Vercel, onboarding a college, and the items that block a real rollout. |
 | **[SYNC_ARCHITECTURE.md](SYNC_ARCHITECTURE.md)** | Canonical Firestore layout and the sync envelope. |
 

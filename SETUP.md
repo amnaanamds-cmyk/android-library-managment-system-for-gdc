@@ -7,6 +7,7 @@ enough**. Parts 3–6 are for putting the system into real use across the
 Government Degree Colleges of Khyber Pakhtunkhwa.
 
 - Reference for daily work: **[RUNNING.md](RUNNING.md)**
+- The directorate portal, start to finish: **[DIRECTORATE.md](DIRECTORATE.md)**
 - Deeper production detail: **[DEPLOYMENT.md](DEPLOYMENT.md)**
 
 ---
@@ -148,7 +149,7 @@ Or double-click **`run-web.bat`**.
 python tests\desktop\test_sync_engine.py     :: offline sync, 33 cases
 python tools\check_kotlin_trailing_lambda.py  :: Kotlin parameter-order bugs
 
-cd tests\firestore && npm test                :: security rules, 67 cases
+cd tests\firestore && npm test                :: security rules, 67 + 5 cases
 cd ..\..\functions && npm test               :: rollup, 17 cases
 npm run test:e2e                              :: two institutions, 28 cases
 python tests\tools\test_repair_tenant.py     :: tenant consolidation, 21 cases

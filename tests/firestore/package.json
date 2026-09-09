@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project demo-nexlib \"node rules.test.mjs ../../firestore.rules\""
+    "test": "firebase emulators:exec --only firestore --project demo-nexlib \"node rules.test.mjs ../../firestore.rules && node spark.test.mjs\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-nexlib \"node rules.test.mjs ../../firestore.rules\"",
+    "test:spark": "firebase emulators:exec --only firestore --project spark-check \"node spark.test.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
