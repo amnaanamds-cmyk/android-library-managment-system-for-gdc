@@ -168,7 +168,7 @@ export default function BiometricPage() {
             )}
             
             <div className="flex justify-center mt-6">
-              <button onClick={() => {setVerifyingMember(null); setVerifyResult(null);}} className="px-6 py-2 bg-line text-ink rounded font-bold hover:bg-[#2A4065]">Close</button>
+              <button onClick={() => {setVerifyingMember(null); setVerifyResult(null);}} className="px-6 py-2 bg-line text-ink rounded font-bold hover:bg-line-strong">Close</button>
             </div>
           </div>
         </div>

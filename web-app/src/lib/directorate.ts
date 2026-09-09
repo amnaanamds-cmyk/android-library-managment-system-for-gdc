@@ -179,8 +179,12 @@ export function isStale(row: Pick<DirectorateSnapshot, "lastSynced">): boolean {
 
 export interface NetworkTotals {
   institutions: number;
+  /** Colleges that have pushed data at least once. */
   reporting: number;
+  /** Reporting colleges whose last push is older than STALE_AFTER_MS. */
   stale: number;
+  /** Colleges that have never pushed anything. Not the same as stale. */
+  neverReported: number;
   totalBooks: number;
   totalEbooks: number;
   members: number;
@@ -193,7 +197,7 @@ export interface DistrictRollup extends NetworkTotals {
   district: string;
 }
 
-function sum(rows: DirectorateSnapshot[]): Omit<NetworkTotals, "institutions" | "reporting" | "stale"> {
+function sum(rows: DirectorateSnapshot[]): Omit<NetworkTotals, "institutions" | "reporting" | "stale" | "neverReported"> {
   return rows.reduce(
     (acc, r) => ({
       totalBooks: acc.totalBooks + r.totalBooks,
@@ -208,11 +212,21 @@ function sum(rows: DirectorateSnapshot[]): Omit<NetworkTotals, "institutions" | 
 }
 
 function totalsFor(rows: DirectorateSnapshot[]): NetworkTotals {
-  const reporting = rows.filter((r) => r.lastSynced > 0 || r.source === "summary");
+  // "Reporting" means data has actually arrived from that college, which is
+  // strictly about lastSynced. It used to also count any row whose source was
+  // the summary collection — but the rollup writes a row for every registered
+  // college, including ones that have never synced, so once the function ran
+  // the dashboard reported 7 of 7 colleges reporting while the table beneath it
+  // showed one as "Not reporting".
+  const reporting = rows.filter((r) => r.lastSynced > 0);
   return {
     institutions: rows.length,
     reporting: reporting.length,
+    // isStale() returns true for lastSynced === 0, so a college that has never
+    // reported would otherwise be counted twice over: once here and once as
+    // never-reported. Stale means "was reporting, has gone quiet".
     stale: reporting.filter(isStale).length,
+    neverReported: rows.length - reporting.length,
     ...sum(rows),
   };
 }
@@ -241,7 +255,8 @@ export function rollupByDistrict(rows: DirectorateSnapshot[]): DistrictRollup[] 
  */
 export function useDirectorateNetwork() {
   const { user, profile } = useAuth();
-  const [rows, setRows] = useState<DirectorateSnapshot[]>([]);
+  const [summarised, setRows] = useState<DirectorateSnapshot[]>([]);
+  const [registry, setRegistry] = useState<DirectorateSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<SummarySource>("summary");
@@ -296,11 +311,34 @@ export function useDirectorateNetwork() {
       },
     );
 
+    const unsubscribeRegistry = onSnapshot(
+      collection(db, ROOT_COLLECTIONS.institutionRegistry),
+      (snap) => {
+        if (!cancelled) setRegistry(snap.docs.map((d) => fromRegistry(d.id, d.data())));
+      },
+      // A registry read failure must not blank the network view; the summary
+      // collection is the authoritative source and it has its own handler.
+      () => {},
+    );
+
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubscribeRegistry();
     };
   }, [user, profile?.role]);
+
+  // Registered colleges the rollup has not written a summary for — a pending
+  // one, or an approved one whose first recompute has not run. Without this
+  // they appeared in the approval queue and nowhere else, so the network view
+  // silently understated how many colleges exist and the "pending" status
+  // filter could never match anything.
+  const rows = useMemo(() => {
+    if (registry.length === 0) return summarised;
+    const known = new Set(summarised.map((r) => r.institutionId));
+    const extra = registry.filter((r) => !known.has(r.institutionId));
+    return extra.length ? [...summarised, ...extra] : summarised;
+  }, [summarised, registry]);
 
   const totals = useMemo(() => totalsFor(rows), [rows]);
   const districts = useMemo(() => rollupByDistrict(rows), [rows]);

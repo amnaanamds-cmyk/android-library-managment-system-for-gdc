@@ -35,7 +35,7 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
           <p className="mt-2 text-sm text-muted">
             Your account is signed in as{" "}
             <span className="font-mono text-body">{profile?.role || "unknown"}</span>. The
-            directorate portal is limited to director and directorate administrator accounts.
+            directorate portal is limited to accounts whose role is directorate.
           </p>
           <p className="mt-4 text-xs text-muted">
             This portal is limited to the <span className="font-mono text-muted">directorate</span>{" "}
@@ -52,7 +52,7 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
           <div className="mt-6 flex justify-center gap-3">
             <Link
               href="/dashboard"
-              className="rounded-lg bg-accent-bg px-4 py-2 text-xs font-bold text-on-accent hover:bg-accent-bg"
+              className="rounded-lg bg-accent-bg px-4 py-2 text-xs font-bold text-on-accent hover:bg-accent-strong"
             >
               Back to my library
             </Link>
@@ -74,13 +74,13 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
   ];
 
   return (
-    <div className="min-h-screen bg-[#070D18] text-body">
-      <header className="border-b border-line/70 bg-app">
+    <div className="min-h-screen bg-app text-body">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <span className="rounded-xl bg-accent-bg/10 p-2 text-2xl">🏛️</span>
             <div>
-              <h1 className="text-sm font-black uppercase tracking-widest text-accent-strong">
+              <h1 className="text-sm font-black uppercase tracking-widest text-accent">
                 NEXLIB Directorate
               </h1>
               <p className="text-[11px] text-muted">
@@ -100,7 +100,7 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
                     className={`rounded-lg px-3 py-2 text-xs font-bold transition-colors ${
                       active
                         ? "bg-accent-bg text-on-accent"
-                        : "text-muted hover:bg-surface-2 hover:text-on-accent"
+                        : "text-muted hover:bg-surface-2 hover:text-ink"
                     }`}
                   >
                     {tab.name}

@@ -7,14 +7,26 @@
 // works perfectly on its own and simply never sees the others' data.
 
 import { initializeApp, getApps, getApp, FirebaseOptions } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import {
   initializeFirestore,
   getFirestore,
+  connectFirestoreEmulator,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+
+/**
+ * Point the whole web app at the local Firebase emulators.
+ *
+ * Set NEXT_PUBLIC_FIREBASE_EMULATOR=1 and run `firebase emulators:start`. The
+ * ports match firebase.json. Without this there is no way to open the
+ * dashboards or the director portal without a real project and real
+ * credentials, which makes the app impossible to try, demo or test offline.
+ */
+const USE_EMULATOR = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR === "1";
+const EMULATOR_HOST = process.env.NEXT_PUBLIC_FIREBASE_EMULATOR_HOST || "127.0.0.1";
 
 /**
  * Region for callable functions. Must match REGION in functions/src/config.ts —
@@ -73,4 +85,25 @@ function createDb() {
 export const auth = getAuth(app);
 export const db = createDb();
 export const functions = getFunctions(app, FUNCTIONS_REGION);
+
+if (USE_EMULATOR) {
+  // connect*Emulator throws if called twice on the same instance, which Next's
+  // hot reload will happily do, so each is guarded independently.
+  const connect = (label: string, fn: () => void) => {
+    try {
+      fn();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`${label} emulator already connected:`, (err as Error).message);
+      }
+    }
+  };
+  connect("Auth", () =>
+    connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, { disableWarnings: true }),
+  );
+  connect("Firestore", () => connectFirestoreEmulator(db, EMULATOR_HOST, 8080));
+  connect("Functions", () => connectFunctionsEmulator(functions, EMULATOR_HOST, 5001));
+  console.info(`NEXLIB: using Firebase emulators at ${EMULATOR_HOST}`);
+}
+
 export default app;

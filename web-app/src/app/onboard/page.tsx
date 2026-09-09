@@ -205,7 +205,7 @@ export default function OnboardPage() {
             
             {createdInst && (
               <div className="mt-8 flex flex-col items-center justify-center rounded-xl bg-white p-6">
-                <h3 className="mb-4 text-lg font-bold text-[#1E3A8A]">Device Link QR</h3>
+                <h3 className="mb-4 text-lg font-bold text-ink">Device Link QR</h3>
                 <QRCodeCanvas value={createdInst.qrData} size={200} />
                 <p className="mt-4 text-center text-sm font-semibold text-body">
                   College ID: {createdInst.id}

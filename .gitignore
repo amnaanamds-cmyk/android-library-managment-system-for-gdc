@@ -65,3 +65,6 @@ nexlibcomplete.patch
 
 # Keep the seed/sample data that IS source.
 !sample_books.csv
+
+# Portal e2e test deps
+tests/portal/node_modules/

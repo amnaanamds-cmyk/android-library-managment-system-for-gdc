@@ -1,0 +1,13 @@
+{
+  "name": "nexlib-portal-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node seed.mjs",
+    "test": "node directorate.test.mjs"
+  },
+  "devDependencies": {
+    "firebase-admin": "^13.0.0",
+    "playwright": "^1.49.0"
+  }
+}

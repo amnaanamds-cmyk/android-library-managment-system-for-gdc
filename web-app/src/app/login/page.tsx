@@ -109,7 +109,7 @@ export default function LoginPage() {
           <h2 className="text-3xl font-extrabold tracking-tight text-accent-strong">
             NEXLIB Web Portal
           </h2>
-          <p className="mt-1 text-xs tracking-wider text-[#4D6A90] uppercase">
+          <p className="mt-1 text-xs tracking-wider text-muted uppercase">
             GDC Library Management System
           </p>
         </div>

@@ -245,7 +245,7 @@ export default function BooksPage() {
                 <label className="block text-xs font-bold uppercase tracking-wider text-muted">ISBN</label>
                 <input type="text" value={isbn} onChange={(e) => setIsbn(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="978-..." />
               </div>
-              <button type="button" onClick={comingSoon} className="mt-5 px-3 bg-accent-bg text-on-accent rounded-lg font-bold text-xs hover:bg-[#D4B85E] transition-colors">
+              <button type="button" onClick={comingSoon} className="mt-5 px-3 bg-accent-bg text-on-accent rounded-lg font-bold text-xs hover:bg-accent-strong transition-colors">
                 ✨ Fetch
               </button>
             </div>
@@ -346,7 +346,7 @@ export default function BooksPage() {
                       <td className="px-4 py-4">{book.category || book.subject || "—"}</td>
                       <td className="px-4 py-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                          book.status === "Available" ? "text-[#10B981]" : "text-[#F59E0B]"
+                          book.status === "Available" ? "text-positive" : "text-warning"
                         }`}>
                           {book.status || "Available"}
                         </span>

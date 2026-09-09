@@ -145,7 +145,7 @@ Or double-click **`run-web.bat`**.
 ## 2.4 Check it works
 
 ```bat
-python tests\desktop\test_sync_engine.py     :: offline sync, 30 cases
+python tests\desktop\test_sync_engine.py     :: offline sync, 33 cases
 python tools\check_kotlin_trailing_lambda.py  :: Kotlin parameter-order bugs
 
 cd tests\firestore && npm test                :: security rules, 67 cases
@@ -161,6 +161,25 @@ from Git Bash, or from WSL:
 ```
 
 All run against local emulators. No Firebase project, no credentials.
+
+### Run the web app without a Firebase project
+
+The dashboards and the director portal need someone to be signed in, which
+normally means a real project. They can be pointed at the emulators instead:
+
+```bash
+firebase emulators:start --only auth,firestore    # terminal 1
+node tests/portal/seed.mjs                        # terminal 2 — a directorate
+                                                  # officer and 8 colleges
+cd web-app                                        # terminal 3
+set NEXT_PUBLIC_FIREBASE_EMULATOR=1
+npm run dev
+```
+
+Sign in as `directorate.officer@hed.gkp.pk` / `Passw0rd!` and open
+`/director`. The browser test that drives that console is
+`tests/portal/directorate.test.mjs` — see
+[tests/portal/README.md](tests/portal/README.md).
 
 ---
 

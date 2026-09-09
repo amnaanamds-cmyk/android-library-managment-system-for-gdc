@@ -258,7 +258,7 @@ export default function SyncPage() {
       </div>
 
       {/* My Sync Code */}
-      <div className="rounded-2xl border border-line/50 bg-gradient-to-br from-[#0A1628] to-app p-6 shadow-2xl">
+      <div className="rounded-xl border border-line bg-surface p-6">
         <h2 className="text-lg font-bold text-accent-strong mb-1">
           🏫 Your Institution Sync Code
         </h2>
@@ -382,7 +382,7 @@ export default function SyncPage() {
       </div>
 
       {/* How it works */}
-      <div className="rounded-2xl border border-line/30 bg-[#060e1a] p-6">
+      <div className="rounded-2xl border border-line bg-surface p-6">
         <h3 className="font-bold text-body mb-3 text-sm uppercase tracking-wider">ℹ️ How College Sync Works</h3>
         <ol className="space-y-2 text-xs text-muted list-decimal list-inside">
           <li>Each institution gets a unique <strong className="text-body">8-character Sync Code</strong>.</li>
@@ -414,7 +414,7 @@ function CollegeCard({
   onDisconnect: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-line/40 bg-[#0D1B2E] p-5 space-y-4 transition-all hover:border-line/50">
+    <div className="rounded-xl border border-line bg-surface p-5 space-y-4 transition-colors hover:border-accent">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-bold text-ink text-base">{college.name}</p>
