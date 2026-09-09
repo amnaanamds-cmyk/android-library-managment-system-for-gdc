@@ -113,8 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="p-6 border-b border-white/10 flex items-center gap-3">
             <span className="text-3xl bg-blue-600/20 p-2 rounded-xl">📚</span>
             <div>
-              <h1 className={`font-bold leading-none tracking-tight ${isDarkMode ? "text-white" : "text-blue-900"}`}>GDC Library</h1>
-              <span className={`text-[10px] tracking-widest uppercase font-bold ${isDarkMode ? "text-blue-200/50" : "text-blue-600/70"}`}>Web Portal</span>
+              <h1 className={`font-bold leading-none tracking-tight ${isDarkMode ? "text-white" : "text-blue-900"}`}>NEXLIB</h1>
+              <span className={`text-[10px] tracking-widest uppercase font-bold ${isDarkMode ? "text-blue-200/50" : "text-blue-600/70"}`}>Library Portal</span>
             </div>
           </div>
           <nav className="p-4 space-y-6">

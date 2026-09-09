@@ -11,12 +11,6 @@ kotlin {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
-    
-    jvm {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
 
     sourceSets {
         val commonMain by getting {
@@ -49,12 +43,6 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(libs.sqldelight.android)
-                implementation(libs.ktor.client.cio)
-            }
-        }
-        val jvmMain by getting {
-            dependencies {
-                implementation(libs.sqldelight.sqlite)
                 implementation(libs.ktor.client.cio)
             }
         }

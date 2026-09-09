@@ -19,4 +19,3 @@ dependencyResolutionManagement {
 rootProject.name = "NEXLIB"
 include(":app")
 include(":shared")
-include(":desktopApp")
