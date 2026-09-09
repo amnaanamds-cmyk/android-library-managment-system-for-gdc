@@ -34,17 +34,17 @@ function buildCutter(author: string): string {
 
 function SpineLabelPreview({ callNo, cutter, year, title }: { callNo: string; cutter: string; year: string; title: string }) {
   return (
-    <div className="w-24 bg-white rounded border-2 border-slate-600 overflow-hidden text-center select-none" style={{ height: 140 }}>
-      <div className="bg-blue-800 px-1 py-1">
-        <p className="text-white text-[8px] font-bold truncate">{(title || "").substring(0, 12)}</p>
+    <div className="w-24 bg-white rounded border-2 border-line overflow-hidden text-center select-none" style={{ height: 140 }}>
+      <div className="bg-surface-2 px-1 py-1">
+        <p className="text-ink text-[8px] font-bold truncate">{(title || "").substring(0, 12)}</p>
       </div>
       <div className="py-2">
-        <p className="text-slate-900 text-base font-extrabold font-mono leading-tight">{callNo || "---"}</p>
-        <p className="text-slate-700 text-xs font-mono">{cutter || ""}</p>
-        <p className="text-slate-500 text-xs font-mono">{year || ""}</p>
+        <p className="text-body text-base font-extrabold font-mono leading-tight">{callNo || "---"}</p>
+        <p className="text-body text-xs font-mono">{cutter || ""}</p>
+        <p className="text-muted text-xs font-mono">{year || ""}</p>
       </div>
-      <div className="bg-blue-800 px-1 py-1 mt-auto">
-        <p className="text-white text-[7px]">NEXLIB</p>
+      <div className="bg-surface-2 px-1 py-1 mt-auto">
+        <p className="text-ink text-[7px]">NEXLIB</p>
       </div>
     </div>
   );
@@ -92,11 +92,11 @@ export default function SpineLabelPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">🏷️ Spine Label Generator</h1>
-          <p className="text-sm text-slate-400">Generate and print DDC call number spine labels for physical books.</p>
+          <h1 className="text-3xl font-extrabold text-ink">🏷️ Spine Label Generator</h1>
+          <p className="text-sm text-muted">Generate and print DDC call number spine labels for physical books.</p>
         </div>
         <button onClick={handlePrint}
-          className="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 transition-colors">
+          className="px-4 py-2 rounded-lg bg-positive text-on-accent font-bold text-sm hover:bg-positive transition-colors">
           🖨️ Print All Labels
         </button>
       </div>
@@ -104,23 +104,23 @@ export default function SpineLabelPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Books", value: books?.length || 0, color: "text-blue-400" },
-          { label: "Labels Done", value: done, color: "text-emerald-400" },
-          { label: "Labels Missing", value: (books?.length || 0) - done, color: "text-amber-400" },
+          { label: "Total Books", value: books?.length || 0, color: "text-accent" },
+          { label: "Labels Done", value: done, color: "text-positive" },
+          { label: "Labels Missing", value: (books?.length || 0) - done, color: "text-warning" },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border border-blue-950 bg-[#070F1E] p-4 text-center">
+          <div key={s.label} className="rounded-xl border border-line bg-surface-2 p-4 text-center">
             <div className={`text-3xl font-extrabold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-slate-400 mt-1">{s.label}</div>
+            <div className="text-xs text-muted mt-1">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* DDC Reference */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-4">
-        <p className="text-xs font-bold text-slate-400 mb-2">📖 DDC Quick Reference</p>
+      <div className="rounded-xl border border-line bg-surface-2 p-4">
+        <p className="text-xs font-bold text-muted mb-2">📖 DDC Quick Reference</p>
         <div className="flex flex-wrap gap-2">
           {Object.entries(DDC_CLASSES).map(([code, name]) => (
-            <span key={code} className="px-2 py-1 rounded bg-[#1E3050] text-xs text-slate-300 font-mono">
+            <span key={code} className="px-2 py-1 rounded bg-line text-xs text-body font-mono">
               <b>{code}</b> — {name}
             </span>
           ))}
@@ -129,40 +129,40 @@ export default function SpineLabelPage() {
 
       {/* Edit Panel */}
       {editingBook && (
-        <div className="rounded-xl border border-amber-900/50 bg-[#070F1E] p-6 shadow-xl">
+        <div className="rounded-xl border border-warning/50 bg-surface-2 p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-amber-300">Edit Label: <span className="text-white">{editingBook.title}</span></h2>
-            <button onClick={() => setEditingBook(null)} className="text-slate-400 hover:text-white text-sm">✕ Cancel</button>
+            <h2 className="text-lg font-bold text-warning">Edit Label: <span className="text-ink">{editingBook.title}</span></h2>
+            <button onClick={() => setEditingBook(null)} className="text-muted hover:text-ink text-sm">✕ Cancel</button>
           </div>
           <div className="flex gap-8 items-start">
             <div className="flex-1 space-y-3">
               <div>
-                <label className="text-xs text-slate-400 font-bold block mb-1">DDC Call Number *</label>
+                <label className="text-xs text-muted font-bold block mb-1">DDC Call Number *</label>
                 <input value={callNo} onChange={e => setCallNo(e.target.value)}
-                  className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-amber-500 font-mono" />
-                <p className="text-xs text-slate-500 mt-1">Suggested: <span className="font-mono text-amber-400">{suggestDDC(editingBook.category || "")}</span>
+                  className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-warning font-mono" />
+                <p className="text-xs text-muted mt-1">Suggested: <span className="font-mono text-warning">{suggestDDC(editingBook.category || "")}</span>
                   <button onClick={() => setCallNo(suggestDDC(editingBook.category || ""))}
-                    className="ml-2 text-xs px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400 hover:bg-amber-800/30">Use</button>
+                    className="ml-2 text-xs px-1.5 py-0.5 rounded bg-warning-soft/30 text-warning hover:bg-warning-soft/30">Use</button>
                 </p>
               </div>
               <div>
-                <label className="text-xs text-slate-400 font-bold block mb-1">Author Cutter</label>
+                <label className="text-xs text-muted font-bold block mb-1">Author Cutter</label>
                 <input value={cutter} onChange={e => setCutter(e.target.value)}
-                  className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-amber-500 font-mono" />
+                  className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-warning font-mono" />
               </div>
               <div>
-                <label className="text-xs text-slate-400 font-bold block mb-1">Year</label>
+                <label className="text-xs text-muted font-bold block mb-1">Year</label>
                 <input value={year} onChange={e => setYear(e.target.value)}
-                  className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-amber-500 font-mono" />
+                  className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-warning font-mono" />
               </div>
               <button onClick={saveLabel} disabled={saving}
-                className="w-full py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors">
+                className="w-full py-2 rounded-lg bg-positive text-on-accent font-bold text-sm hover:bg-positive disabled:opacity-50 transition-colors">
                 {saving ? "Saving…" : "💾 Save Label"}
               </button>
             </div>
             {/* Preview */}
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs text-slate-400 font-bold">Preview</p>
+              <p className="text-xs text-muted font-bold">Preview</p>
               <SpineLabelPreview callNo={callNo} cutter={cutter} year={year} title={editingBook.title} />
             </div>
           </div>
@@ -172,20 +172,20 @@ export default function SpineLabelPage() {
       {/* Search & Filter */}
       <div className="flex gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search books…"
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#070F1E] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-amber-500" />
+          className="flex-1 rounded-lg border border-line bg-surface-2 px-4 py-2 text-sm text-ink outline-none focus:border-warning" />
         <select value={filter} onChange={e => setFilter(e.target.value)}
-          className="rounded-lg border border-[#1E3050] bg-[#070F1E] px-3 py-2 text-sm text-[#E8EEF8] outline-none">
+          className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none">
           <option>All</option><option>Done</option><option>Missing</option>
         </select>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-line bg-surface-2 overflow-hidden shadow-xl">
         {loading ? (
-          <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" /></div>
+          <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-warning border-t-transparent" /></div>
         ) : (
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+          <table className="w-full text-left text-sm text-body">
+            <thead className="text-xs uppercase bg-surface/40 text-muted">
               <tr>
                 <th className="px-4 py-3">Acc No</th>
                 <th className="px-4 py-3">Title</th>
@@ -196,28 +196,28 @@ export default function SpineLabelPage() {
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-950/40">
+            <tbody className="divide-y divide-line/40">
               {filtered.map((book: any) => (
-                <tr key={book.id} className="hover:bg-blue-950/10 cursor-pointer" onDoubleClick={() => openEdit(book)}>
-                  <td className="px-4 py-3 font-mono text-slate-400">{book.accNo || "—"}</td>
-                  <td className="px-4 py-3 font-semibold text-white">{book.title}</td>
+                <tr key={book.id} className="hover:bg-surface-2/10 cursor-pointer" onDoubleClick={() => openEdit(book)}>
+                  <td className="px-4 py-3 font-mono text-muted">{book.accNo || "—"}</td>
+                  <td className="px-4 py-3 font-semibold text-ink">{book.title}</td>
                   <td className="px-4 py-3">{book.author || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-amber-300">{book.callNumber || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-slate-400">{book.authorCutter || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-warning">{book.callNumber || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-muted">{book.authorCutter || "—"}</td>
                   <td className="px-4 py-3">
                     {book.callNumber
-                      ? <span className="text-xs font-bold text-emerald-400">✅ Done</span>
-                      : <span className="text-xs font-bold text-amber-400">⏳ Missing</span>}
+                      ? <span className="text-xs font-bold text-positive">✅ Done</span>
+                      : <span className="text-xs font-bold text-warning">⏳ Missing</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => openEdit(book)}
-                      className="px-3 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors">
+                      className="px-3 py-1 rounded bg-warning/10 border border-warning/30 text-xs font-bold text-warning hover:bg-warning/20 transition-colors">
                       🏷️ Edit Label
                     </button>
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-slate-500">No books found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted">No books found.</td></tr>}
             </tbody>
           </table>
         )}

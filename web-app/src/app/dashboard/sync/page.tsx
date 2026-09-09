@@ -249,35 +249,35 @@ export default function SyncPage() {
     <div className="space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8] tracking-tight">
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight">
           🔗 College Sync Network
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-muted mt-1">
           Connect your college to partner institutions and sync library data across the network.
         </p>
       </div>
 
       {/* My Sync Code */}
-      <div className="rounded-2xl border border-blue-800/50 bg-gradient-to-br from-[#0A1628] to-[#071020] p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-[#E6C96E] mb-1">
+      <div className="rounded-2xl border border-line/50 bg-gradient-to-br from-[#0A1628] to-app p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-accent-strong mb-1">
           🏫 Your Institution Sync Code
         </h2>
-        <p className="text-xs text-slate-400 mb-5">
+        <p className="text-xs text-muted mb-5">
           Share this code with other colleges so they can connect to your institution.
           <br />
-          Institution: <span className="text-white font-semibold">{myInstitution?.name || "Loading…"}</span>
+          Institution: <span className="text-ink font-semibold">{myInstitution?.name || "Loading…"}</span>
         </p>
 
         <div className="flex items-center gap-4">
           {codeLoading || !syncCode ? (
-            <div className="flex items-center gap-3 h-16 px-6 rounded-xl border border-blue-800 bg-[#0D1F38]">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
-              <span className="text-slate-400 text-sm">Generating code…</span>
+            <div className="flex items-center gap-3 h-16 px-6 rounded-xl border border-line bg-surface">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              <span className="text-muted text-sm">Generating code…</span>
             </div>
           ) : (
-            <div className="flex items-center gap-4 px-6 py-4 rounded-xl border border-[#C8A84B]/40 bg-[#0D1F38] shadow-inner">
+            <div className="flex items-center gap-4 px-6 py-4 rounded-xl border border-accent/40 bg-surface shadow-inner">
               <span
-                className="font-mono text-3xl font-extrabold tracking-[0.35em] text-[#E6C96E] select-all"
+                className="font-mono text-3xl font-extrabold tracking-[0.35em] text-accent-strong select-all"
                 style={{ letterSpacing: "0.35em" }}
               >
                 {syncCode}
@@ -286,8 +286,8 @@ export default function SyncPage() {
                 onClick={copyCode}
                 className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                   copied
-                    ? "bg-emerald-500/20 border border-emerald-500/50 text-emerald-300"
-                    : "bg-blue-600/20 border border-blue-600/50 text-blue-300 hover:bg-blue-600/40"
+                    ? "bg-positive/20 border border-positive/50 text-positive"
+                    : "bg-accent-bg/20 border border-line/50 text-accent hover:bg-accent-bg/40"
                 }`}
               >
                 {copied ? "✅ Copied!" : "📋 Copy"}
@@ -296,15 +296,15 @@ export default function SyncPage() {
           )}
         </div>
 
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-muted">
           ⚠️ Keep this code private — only share with trusted partner institutions.
         </p>
       </div>
 
       {/* Connect to a Partner */}
-      <div className="rounded-2xl border border-blue-800/50 bg-[#071020] p-6 shadow-xl">
-        <h2 className="text-lg font-bold text-white mb-1">🔌 Connect to a Partner College</h2>
-        <p className="text-xs text-slate-400 mb-5">
+      <div className="rounded-2xl border border-line/50 bg-app p-6 shadow-xl">
+        <h2 className="text-lg font-bold text-ink mb-1">🔌 Connect to a Partner College</h2>
+        <p className="text-xs text-muted mb-5">
           Enter the 8-character sync code of the college you want to connect with.
         </p>
 
@@ -319,12 +319,12 @@ export default function SyncPage() {
             }}
             maxLength={8}
             placeholder="e.g. ABCD1234"
-            className="flex-1 rounded-xl border border-[#1E3050] bg-[#0D1F38] px-5 py-3 text-center font-mono text-xl font-bold tracking-[0.3em] text-[#E8EEF8] outline-none focus:border-[#C8A84B] uppercase"
+            className="flex-1 rounded-xl border border-line bg-surface px-5 py-3 text-center font-mono text-xl font-bold tracking-[0.3em] text-ink outline-none focus:border-accent uppercase"
           />
           <button
             type="submit"
             disabled={connectLoading || partnerCode.length < 6}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#1E5FD4] to-[#2872F0] text-white font-bold text-sm hover:from-[#2872F0] hover:to-[#3D8EFF] disabled:opacity-50 transition-all whitespace-nowrap shadow-lg"
+            className="bg-accent-bg px-6 py-3 rounded-xl text-on-accent font-bold text-sm disabled:opacity-50 transition-all whitespace-nowrap shadow-lg"
           >
             {connectLoading ? (
               <span className="flex items-center gap-2">
@@ -338,28 +338,28 @@ export default function SyncPage() {
         </form>
 
         {connectError && (
-          <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+          <div className="mt-3 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-xs text-danger">
             ⚠️ {connectError}
           </div>
         )}
         {connectSuccess && (
-          <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300 font-semibold">
+          <div className="mt-3 rounded-lg border border-positive/30 bg-positive/10 px-4 py-3 text-xs text-positive font-semibold">
             {connectSuccess}
           </div>
         )}
       </div>
 
       {/* Connected Colleges */}
-      <div className="rounded-2xl border border-blue-800/50 bg-[#071020] p-6 shadow-xl">
-        <h2 className="text-lg font-bold text-white mb-5">
+      <div className="rounded-2xl border border-line/50 bg-app p-6 shadow-xl">
+        <h2 className="text-lg font-bold text-ink mb-5">
           🌐 Connected Colleges
-          <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-300 text-xs font-normal">
+          <span className="ml-2 px-2 py-0.5 rounded-full bg-surface-2/60 text-accent text-xs font-normal">
             {syncedColleges.length}
           </span>
         </h2>
 
         {syncedColleges.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-slate-500">
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted">
             <div className="text-5xl mb-3">🏫</div>
             <p className="font-bold text-sm uppercase tracking-widest">No connections yet</p>
             <p className="text-xs mt-1">Connect to a partner college above to start syncing data.</p>
@@ -382,12 +382,12 @@ export default function SyncPage() {
       </div>
 
       {/* How it works */}
-      <div className="rounded-2xl border border-blue-900/30 bg-[#060e1a] p-6">
-        <h3 className="font-bold text-slate-300 mb-3 text-sm uppercase tracking-wider">ℹ️ How College Sync Works</h3>
-        <ol className="space-y-2 text-xs text-slate-400 list-decimal list-inside">
-          <li>Each institution gets a unique <strong className="text-slate-200">8-character Sync Code</strong>.</li>
+      <div className="rounded-2xl border border-line/30 bg-[#060e1a] p-6">
+        <h3 className="font-bold text-body mb-3 text-sm uppercase tracking-wider">ℹ️ How College Sync Works</h3>
+        <ol className="space-y-2 text-xs text-muted list-decimal list-inside">
+          <li>Each institution gets a unique <strong className="text-body">8-character Sync Code</strong>.</li>
           <li>Share your code with partner colleges (e.g., sister institutions in the same district).</li>
-          <li>When connected, click <strong className="text-slate-200">Sync Now</strong> to pull their latest catalog, member count, and transaction stats.</li>
+          <li>When connected, click <strong className="text-body">Sync Now</strong> to pull their latest catalog, member count, and transaction stats.</li>
           <li>Both institutions remain independent — only aggregate data is shared for visibility.</li>
           <li>Disconnect at any time to remove cross-institution access.</li>
         </ol>
@@ -414,14 +414,14 @@ function CollegeCard({
   onDisconnect: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-blue-900/40 bg-[#0D1B2E] p-5 space-y-4 transition-all hover:border-blue-700/50">
+    <div className="rounded-xl border border-line/40 bg-[#0D1B2E] p-5 space-y-4 transition-all hover:border-line/50">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-bold text-white text-base">{college.name}</p>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Code: <span className="font-mono text-[#C8A84B] font-bold tracking-widest">{college.syncCode}</span>
+          <p className="font-bold text-ink text-base">{college.name}</p>
+          <p className="text-xs text-muted mt-0.5">
+            Code: <span className="font-mono text-accent font-bold tracking-widest">{college.syncCode}</span>
           </p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-muted mt-1">
             Last synced: {college.lastSyncAt ? new Date(college.lastSyncAt).toLocaleString() : "Never"}
           </p>
         </div>
@@ -429,18 +429,18 @@ function CollegeCard({
           <button
             onClick={onSync}
             disabled={isSyncing}
-            className="px-4 py-2 rounded-lg bg-emerald-600/20 border border-emerald-600/40 text-emerald-300 text-xs font-bold hover:bg-emerald-600/40 disabled:opacity-50 transition-all"
+            className="px-4 py-2 rounded-lg bg-positive/20 border border-positive/40 text-positive text-xs font-bold hover:bg-positive/40 disabled:opacity-50 transition-all"
           >
             {isSyncing ? (
               <span className="flex items-center gap-2">
-                <span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-300 border-t-transparent" />
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-positive border-t-transparent" />
                 Syncing…
               </span>
             ) : "🔄 Sync Now"}
           </button>
           <button
             onClick={onDisconnect}
-            className="px-4 py-2 rounded-lg bg-red-600/10 border border-red-600/30 text-red-400 text-xs font-bold hover:bg-red-600/20 transition-all"
+            className="px-4 py-2 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs font-bold hover:bg-danger/20 transition-all"
           >
             ✖ Disconnect
           </button>
@@ -457,11 +457,11 @@ function CollegeCard({
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-lg bg-[#071428] border border-blue-950 p-3 text-center"
+              className="rounded-lg bg-app border border-line p-3 text-center"
             >
               <div className="text-xl">{stat.icon}</div>
-              <div className="text-lg font-extrabold text-white mt-1">{stat.value}</div>
-              <div className="text-xs text-slate-400">{stat.label}</div>
+              <div className="text-lg font-extrabold text-ink mt-1">{stat.value}</div>
+              <div className="text-xs text-muted">{stat.label}</div>
             </div>
           ))}
         </div>
@@ -472,10 +472,10 @@ function CollegeCard({
         <div
           className={`rounded-lg px-4 py-2 text-xs font-semibold ${
             syncResult.startsWith("✅")
-              ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-300"
+              ? "bg-positive/10 border border-positive/30 text-positive"
               : syncResult.startsWith("❌")
-              ? "bg-red-500/10 border border-red-500/30 text-red-300"
-              : "bg-blue-500/10 border border-blue-500/30 text-blue-300"
+              ? "bg-danger/10 border border-danger/30 text-danger"
+              : "bg-accent-bg/10 border border-accent/30 text-accent"
           }`}
         >
           {syncResult}

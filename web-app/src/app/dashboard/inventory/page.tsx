@@ -53,12 +53,12 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">📦 Inventory & Stocktaking</h1>
-        <p className="text-sm text-slate-400">Koha-style shelf reading. Scan book barcodes (Acc No or ISBN) to mark as Found.</p>
+        <h1 className="text-3xl font-extrabold text-ink">📦 Inventory & Stocktaking</h1>
+        <p className="text-sm text-muted">Koha-style shelf reading. Scan book barcodes (Acc No or ISBN) to mark as Found.</p>
       </div>
 
       {/* Scanner Bar */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl">
+      <div className="rounded-xl border border-line bg-surface-2 p-5 shadow-xl">
         <div className="flex gap-3 mb-3">
           <input
             ref={inputRef}
@@ -67,34 +67,34 @@ export default function InventoryPage() {
             onChange={(e) => setScanInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && processScan()}
             placeholder="🔍 Scan Barcode / Acc No here..."
-            className="flex-1 rounded-lg border-2 border-[#C8A84B] bg-[#0D1F38] px-4 py-3 text-base text-[#E8EEF8] outline-none focus:border-yellow-400"
+            className="flex-1 rounded-lg border-2 border-accent bg-surface px-4 py-3 text-base text-ink outline-none focus:border-warning"
             autoFocus
           />
-          <button onClick={resetSession} className="px-4 py-2 rounded-lg bg-[#1E3050] text-slate-300 font-bold text-sm hover:bg-[#2A4166] transition-colors">🔄 Reset</button>
-          <button onClick={exportMissing} className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-sm hover:bg-red-500/20 transition-colors">📤 Export Missing</button>
+          <button onClick={resetSession} className="px-4 py-2 rounded-lg bg-line text-body font-bold text-sm hover:bg-line transition-colors">🔄 Reset</button>
+          <button onClick={exportMissing} className="px-4 py-2 rounded-lg bg-danger/10 border border-danger/30 text-danger font-bold text-sm hover:bg-danger/20 transition-colors">📤 Export Missing</button>
         </div>
-        {lastScan && <p className={`text-sm font-bold ${lastScan.ok ? "text-emerald-400" : "text-red-400"}`}>{lastScan.text}</p>}
+        {lastScan && <p className={`text-sm font-bold ${lastScan.ok ? "text-positive" : "text-danger"}`}>{lastScan.text}</p>}
       </div>
 
       {/* Progress */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl">
+      <div className="rounded-xl border border-line bg-surface-2 p-5 shadow-xl">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-bold text-slate-400">Progress: {found} / {total} Found ({pct}%)</span>
-          <span className={`text-xs font-bold px-3 py-1 rounded-full ${pct === 100 ? "bg-emerald-900/40 text-emerald-400" : "bg-blue-900/40 text-blue-300"}`}>
+          <span className="text-sm font-bold text-muted">Progress: {found} / {total} Found ({pct}%)</span>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${pct === 100 ? "bg-positive-soft/40 text-positive" : "bg-surface-2/40 text-accent"}`}>
             {pct === 100 ? "✅ Complete" : "In Progress"}
           </span>
         </div>
-        <div className="h-3 w-full bg-[#0D1F38] rounded-full overflow-hidden border border-blue-900/30">
-          <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-3 w-full bg-surface rounded-full overflow-hidden border border-line/30">
+          <div className="h-full bg-positive rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
-        {loading ? <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" /></div> : (
+      <div className="rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
+        {loading ? <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+            <table className="w-full text-left text-sm text-body">
+              <thead className="text-xs uppercase bg-surface/40 text-muted">
                 <tr>
                   <th className="px-4 py-3">Acc No</th>
                   <th className="px-4 py-3">Title</th>
@@ -103,20 +103,20 @@ export default function InventoryPage() {
                   <th className="px-4 py-3">Inventory Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-950/40">
+              <tbody className="divide-y divide-line/40">
                 {sorted.map(b => {
                   const isFnd = foundIds.has(b.id);
                   return (
-                    <tr key={b.id} className={`hover:bg-blue-950/10 ${isFnd ? "opacity-60" : ""}`}>
+                    <tr key={b.id} className={`hover:bg-surface-2/10 ${isFnd ? "opacity-60" : ""}`}>
                       <td className="px-4 py-3 font-mono text-xs">{b.accNo || "—"}</td>
-                      <td className="px-4 py-3 font-semibold text-white">{b.title}</td>
+                      <td className="px-4 py-3 font-semibold text-ink">{b.title}</td>
                       <td className="px-4 py-3">{b.author || "—"}</td>
-                      <td className="px-4 py-3"><span className={`text-xs font-bold ${b.status === "Available" ? "text-emerald-400" : "text-amber-400"}`}>{b.status || "—"}</span></td>
-                      <td className="px-4 py-3"><span className={`text-xs font-black ${isFnd ? "text-emerald-400" : "text-red-400"}`}>{isFnd ? "✅ Found" : "❌ Missing"}</span></td>
+                      <td className="px-4 py-3"><span className={`text-xs font-bold ${b.status === "Available" ? "text-positive" : "text-warning"}`}>{b.status || "—"}</span></td>
+                      <td className="px-4 py-3"><span className={`text-xs font-black ${isFnd ? "text-positive" : "text-danger"}`}>{isFnd ? "✅ Found" : "❌ Missing"}</span></td>
                     </tr>
                   );
                 })}
-                {sorted.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-slate-500">No books in catalog to audit.</td></tr>}
+                {sorted.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-muted">No books in catalog to audit.</td></tr>}
               </tbody>
             </table>
           </div>

@@ -35,17 +35,17 @@ export default function GateLogPage() {
     <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">🛂 Gate Entry Monitor</h1>
-          <p className="text-sm text-slate-400">Log daily visitors and track real-time library occupancy</p>
+          <h1 className="text-3xl font-extrabold text-ink">🛂 Gate Entry Monitor</h1>
+          <p className="text-sm text-muted">Log daily visitors and track real-time library occupancy</p>
         </div>
-        <div className="bg-emerald-900/40 border border-emerald-700/50 rounded-xl px-6 py-3 text-center">
-          <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Current Occupancy</p>
-          <p className="text-4xl font-black text-emerald-400">{occupancy}</p>
+        <div className="bg-positive-soft/40 border border-positive/50 rounded-xl px-6 py-3 text-center">
+          <p className="text-xs font-bold uppercase tracking-wider text-positive">Current Occupancy</p>
+          <p className="text-4xl font-black text-positive">{occupancy}</p>
         </div>
       </div>
 
       {/* Quick Entry Bar */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl">
+      <div className="rounded-xl border border-line bg-surface-2 p-5 shadow-xl">
         <div className="flex gap-3">
           <input
             ref={inputRef}
@@ -54,13 +54,13 @@ export default function GateLogPage() {
             onChange={(e) => setEntryInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
             placeholder="Scan Member ID or Type Guest Name..."
-            className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+            className="flex-1 rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-accent"
             autoFocus
           />
           <select
             value={visitorType}
             onChange={(e) => setVisitorType(e.target.value)}
-            className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-sm text-[#E8EEF8] outline-none"
+            className="rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none"
           >
             <option>Member</option>
             <option>Guest</option>
@@ -68,7 +68,7 @@ export default function GateLogPage() {
           </select>
           <button
             onClick={handleSignIn}
-            className="px-6 py-3 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 transition-colors shadow"
+            className="px-6 py-3 rounded-lg bg-positive text-on-accent font-bold text-sm hover:bg-positive transition-colors shadow"
           >
             ✅ Entry Sign-In
           </button>
@@ -76,16 +76,16 @@ export default function GateLogPage() {
       </div>
 
       {/* Log Table */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
-        <h3 className="text-lg font-bold text-white mb-4">Today's Visitor Log — {today}</h3>
+      <div className="rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
+        <h3 className="text-lg font-bold text-ink mb-4">Today's Visitor Log — {today}</h3>
         {loading ? (
           <div className="py-12 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+            <table className="w-full text-left text-sm text-body">
+              <thead className="text-xs uppercase bg-surface/40 text-muted">
                 <tr>
                   <th className="px-4 py-3">Name / ID</th>
                   <th className="px-4 py-3">Type</th>
@@ -94,29 +94,29 @@ export default function GateLogPage() {
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-950/40">
+              <tbody className="divide-y divide-line/40">
                 {todayLogs.map((log) => {
                   const entryStr = new Date(log.entryTime).toLocaleTimeString();
                   const exitStr = log.exitTime ? new Date(log.exitTime).toLocaleTimeString() : null;
                   return (
-                    <tr key={log.id} className="hover:bg-blue-950/10">
-                      <td className="px-4 py-4 font-semibold text-white">{log.name}</td>
+                    <tr key={log.id} className="hover:bg-surface-2/10">
+                      <td className="px-4 py-4 font-semibold text-ink">{log.name}</td>
                       <td className="px-4 py-4">
-                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-900/40 text-blue-300">{log.visitorType}</span>
+                        <span className="px-2 py-0.5 rounded text-xs font-bold bg-surface-2/40 text-accent">{log.visitorType}</span>
                       </td>
                       <td className="px-4 py-4">{entryStr}</td>
                       <td className="px-4 py-4">
                         {exitStr ? (
-                          <span className="text-slate-400">{exitStr}</span>
+                          <span className="text-muted">{exitStr}</span>
                         ) : (
-                          <span className="text-emerald-400 font-bold animate-pulse">● IN LIBRARY</span>
+                          <span className="text-positive font-bold animate-pulse">● IN LIBRARY</span>
                         )}
                       </td>
                       <td className="px-4 py-4 text-right">
                         {!log.exitTime && (
                           <button
                             onClick={() => handleSignOut(log.id)}
-                            className="px-3 py-1 rounded bg-red-500/10 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+                            className="px-3 py-1 rounded bg-danger/10 border border-danger/30 text-xs font-bold text-danger hover:bg-danger/20 transition-colors"
                           >
                             Sign Out
                           </button>
@@ -127,7 +127,7 @@ export default function GateLogPage() {
                 })}
                 {todayLogs.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-slate-500">No visitors logged today.</td>
+                    <td colSpan={5} className="text-center py-8 text-muted">No visitors logged today.</td>
                   </tr>
                 )}
               </tbody>

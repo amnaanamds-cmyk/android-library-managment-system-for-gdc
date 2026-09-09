@@ -10,26 +10,29 @@ import { canViewDirectorate } from "@/lib/directorate";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { profile, logout, loading } = useAuth();
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const sync = useSyncHealth();
 
+  // The toggle writes the `dark` class onto <html>, so every page picks the
+  // theme up through the tokens in globals.css. It used to live in this
+  // component's state, which meant only the shell changed colour and every page
+  // inside it stayed dark on a light frame.
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
   useEffect(() => {
-    const savedTheme = localStorage.getItem("web-theme");
-    if (savedTheme) {
-      setIsDarkMode(savedTheme === "dark");
-    }
+    setIsDarkMode(document.documentElement.classList.contains("dark"));
   }, []);
 
   const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    localStorage.setItem("web-theme", newMode ? "dark" : "light");
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("web-theme", next ? "dark" : "light");
   };
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#050B14]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+      <div className="flex h-screen w-full items-center justify-center bg-app">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       </div>
     );
   }
@@ -97,54 +100,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Honest sync indicator. This used to be a hardcoded green dot, so a session
   // whose writes were all being rejected still looked healthy.
   const syncIndicator = {
-    live: { dot: "bg-green-500 animate-pulse", label: "Real-time sync active", tone: "text-slate-400" },
-    connecting: { dot: "bg-amber-500 animate-pulse", label: sync.online ? "Reconnecting…" : "Offline — changes queued", tone: "text-amber-400" },
-    error: { dot: "bg-red-500", label: "Sync error — check access", tone: "text-red-400" },
-    idle: { dot: "bg-slate-600", label: "No institution selected", tone: "text-slate-500" },
+    live: { dot: "bg-positive", label: "Real-time sync active", tone: "text-muted" },
+    connecting: { dot: "bg-warning animate-pulse", label: sync.online ? "Reconnecting…" : "Offline — changes queued", tone: "text-warning" },
+    error: { dot: "bg-danger", label: "Sync error — check access", tone: "text-danger" },
+    idle: { dot: "bg-line-strong", label: "No institution selected", tone: "text-muted" },
   }[sync.state];
 
+  const currentTitle =
+    navSections.flatMap((s) => s.items).find((i) => i.path === pathname)?.name ?? "Dashboard";
+
   return (
-    <div className={`flex h-screen transition-colors duration-300 ${isDarkMode ? "bg-[#111827] text-slate-100" : "bg-[#FAFAFA] text-slate-800"} overflow-hidden`}>
+    <div className="flex h-screen overflow-hidden bg-app text-body">
       {/* Sidebar */}
-      <aside className={`w-64 border-r flex flex-col justify-between transition-colors duration-300 overflow-y-auto overflow-x-hidden ${
-        isDarkMode ? "bg-[#0F1524] border-[#1E2638]" : "bg-white border-slate-200"
-      }`}>
+      <aside className="flex w-64 flex-col justify-between overflow-y-auto overflow-x-hidden border-r border-line bg-surface">
         <div>
-          <div className="p-6 border-b border-white/10 flex items-center gap-3">
-            <span className="text-3xl bg-blue-600/20 p-2 rounded-xl">📚</span>
+          <div className="flex items-center gap-3 border-b border-line p-6">
+            <span className="rounded-xl bg-accent-soft p-2 text-2xl">📚</span>
             <div>
-              <h1 className={`font-bold leading-none tracking-tight ${isDarkMode ? "text-white" : "text-blue-900"}`}>GDC Library</h1>
-              <span className={`text-[10px] tracking-widest uppercase font-bold ${isDarkMode ? "text-blue-200/50" : "text-blue-600/70"}`}>Web Portal</span>
+              <h1 className="font-bold leading-none tracking-tight text-ink">NEXLIB</h1>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                Library Portal
+              </span>
             </div>
           </div>
-          <nav className="p-4 space-y-6">
+          <nav className="space-y-6 p-4">
             {navSections.map((section, idx) => (
               <div key={idx}>
-                <h3 className={`text-[11px] font-bold uppercase tracking-wider mb-2 px-4 ${isDarkMode ? "text-slate-500" : "text-slate-400"}`}>
+                <h3 className="mb-2 px-4 text-[11px] font-bold uppercase tracking-wider text-muted">
                   {section.title}
                 </h3>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {section.items.map((item) => {
                     const active = pathname === item.path;
-                    const isDisabled = item.path === "#";
                     return (
                       <Link
                         key={item.name}
                         href={item.path}
-                        onClick={(e) => { if(isDisabled) e.preventDefault(); }}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          active 
-                            ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                            : isDisabled
-                              ? (isDarkMode ? "text-slate-600 cursor-not-allowed" : "text-slate-300 cursor-not-allowed")
-                              : (isDarkMode ? "text-blue-100/60 hover:bg-slate-800 hover:text-white" : "text-slate-500 hover:bg-blue-50 hover:text-blue-700")
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-accent-bg text-on-accent"
+                            : "text-body hover:bg-surface-2 hover:text-ink"
                         }`}
                       >
-                        <span className="text-lg opacity-80">{item.icon}</span>
+                        <span className="text-base opacity-80">{item.icon}</span>
                         <span>{item.name}</span>
-                        {isDisabled && (
-                          <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded border ${isDarkMode ? "border-slate-700 text-slate-500" : "border-slate-200 text-slate-400"}`}>WIP</span>
-                        )}
                       </Link>
                     );
                   })}
@@ -154,24 +153,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
 
-        {/* User Card */}
-        <div className={`p-4 border-t sticky bottom-0 transition-colors duration-300 ${isDarkMode ? "border-[#1E2638] bg-[#0A1428]" : "border-slate-200 bg-slate-50"}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-inner">
+        {/* User card */}
+        <div className="sticky bottom-0 border-t border-line bg-surface p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-bg text-sm font-bold text-on-accent">
               {profile?.email?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="overflow-hidden">
-              <p className={`text-xs font-bold truncate ${isDarkMode ? "text-white" : "text-slate-800"}`}>{profile?.email?.split('@')[0]}</p>
-              <p className={`text-[10px] font-bold uppercase tracking-wider opacity-70 ${isDarkMode ? "text-blue-300" : "text-blue-600"}`}>
+              <p className="truncate text-xs font-bold text-ink">{profile?.email?.split("@")[0]}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
                 {profile?.role}
               </p>
             </div>
           </div>
           <button
             onClick={logout}
-            className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors ${
-              isDarkMode ? "text-red-400 hover:bg-red-500/10" : "text-red-500 hover:bg-red-50"
-            }`}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold text-danger transition-colors hover:bg-danger-soft"
           >
             <span>🚪</span>
             <span>Sign Out</span>
@@ -179,48 +176,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className={`h-16 border-b flex items-center justify-between px-8 transition-colors duration-300 ${
-          isDarkMode ? "bg-[#1F2937] border-[#1E2638]" : "bg-white border-slate-200 shadow-sm"
-        }`}>
+      {/* Main content */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 items-center justify-between border-b border-line bg-surface px-8">
           <div className="flex items-center gap-3">
-            <h2 className={`font-bold text-lg ${isDarkMode ? "text-white" : "text-slate-800"}`}>
-              {navSections.flatMap(s => s.items).find(i => i.path === pathname)?.name || "Dashboard"}
-            </h2>
-            <div className={`h-4 w-[1px] ${isDarkMode ? "bg-slate-700" : "bg-slate-200"}`} />
-            <span className="text-xs font-bold text-blue-500 uppercase tracking-widest">
-              Inst-ID: {profile?.institutionId || "..."}
+            <h2 className="text-lg font-bold text-ink">{currentTitle}</h2>
+            <div className="h-4 w-px bg-line" />
+            {/* The institution id is on screen deliberately: when two clients
+                disagree about the data, the first thing to check is whether
+                they are pointed at the same tenant. */}
+            <span className="font-mono text-xs text-muted">
+              {profile?.institutionId || "no institution"}
             </span>
           </div>
 
           <div className="flex items-center gap-6">
             <div
               className="flex items-center gap-2"
-              title={sync.error || (sync.lastSyncAt ? `Last server update ${new Date(sync.lastSyncAt).toLocaleTimeString()}` : undefined)}
+              title={
+                sync.error ||
+                (sync.lastSyncAt
+                  ? `Last server update ${new Date(sync.lastSyncAt).toLocaleTimeString()}`
+                  : undefined)
+              }
             >
               <span className={`h-2 w-2 rounded-full ${syncIndicator.dot}`} />
-              <span className={`text-[10px] font-bold uppercase tracking-tighter ${syncIndicator.tone}`}>
+              <span className={`text-[11px] font-semibold ${syncIndicator.tone}`}>
                 {syncIndicator.label}
               </span>
             </div>
 
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-xl transition-all active:scale-95 ${
-                isDarkMode ? "bg-slate-800 text-yellow-400 hover:bg-slate-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-              }`}
+              aria-label={isDarkMode ? "Switch to light theme" : "Switch to dark theme"}
+              className="rounded-lg border border-line px-2.5 py-1.5 text-sm transition-colors hover:border-accent"
             >
               {isDarkMode ? "☀️" : "🌙"}
             </button>
           </div>
         </header>
-        <main className={`flex-1 overflow-y-auto p-8 transition-colors duration-300 ${
-          isDarkMode ? "bg-[#111827]" : "bg-[#FAFAFA]"
-        }`}>
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+
+        <main className="flex-1 overflow-y-auto bg-app p-8">
+          <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
     </div>

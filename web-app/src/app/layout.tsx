@@ -14,20 +14,34 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEXLIB — Library Dashboard",
-  description: "Multi-College Library Management System Portal",
+  title: "NEXLIB — Library Management",
+  description:
+    "Library management for the Government Degree Colleges of Khyber Pakhtunkhwa",
 };
+
+// Applied before first paint so a dark-mode user never sees a white flash, and
+// so every page - not just the dashboard shell - is in the right theme from the
+// start. The dashboard's toggle writes the same key.
+const THEME_BOOTSTRAP = `
+try {
+  var t = localStorage.getItem("web-theme");
+  if (t !== "light") document.documentElement.classList.add("dark");
+} catch (e) {
+  document.documentElement.classList.add("dark");
+}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-[#050B14] text-slate-100">
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
+      <body className="min-h-full flex flex-col bg-app text-body">
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

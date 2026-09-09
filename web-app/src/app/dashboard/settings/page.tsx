@@ -18,21 +18,21 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 duration-500 animate-in fade-in">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#E8EEF8]">⚙️ System Settings</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">⚙️ System Settings</h1>
+        <p className="mt-1 text-sm text-muted">
           Policy set here applies to the Android and Windows apps too.
         </p>
       </div>
 
-      <div className="flex space-x-2 border-b border-blue-900/50 pb-px">
+      <div className="flex space-x-2 border-b border-line/50 pb-px">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-t-lg px-4 py-2 text-sm font-bold transition-colors ${
               activeTab === tab.id
-                ? "border-b-2 border-[#C8A84B] bg-[#1E3050] text-[#E6C96E]"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
+                ? "border-b-2 border-accent bg-line text-accent-strong"
+                : "text-muted hover:bg-surface-2 hover:text-ink"
             }`}
           >
             {tab.label}
@@ -40,7 +40,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="min-h-[400px] rounded-b-xl rounded-tr-xl border border-blue-950 bg-[#071428] p-6 shadow-xl">
+      <div className="min-h-[400px] rounded-b-xl rounded-tr-xl border border-line bg-app p-6 shadow-xl">
         {activeTab === "general" && <CirculationPolicy />}
         {activeTab === "auditlogs" && <AuditLogs />}
         {activeTab === "developertools" && <DeveloperTools />}
@@ -80,8 +80,8 @@ function CirculationPolicy() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 py-12 text-sm text-slate-400">
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+      <div className="flex items-center gap-3 py-12 text-sm text-muted">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
         Loading policy…
       </div>
     );
@@ -94,13 +94,13 @@ function CirculationPolicy() {
   return (
     <div className="max-w-2xl space-y-8">
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-xs text-danger">
           Could not read the current policy: {error}
         </div>
       )}
 
       <section className="space-y-4">
-        <h3 className="text-lg font-bold text-blue-400">Loans</h3>
+        <h3 className="text-lg font-bold text-accent">Loans</h3>
         <NumberField
           label="Loan period (days)"
           hint="Used to compute the due date when a book is issued."
@@ -126,8 +126,8 @@ function CirculationPolicy() {
         />
       </section>
 
-      <section className="space-y-4 border-t border-blue-900/40 pt-6">
-        <h3 className="text-lg font-bold text-blue-400">Overdue fines</h3>
+      <section className="space-y-4 border-t border-line/40 pt-6">
+        <h3 className="text-lg font-bold text-accent">Overdue fines</h3>
         <NumberField
           label={`Fine per day (${draft.currencySymbol})`}
           value={draft.fineRatePerDay}
@@ -152,10 +152,10 @@ function CirculationPolicy() {
           onChange={(v) => update("maxFinePerLoan", v)}
         />
 
-        <div className="rounded-lg border border-blue-900/40 bg-[#0D1F38]/50 px-4 py-3 text-xs text-slate-300">
-          <span className="font-bold text-[#E6C96E]">Worked example:</span> a book returned{" "}
+        <div className="rounded-lg border border-line/40 bg-surface/50 px-4 py-3 text-xs text-body">
+          <span className="font-bold text-accent-strong">Worked example:</span> a book returned{" "}
           {exampleDays} days late is charged{" "}
-          <span className="font-bold text-white">
+          <span className="font-bold text-ink">
             {draft.currencySymbol} {exampleFine.toFixed(2)}
           </span>
           {draft.fineGraceDays > 0 && ` (first ${draft.fineGraceDays} day(s) free)`}
@@ -166,20 +166,20 @@ function CirculationPolicy() {
         </div>
       </section>
 
-      <div className="flex items-center gap-4 border-t border-blue-900/40 pt-6">
+      <div className="flex items-center gap-4 border-t border-line/40 pt-6">
         <button
           onClick={onSave}
           disabled={saving || !dirty}
-          className="rounded-lg bg-blue-600 px-6 py-3 font-bold text-white shadow-lg transition-colors hover:bg-blue-500 disabled:opacity-40"
+          className="rounded-lg bg-accent-bg px-6 py-3 font-bold text-on-accent shadow-lg transition-colors hover:bg-accent-bg disabled:opacity-40"
         >
           {saving ? "Saving…" : "💾 Save policy"}
         </button>
         {dirty && !saving && (
-          <span className="text-xs font-bold text-amber-400">Unsaved changes</span>
+          <span className="text-xs font-bold text-warning">Unsaved changes</span>
         )}
         {result && (
           <span
-            className={`text-xs font-bold ${result.ok ? "text-emerald-400" : "text-red-400"}`}
+            className={`text-xs font-bold ${result.ok ? "text-positive" : "text-danger"}`}
           >
             {result.message}
           </span>
@@ -187,7 +187,7 @@ function CirculationPolicy() {
       </div>
 
       {settings.lastUpdated > 0 && (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted">
           Last changed {new Date(settings.lastUpdated).toLocaleString("en-PK")}
           {settings.updatedBy && ` by ${settings.updatedBy}`}
           {settings.updatedByPlatform && ` (${settings.updatedByPlatform})`}.
@@ -216,8 +216,8 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-bold text-slate-300">{label}</label>
-      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+      <label className="block text-sm font-bold text-body">{label}</label>
+      {hint && <p className="mt-0.5 text-xs text-muted">{hint}</p>}
       <input
         type="number"
         value={Number.isFinite(value) ? value : 0}
@@ -228,7 +228,7 @@ function NumberField({
           const n = parseFloat(e.target.value);
           onChange(Number.isFinite(n) ? n : 0);
         }}
-        className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+        className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-3 text-ink outline-none focus:border-accent"
       />
     </div>
   );
@@ -248,21 +248,21 @@ function AuditLogs() {
   return (
     <div className="space-y-4">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white">System Audit Trail</h3>
-        <span className="text-xs text-slate-500">
+        <h3 className="text-lg font-bold text-ink">System Audit Trail</h3>
+        <span className="text-xs text-muted">
           {loading ? "Loading…" : `${entries.length} most recent`}
         </span>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-xs text-danger">
           {error}
         </div>
       )}
 
-      <div className="max-h-[26rem] overflow-y-auto rounded-lg border border-blue-950">
+      <div className="max-h-[26rem] overflow-y-auto rounded-lg border border-line">
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 bg-[#0D1F38] text-[10px] uppercase tracking-widest text-slate-400">
+          <thead className="sticky top-0 bg-surface text-[10px] uppercase tracking-widest text-muted">
             <tr>
               <th className="px-4 py-3">When</th>
               <th className="px-4 py-3">User</th>
@@ -270,26 +270,26 @@ function AuditLogs() {
               <th className="px-4 py-3">Detail</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-blue-950/40">
+          <tbody className="divide-y divide-line/40">
             {entries.map((e, i) => (
-              <tr key={e.id || i} className="hover:bg-blue-950/10">
-                <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-400">
+              <tr key={e.id || i} className="hover:bg-surface-2/10">
+                <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">
                   {e.timestampStr ||
                     (e.timestamp ? new Date(Number(e.timestamp)).toLocaleString("en-PK") : "—")}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-300">{e.userEmail || "system"}</td>
+                <td className="px-4 py-3 text-xs text-body">{e.userEmail || "system"}</td>
                 <td className="px-4 py-3">
-                  <span className="rounded bg-blue-950 px-2 py-0.5 font-mono text-[11px] text-blue-300">
+                  <span className="rounded bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-accent">
                     {e.action || "—"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-400">{e.detail || ""}</td>
+                <td className="px-4 py-3 text-xs text-muted">{e.detail || ""}</td>
               </tr>
             ))}
             {!loading && entries.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-16 text-center">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted">
                     No audit entries yet
                   </p>
                 </td>
@@ -366,17 +366,17 @@ function DeveloperTools() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <div className="space-y-4 rounded-xl border border-blue-900/50 bg-[#0D1F38]/30 p-6">
+      <div className="space-y-4 rounded-xl border border-line/50 bg-surface/30 p-6">
         <div>
-          <h3 className="text-lg font-bold text-blue-400">Data integrity check</h3>
-          <p className="mt-1 text-sm text-slate-400">
+          <h3 className="text-lg font-bold text-accent">Data integrity check</h3>
+          <p className="mt-1 text-sm text-muted">
             Reconciles open loans against the catalogue and member register.
           </p>
         </div>
         <button
           onClick={runIntegrityCheck}
           disabled={busy}
-          className="rounded-lg bg-amber-600 px-6 py-3 font-bold text-amber-950 shadow-lg transition-colors hover:bg-amber-500 disabled:opacity-40"
+          className="rounded-lg bg-warning px-6 py-3 font-bold text-warning shadow-lg transition-colors hover:bg-warning disabled:opacity-40"
         >
           {busy ? "Loading data…" : "🩺 Run integrity check"}
         </button>
@@ -385,8 +385,8 @@ function DeveloperTools() {
           <div
             className={`rounded-lg border px-4 py-3 text-xs ${
               report.length === 0
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                ? "border-positive/30 bg-positive/10 text-positive"
+                : "border-warning/30 bg-warning/10 text-warning"
             }`}
           >
             {report.length === 0 ? (
@@ -407,24 +407,24 @@ function DeveloperTools() {
         )}
       </div>
 
-      <div className="space-y-3 rounded-xl border border-blue-900/50 bg-[#0D1F38]/30 p-6">
-        <h3 className="text-lg font-bold text-blue-400">Session</h3>
+      <div className="space-y-3 rounded-xl border border-line/50 bg-surface/30 p-6">
+        <h3 className="text-lg font-bold text-accent">Session</h3>
         <dl className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <dt className="uppercase tracking-widest text-slate-500">Institution</dt>
-            <dd className="font-mono text-slate-300">{profile?.institutionId || "—"}</dd>
+            <dt className="uppercase tracking-widest text-muted">Institution</dt>
+            <dd className="font-mono text-body">{profile?.institutionId || "—"}</dd>
           </div>
           <div>
-            <dt className="uppercase tracking-widest text-slate-500">Role</dt>
-            <dd className="font-mono text-slate-300">{profile?.role || "—"}</dd>
+            <dt className="uppercase tracking-widest text-muted">Role</dt>
+            <dd className="font-mono text-body">{profile?.role || "—"}</dd>
           </div>
           <div>
-            <dt className="uppercase tracking-widest text-slate-500">Books</dt>
-            <dd className="text-slate-300">{books.data.length}</dd>
+            <dt className="uppercase tracking-widest text-muted">Books</dt>
+            <dd className="text-body">{books.data.length}</dd>
           </div>
           <div>
-            <dt className="uppercase tracking-widest text-slate-500">Members</dt>
-            <dd className="text-slate-300">{members.data.length}</dd>
+            <dt className="uppercase tracking-widest text-muted">Members</dt>
+            <dd className="text-body">{members.data.length}</dd>
           </div>
         </dl>
       </div>
@@ -436,9 +436,9 @@ function DeveloperTools() {
         into a web page, the destructive path stays with the desktop app, which
         takes a local backup first.
       */}
-      <div className="space-y-2 rounded-xl border border-red-900/50 bg-red-950/20 p-6">
-        <h3 className="text-lg font-bold text-red-400">⚠️ Destructive actions</h3>
-        <p className="text-sm text-slate-400">
+      <div className="space-y-2 rounded-xl border border-danger/50 bg-danger-soft/20 p-6">
+        <h3 className="text-lg font-bold text-danger">⚠️ Destructive actions</h3>
+        <p className="text-sm text-muted">
           Resetting a library&apos;s data is done from the Windows app, under Settings → Reset
           Database, which takes a local backup before clearing anything. It is deliberately not
           offered here: this page has no backup step, and the action cannot be undone.

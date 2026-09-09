@@ -41,38 +41,38 @@ export default function OPACPage() {
       <div className="flex items-center gap-4">
         <span className="text-4xl">🔍</span>
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">Online Public Access Catalog</h1>
-          <p className="text-sm text-slate-400">Search the GDC Library database and reserve books</p>
+          <h1 className="text-3xl font-extrabold text-ink">Online Public Access Catalog</h1>
+          <p className="text-sm text-muted">Search the GDC Library database and reserve books</p>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="rounded-xl border-2 border-[#1E5FD4] bg-[#0D1F38] px-5 py-3 flex gap-3 items-center">
+      <div className="rounded-xl border-2 border-accent bg-surface px-5 py-3 flex gap-3 items-center">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by Title, Author, or Category..."
-          className="flex-1 bg-transparent outline-none text-[#E8EEF8] text-base placeholder:text-slate-500"
+          className="flex-1 bg-transparent outline-none text-ink text-base placeholder:text-muted"
           autoFocus
         />
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
-          className="bg-[#1E3050] border-none rounded-lg px-4 py-1.5 text-sm text-slate-300 outline-none">
+          className="bg-line border-none rounded-lg px-4 py-1.5 text-sm text-body outline-none">
           {categories.map(c => <option key={c}>{c}</option>)}
         </select>
       </div>
 
       {/* Results */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
+      <div className="rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold text-white">Search Results</h3>
-          <span className="text-sm text-slate-400">Found {filtered.length} books</span>
+          <h3 className="text-lg font-bold text-ink">Search Results</h3>
+          <span className="text-sm text-muted">Found {filtered.length} books</span>
         </div>
 
-        {loading ? <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" /></div> : (
+        {loading ? <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+            <table className="w-full text-left text-sm text-body">
+              <thead className="text-xs uppercase bg-surface/40 text-muted">
                 <tr>
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Author</th>
@@ -82,22 +82,22 @@ export default function OPACPage() {
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-950/40">
+              <tbody className="divide-y divide-line/40">
                 {filtered.map(b => (
-                  <tr key={b.id} className="hover:bg-blue-950/10">
-                    <td className="px-4 py-4 font-semibold text-white">{b.title}</td>
+                  <tr key={b.id} className="hover:bg-surface-2/10">
+                    <td className="px-4 py-4 font-semibold text-ink">{b.title}</td>
                     <td className="px-4 py-4">{b.author || "—"}</td>
-                    <td className="px-4 py-4"><span className="text-xs bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded font-bold">{b.category || "—"}</span></td>
+                    <td className="px-4 py-4"><span className="text-xs bg-surface-2/40 text-accent px-2 py-0.5 rounded font-bold">{b.category || "—"}</span></td>
                     <td className="px-4 py-4">
-                      <span className={`text-xs font-black ${b.status === "Available" ? "text-emerald-400" : "text-amber-400"}`}>{b.status || "Available"}</span>
+                      <span className={`text-xs font-black ${b.status === "Available" ? "text-positive" : "text-warning"}`}>{b.status || "Available"}</span>
                     </td>
                     <td className="px-4 py-4">
-                      {b.isDigital && <span className="text-xs text-blue-400 font-bold">📱 Available</span>}
+                      {b.isDigital && <span className="text-xs text-accent font-bold">📱 Available</span>}
                     </td>
                     <td className="px-4 py-4 text-right space-x-2">
                       {b.isDigital && b.digitalUrl && (
                         <a href={b.digitalUrl} target="_blank" rel="noopener noreferrer"
-                          className="inline-block px-2 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-xs font-bold text-blue-400 hover:bg-blue-500/20 transition-colors">
+                          className="inline-block px-2 py-1 rounded bg-accent-bg/10 border border-accent/30 text-xs font-bold text-accent hover:bg-accent-bg/20 transition-colors">
                           📖 Read
                         </a>
                       )}
@@ -106,8 +106,8 @@ export default function OPACPage() {
                         disabled={b.status !== "Available" || reserving === b.id}
                         className={`px-3 py-1 rounded text-xs font-bold transition-colors ${
                           b.status === "Available"
-                            ? "bg-blue-600 text-white hover:bg-blue-500"
-                            : "bg-slate-700/40 text-slate-500 cursor-not-allowed"
+                            ? "bg-accent-bg text-on-accent hover:bg-accent-bg"
+                            : "bg-surface-2/40 text-muted cursor-not-allowed"
                         }`}
                       >
                         {reserving === b.id ? "..." : "Reserve"}
@@ -115,7 +115,7 @@ export default function OPACPage() {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-500">No books found. Try a different search term.</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-muted">No books found. Try a different search term.</td></tr>}
               </tbody>
             </table>
           </div>

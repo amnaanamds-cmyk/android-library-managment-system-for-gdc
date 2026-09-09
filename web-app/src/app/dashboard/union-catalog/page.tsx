@@ -122,15 +122,15 @@ export default function UnionCatalogPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">🌐 Union Catalogue</h1>
-        <p className="text-sm text-slate-400">Search resources across all registered institutions & request ILLs.</p>
+        <h1 className="text-3xl font-extrabold text-ink">🌐 Union Catalogue</h1>
+        <p className="text-sm text-muted">Search resources across all registered institutions & request ILLs.</p>
       </div>
 
-      <div className="flex border-b border-[#1E3050] mb-6">
+      <div className="flex border-b border-line mb-6">
         {["Search", "Requests", "About"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-6 py-3 font-bold text-sm border-b-2 transition-colors ${
-              activeTab === tab ? "border-blue-500 text-blue-400" : "border-transparent text-slate-400 hover:text-slate-200"
+              activeTab === tab ? "border-accent text-accent" : "border-transparent text-muted hover:text-body"
             }`}>
             {tab}
           </button>
@@ -139,26 +139,26 @@ export default function UnionCatalogPage() {
 
       {activeTab === "Search" && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-4 flex gap-3">
+          <div className="rounded-xl border border-line bg-surface-2 p-4 flex gap-3">
             <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && performSearch()}
               placeholder="🔍 Search title, author, ISBN..."
-              className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-blue-500" />
+              className="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-accent" />
             <select value={field} onChange={e => setField(e.target.value)}
-              className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none">
+              className="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none">
               <option>All</option><option>Title</option><option>Author</option><option>ISBN</option>
             </select>
             <button onClick={performSearch} disabled={loading}
-              className="px-6 py-2 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors">
+              className="px-6 py-2 rounded-lg bg-accent-bg text-on-accent font-bold text-sm hover:bg-accent-bg disabled:opacity-50 transition-colors">
               {loading ? "Searching..." : "🔍 Search"}
             </button>
           </div>
 
-          <div className="rounded-xl border border-blue-950 bg-[#070F1E] overflow-hidden shadow-xl">
+          <div className="rounded-xl border border-line bg-surface-2 overflow-hidden shadow-xl">
             {loading ? (
-              <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>
+              <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
             ) : (
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+              <table className="w-full text-left text-sm text-body">
+                <thead className="text-xs uppercase bg-surface/40 text-muted">
                   <tr>
                     <th className="px-4 py-3">Institution</th>
                     <th className="px-4 py-3">Title</th>
@@ -169,28 +169,28 @@ export default function UnionCatalogPage() {
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-blue-950/40">
+                <tbody className="divide-y divide-line/40">
                   {results.map((r, i) => (
-                    <tr key={i} className="hover:bg-blue-950/10">
-                      <td className="px-4 py-3 font-semibold text-violet-300">{r.institution}</td>
-                      <td className="px-4 py-3 text-white">{r.title}</td>
+                    <tr key={i} className="hover:bg-surface-2/10">
+                      <td className="px-4 py-3 font-semibold text-accent">{r.institution}</td>
+                      <td className="px-4 py-3 text-ink">{r.title}</td>
                       <td className="px-4 py-3">{r.author || "—"}</td>
                       <td className="px-4 py-3">{r.isbn || "—"}</td>
-                      <td className="px-4 py-3 font-mono text-slate-400">{r.callNo || "—"}</td>
+                      <td className="px-4 py-3 font-mono text-muted">{r.callNo || "—"}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-bold ${r.status === 'Available' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        <span className={`text-xs font-bold ${r.status === 'Available' ? 'text-positive' : 'text-warning'}`}>
                           {r.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => requestILL(r)}
-                          className="px-3 py-1 rounded bg-blue-500/10 border border-blue-500/30 text-xs font-bold text-blue-400 hover:bg-blue-500/20">
+                          className="px-3 py-1 rounded bg-accent-bg/10 border border-accent/30 text-xs font-bold text-accent hover:bg-accent-bg/20">
                           🤝 Request ILL
                         </button>
                       </td>
                     </tr>
                   ))}
-                  {results.length === 0 && !loading && <tr><td colSpan={7} className="text-center py-8 text-slate-500">Run a search to find cross-library resources.</td></tr>}
+                  {results.length === 0 && !loading && <tr><td colSpan={7} className="text-center py-8 text-muted">Run a search to find cross-library resources.</td></tr>}
                 </tbody>
               </table>
             )}
@@ -199,12 +199,12 @@ export default function UnionCatalogPage() {
       )}
 
       {activeTab === "Requests" && (
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] overflow-hidden shadow-xl">
+        <div className="rounded-xl border border-line bg-surface-2 overflow-hidden shadow-xl">
           {illLoading ? (
-            <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>
+            <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
           ) : (
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+            <table className="w-full text-left text-sm text-body">
+              <thead className="text-xs uppercase bg-surface/40 text-muted">
                 <tr>
                   <th className="px-4 py-3">Requester</th>
                   <th className="px-4 py-3">Book Title</th>
@@ -215,30 +215,30 @@ export default function UnionCatalogPage() {
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-950/40">
+              <tbody className="divide-y divide-line/40">
                 {(illRequests || []).map((req: any) => (
-                  <tr key={req.id} className="hover:bg-blue-950/10">
-                    <td className="px-4 py-3 font-semibold text-white">{req.requesterName} <span className="text-xs text-slate-500">({req.requesterId})</span></td>
-                    <td className="px-4 py-3 text-white">{req.bookTitle}</td>
-                    <td className="px-4 py-3 text-violet-300">{req.fromInstitution}</td>
+                  <tr key={req.id} className="hover:bg-surface-2/10">
+                    <td className="px-4 py-3 font-semibold text-ink">{req.requesterName} <span className="text-xs text-muted">({req.requesterId})</span></td>
+                    <td className="px-4 py-3 text-ink">{req.bookTitle}</td>
+                    <td className="px-4 py-3 text-accent">{req.fromInstitution}</td>
                     <td className="px-4 py-3">{req.requestDate}</td>
                     <td className="px-4 py-3">{req.duration}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-bold ${req.status === 'Fulfilled' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      <span className={`text-xs font-bold ${req.status === 'Fulfilled' ? 'text-positive' : 'text-warning'}`}>
                         {req.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       {req.status !== 'Fulfilled' && (
                         <button onClick={() => markFulfilled(req)}
-                          className="px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20">
+                          className="px-3 py-1 rounded bg-positive/10 border border-positive/30 text-xs font-bold text-positive hover:bg-positive/20">
                           ✅ Fulfill
                         </button>
                       )}
                     </td>
                   </tr>
                 ))}
-                {(illRequests || []).length === 0 && <tr><td colSpan={7} className="text-center py-8 text-slate-500">No ILL requests found.</td></tr>}
+                {(illRequests || []).length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted">No ILL requests found.</td></tr>}
               </tbody>
             </table>
           )}
@@ -246,8 +246,8 @@ export default function UnionCatalogPage() {
       )}
 
       {activeTab === "About" && (
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-8 prose prose-invert max-w-none">
-          <h2 className="text-blue-400">Union Catalogue — NEXLIB</h2>
+        <div className="rounded-xl border border-line bg-surface-2 p-8 prose prose-invert max-w-none">
+          <h2 className="text-accent">Union Catalogue — NEXLIB</h2>
           <p>The <b>Union Catalogue</b> provides a consolidated view of library resources across all registered institutions under the Directorate.</p>
           <ul>
             <li>🔍 <b>Cross-library search</b> for books by title, author, ISBN</li>
@@ -255,7 +255,7 @@ export default function UnionCatalogPage() {
             <li>🤝 <b>Inter-Library Loan (ILL)</b> — request unavailable books from other libraries</li>
             <li>📊 <b>Resource sharing statistics</b> across the network</li>
           </ul>
-          <p className="text-slate-500 text-sm mt-8">Based on Z39.50 / SRU standard concepts. Data is pulled in real-time from Firestore across all linked institutions.</p>
+          <p className="text-muted text-sm mt-8">Based on Z39.50 / SRU standard concepts. Data is pulled in real-time from Firestore across all linked institutions.</p>
         </div>
       )}
 

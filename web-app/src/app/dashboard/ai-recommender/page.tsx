@@ -108,8 +108,8 @@ export default function AIRecommenderPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 max-w-6xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">🤖 AI Smart Book Recommender</h1>
-        <p className="text-sm text-slate-400">Collaborative filtering engine — analyzes borrowing patterns to surface personalized picks</p>
+        <h1 className="text-3xl font-extrabold text-ink">🤖 AI Smart Book Recommender</h1>
+        <p className="text-sm text-muted">Collaborative filtering engine — analyzes borrowing patterns to surface personalized picks</p>
       </div>
 
       {/* Controls */}
@@ -119,16 +119,16 @@ export default function AIRecommenderPage() {
           value={memberId}
           onChange={(e) => setMemberId(e.target.value)}
           placeholder="Enter Member ID for personalized picks (leave blank for trending)..."
-          className="flex-1 min-w-[260px] rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+          className="flex-1 min-w-[260px] rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
         />
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-          className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none">
+          className="rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none">
           {categories.map(c => <option key={c}>{c}</option>)}
         </select>
         <button
           onClick={loadRecommendations}
           disabled={loading}
-          className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 disabled:opacity-60 transition-colors shadow"
+          className="px-6 py-2.5 rounded-lg bg-accent-bg text-on-accent font-bold text-sm hover:bg-accent-bg disabled:opacity-60 transition-colors shadow"
         >
           {loading ? "Analyzing..." : "🔄 Get Recommendations"}
         </button>
@@ -136,13 +136,13 @@ export default function AIRecommenderPage() {
 
       {loading && (
         <div className="py-16 flex flex-col items-center gap-4">
-          <div className="h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-blue-400 font-bold animate-pulse">Analyzing borrowing patterns...</p>
+          <div className="h-12 w-12 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="text-accent font-bold animate-pulse">Analyzing borrowing patterns...</p>
         </div>
       )}
 
       {!loading && !hasLoaded && (
-        <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
+        <div className="py-16 flex flex-col items-center gap-3 text-muted">
           <span className="text-5xl">🤖</span>
           <p className="font-bold text-lg">Enter details and click Get Recommendations</p>
           <p className="text-sm">The AI engine uses collaborative filtering to identify relevant books</p>
@@ -150,7 +150,7 @@ export default function AIRecommenderPage() {
       )}
 
       {!loading && hasLoaded && recommendations.length === 0 && (
-        <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
+        <div className="py-16 flex flex-col items-center gap-3 text-muted">
           <span className="text-4xl">📭</span>
           <p className="font-bold">No recommendations found for this criteria.</p>
           <p className="text-sm">Try clearing the Member ID or changing the category filter.</p>
@@ -162,15 +162,15 @@ export default function AIRecommenderPage() {
           {recommendations.map((rec, i) => (
             <div
               key={i}
-              className="rounded-xl border border-[#1E3050] bg-[#0D1F38] p-5 hover:border-blue-700 transition-all hover:shadow-lg hover:shadow-blue-900/20"
+              className="rounded-xl border border-line bg-surface p-5 hover:border-line transition-all hover:shadow-lg hover:shadow-blue-900/20"
             >
-              <p className="font-bold text-white text-base leading-snug mb-1">{rec.title}</p>
-              <p className="text-sm text-slate-400 mb-3">{rec.author} • <span className="text-blue-400">{rec.category}</span></p>
+              <p className="font-bold text-ink text-base leading-snug mb-1">{rec.title}</p>
+              <p className="text-sm text-muted mb-3">{rec.author} • <span className="text-accent">{rec.category}</span></p>
               <div className="flex items-center justify-between">
-                <span className="text-[#C8A84B] font-bold text-sm">
-                  {starsDisplay(rec.stars)} <span className="text-xs text-slate-400 ml-1">{rec.stars.toFixed(1)}</span>
+                <span className="text-accent font-bold text-sm">
+                  {starsDisplay(rec.stars)} <span className="text-xs text-muted ml-1">{rec.stars.toFixed(1)}</span>
                 </span>
-                <span className="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 rounded-full font-bold">
+                <span className="text-xs bg-accent-bg/10 text-accent border border-accent/20 px-3 py-1 rounded-full font-bold">
                   {rec.reason}
                 </span>
               </div>

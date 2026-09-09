@@ -182,8 +182,8 @@ export default function BooksPage() {
     <div className="space-y-6 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">📚 Book Management</h1>
-          <p className="text-sm text-slate-400">Add, view, and manage books in your library</p>
+          <h1 className="text-3xl font-extrabold text-ink">📚 Book Management</h1>
+          <p className="text-sm text-muted">Add, view, and manage books in your library</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <input 
@@ -193,22 +193,22 @@ export default function BooksPage() {
             accept=".csv, .xlsx, .xls"
             onChange={handleFileChange}
           />
-          <button onClick={handleImportClick} disabled={adding} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={handleImportClick} disabled={adding} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             📥 Import
           </button>
-          <button onClick={handleExportCSV} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={handleExportCSV} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             📤 Export CSV
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             📤 Export MARC21
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             🏷️ Barcodes
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             🏷️ Spine Labels
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             ☁️ Upload Asset (DAM)
           </button>
         </div>
@@ -218,16 +218,16 @@ export default function BooksPage() {
         <input 
           type="text"
           placeholder="🔍 Search by title, author, ISBN..."
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+          className="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-accent"
         />
-        <select className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none">
+        <select className="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none">
           <option>All Categories</option>
           <option>Fiction</option>
           <option>Non-Fiction</option>
           <option>Science</option>
           <option>Computer Science</option>
         </select>
-        <select className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none">
+        <select className="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none">
           <option>All Status</option>
           <option>Available</option>
           <option>Issued</option>
@@ -236,76 +236,76 @@ export default function BooksPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
         {/* Add Book Form */}
-        <div className="xl:col-span-1 rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl h-fit overflow-y-auto max-h-[80vh]">
-          <h3 className="text-lg font-bold text-white mb-4">Add New Book</h3>
+        <div className="xl:col-span-1 rounded-xl border border-line bg-surface-2 p-6 shadow-xl h-fit overflow-y-auto max-h-[80vh]">
+          <h3 className="text-lg font-bold text-ink mb-4">Add New Book</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">ISBN</label>
-                <input type="text" value={isbn} onChange={(e) => setIsbn(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="978-..." />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">ISBN</label>
+                <input type="text" value={isbn} onChange={(e) => setIsbn(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="978-..." />
               </div>
-              <button type="button" onClick={comingSoon} className="mt-5 px-3 bg-[#C8A84B] text-[#0D1B2A] rounded-lg font-bold text-xs hover:bg-[#D4B85E] transition-colors">
+              <button type="button" onClick={comingSoon} className="mt-5 px-3 bg-accent-bg text-on-accent rounded-lg font-bold text-xs hover:bg-[#D4B85E] transition-colors">
                 ✨ Fetch
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Acc No</label>
-                <input type="text" value={accNo} onChange={(e) => setAccNo(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="B001" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Acc No</label>
+                <input type="text" value={accNo} onChange={(e) => setAccNo(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="B001" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Category</label>
-                <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="Science" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Category</label>
+                <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="Science" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Book Title *</label>
-              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="Book Title" />
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Book Title *</label>
+              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="Book Title" />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Author *</label>
-              <input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="Author Name" />
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Author *</label>
+              <input type="text" required value={author} onChange={(e) => setAuthor(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="Author Name" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Publisher</label>
-                <input type="text" value={publisher} onChange={(e) => setPublisher(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="Publisher" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Publisher</label>
+                <input type="text" value={publisher} onChange={(e) => setPublisher(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="Publisher" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Pub Date</label>
-                <input type="text" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="2024" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Pub Date</label>
+                <input type="text" value={publishDate} onChange={(e) => setPublishDate(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="2024" />
               </div>
             </div>
             
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Ed.</label>
-                <input type="text" value={edition} onChange={(e) => setEdition(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="1st" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Ed.</label>
+                <input type="text" value={edition} onChange={(e) => setEdition(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="1st" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Vol.</label>
-                <input type="text" value={volume} onChange={(e) => setVolume(e.target.value)} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="1" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Vol.</label>
+                <input type="text" value={volume} onChange={(e) => setVolume(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="1" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Pages</label>
-                <input type="number" min="1" value={pages} onChange={(e) => setPages(parseInt(e.target.value))} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" />
+                <label className="block text-xs font-bold uppercase tracking-wider text-muted">Pages</label>
+                <input type="number" min="1" value={pages} onChange={(e) => setPages(parseInt(e.target.value))} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Digital / E-Book URL</label>
-              <input type="text" value={digitalUrl} onChange={(e) => {setDigitalUrl(e.target.value); setIsDigital(!!e.target.value)}} className="mt-1 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]" placeholder="https://drive..." />
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Digital / E-Book URL</label>
+              <input type="text" value={digitalUrl} onChange={(e) => {setDigitalUrl(e.target.value); setIsDigital(!!e.target.value)}} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" placeholder="https://drive..." />
             </div>
 
             <button
               type="submit"
               disabled={adding}
-              className="w-full mt-2 rounded-lg bg-gradient-to-r from-[#1E5FD4] to-[#2872F0] py-3 text-sm font-bold text-white transition-all hover:from-[#2872F0] hover:to-[#3D8EFF] shadow-lg disabled:opacity-50"
+              className="bg-accent-bg w-full mt-2 rounded-lg py-3 text-sm font-bold text-on-accent transition-all shadow-lg disabled:opacity-50"
             >
               {adding ? "Saving..." : "💾 Save Book"}
             </button>
@@ -313,16 +313,16 @@ export default function BooksPage() {
         </div>
 
         {/* Books List Table */}
-        <div className="xl:col-span-3 rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
-          <h3 className="text-lg font-bold text-white mb-4">Catalog List</h3>
+        <div className="xl:col-span-3 rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
+          <h3 className="text-lg font-bold text-ink mb-4">Catalog List</h3>
           {loading ? (
             <div className="py-12 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300 whitespace-nowrap">
-                <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+              <table className="w-full text-left text-sm text-body whitespace-nowrap">
+                <thead className="text-xs uppercase bg-surface/40 text-muted">
                   <tr>
                     <th className="px-4 py-3">Title</th>
                     <th className="px-4 py-3">Author</th>
@@ -335,10 +335,10 @@ export default function BooksPage() {
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-blue-950/40">
+                <tbody className="divide-y divide-line/40">
                   {books?.map((book) => (
-                    <tr key={book.id} className="hover:bg-blue-950/10">
-                      <td className="px-4 py-4 font-semibold text-white max-w-[200px] truncate" title={book.title}>{book.title}</td>
+                    <tr key={book.id} className="hover:bg-surface-2/10">
+                      <td className="px-4 py-4 font-semibold text-ink max-w-[200px] truncate" title={book.title}>{book.title}</td>
                       <td className="px-4 py-4 max-w-[150px] truncate">{book.author || "—"}</td>
                       <td className="px-4 py-4">{book.isbn || "—"}</td>
                       <td className="px-4 py-4">{book.accNo || "—"}</td>
@@ -356,13 +356,13 @@ export default function BooksPage() {
                       </td>
                       <td className="px-4 py-4 text-right space-x-2">
                         {book.isDigital && (
-                          <button onClick={() => window.open(book.digitalUrl, "_blank")} className="px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors">
+                          <button onClick={() => window.open(book.digitalUrl, "_blank")} className="px-2 py-1 rounded bg-positive/10 border border-positive/30 text-xs font-bold text-positive hover:bg-positive/20 transition-colors">
                             📖 Read
                           </button>
                         )}
                         <button
                           onClick={() => deleteRecord(book.id)}
-                          className="px-2 py-1 rounded bg-red-500/10 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="px-2 py-1 rounded bg-danger/10 border border-danger/30 text-xs font-bold text-danger hover:bg-danger/20 transition-colors"
                         >
                           🗑️
                         </button>
@@ -371,7 +371,7 @@ export default function BooksPage() {
                   ))}
                   {books?.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center py-8 text-slate-500">
+                      <td colSpan={9} className="text-center py-8 text-muted">
                         No books cataloged in this institution.
                       </td>
                     </tr>

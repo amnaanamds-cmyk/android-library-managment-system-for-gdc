@@ -17,19 +17,19 @@ export default function EnterprisePage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8] tracking-tight">🚀 Enterprise & Unique Features</h1>
-        <p className="text-sm text-slate-400 mt-1">Advanced management, automation, and community engagement</p>
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight">🚀 Enterprise & Unique Features</h1>
+        <p className="text-sm text-muted mt-1">Advanced management, automation, and community engagement</p>
       </div>
 
-      <div className="flex space-x-2 border-b border-blue-900/50 pb-px">
+      <div className="flex space-x-2 border-b border-line/50 pb-px">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${
               activeTab === tab.id
-                ? "bg-[#1E3050] text-[#E6C96E] border-b-2 border-[#C8A84B]"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
+                ? "bg-line text-accent-strong border-b-2 border-accent"
+                : "text-muted hover:text-ink hover:bg-surface-2"
             }`}
           >
             {tab.label}
@@ -37,7 +37,7 @@ export default function EnterprisePage() {
         ))}
       </div>
 
-      <div className="bg-[#071428] rounded-b-xl rounded-tr-xl border border-blue-950 p-6 shadow-xl min-h-[500px]">
+      <div className="bg-app rounded-b-xl rounded-tr-xl border border-line p-6 shadow-xl min-h-[500px]">
         {activeTab === "readingRoom" && <ReadingRoomTab />}
         {activeTab === "lostFound" && <LostFoundTab />}
         {activeTab === "events" && <EventsTab />}
@@ -71,7 +71,7 @@ function ReadingRoomTab() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-400">Manage seat assignments for the physical reading room.</p>
+      <p className="text-sm text-muted">Manage seat assignments for the physical reading room.</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
         {seats.map((seat) => (
           <button
@@ -79,8 +79,8 @@ function ReadingRoomTab() {
             onClick={() => toggleSeat(seat.id)}
             className={`h-24 rounded-xl flex flex-col items-center justify-center font-bold transition-all ${
               seat.occupant
-                ? "bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-400"
-                : "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-400"
+                ? "bg-danger text-on-accent shadow-lg shadow-red-500/20 hover:bg-danger"
+                : "bg-positive text-on-accent shadow-lg shadow-emerald-500/20 hover:bg-positive"
             }`}
           >
             <span className="text-sm opacity-80">Seat {seat.id}</span>
@@ -114,14 +114,14 @@ function LostFoundTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-400">Track items lost or found within the library premises.</p>
-        <button onClick={reportItem} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg">
+        <p className="text-sm text-muted">Track items lost or found within the library premises.</p>
+        <button onClick={reportItem} className="px-4 py-2 bg-accent-bg hover:bg-accent-bg text-on-accent font-bold rounded-lg shadow-lg">
           ➕ Report Item
         </button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-blue-950">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-left text-sm text-body">
+          <thead className="text-xs uppercase bg-surface/40 text-muted">
             <tr>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Item Description</th>
@@ -130,23 +130,23 @@ function LostFoundTab() {
               <th className="px-4 py-3 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-blue-950/40">
+          <tbody className="divide-y divide-line/40">
             {items.map(item => (
-              <tr key={item.id} className="hover:bg-blue-950/10">
+              <tr key={item.id} className="hover:bg-surface-2/10">
                 <td className="px-4 py-4">{item.date}</td>
-                <td className="px-4 py-4 font-semibold text-white">{item.desc}</td>
+                <td className="px-4 py-4 font-semibold text-ink">{item.desc}</td>
                 <td className="px-4 py-4">{item.loc}</td>
                 <td className="px-4 py-4">
                   <span className={`font-bold ${
-                    item.status === 'Lost' ? 'text-red-400' : 
-                    item.status === 'Found' ? 'text-emerald-400' : 'text-[#C8A84B]'
+                    item.status === 'Lost' ? 'text-danger' : 
+                    item.status === 'Found' ? 'text-positive' : 'text-accent'
                   }`}>
                     {item.status}
                   </span>
                 </td>
                 <td className="px-4 py-4 text-right">
                   {item.status !== "Claimed/Resolved" && (
-                    <button onClick={() => resolveItem(item.id)} className="text-emerald-400 hover:text-emerald-300 text-xs font-bold bg-emerald-950 px-2 py-1 rounded">
+                    <button onClick={() => resolveItem(item.id)} className="text-positive hover:text-positive text-xs font-bold bg-positive-soft px-2 py-1 rounded">
                       Resolve
                     </button>
                   )}
@@ -182,14 +182,14 @@ function EventsTab() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-400">Schedule library workshops, author talks, and community events.</p>
-        <button onClick={addEvent} className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg shadow-lg">
+        <p className="text-sm text-muted">Schedule library workshops, author talks, and community events.</p>
+        <button onClick={addEvent} className="px-4 py-2 bg-accent-bg hover:bg-accent-bg text-on-accent font-bold rounded-lg shadow-lg">
           📅 Schedule New Event
         </button>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-blue-950">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+      <div className="overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-left text-sm text-body">
+          <thead className="text-xs uppercase bg-surface/40 text-muted">
             <tr>
               <th className="px-4 py-3">Date & Time</th>
               <th className="px-4 py-3">Event Title</th>
@@ -197,13 +197,13 @@ function EventsTab() {
               <th className="px-4 py-3">Attendees</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-blue-950/40">
+          <tbody className="divide-y divide-line/40">
             {events.map(ev => (
-              <tr key={ev.id} className="hover:bg-blue-950/10">
+              <tr key={ev.id} className="hover:bg-surface-2/10">
                 <td className="px-4 py-4">{ev.dt}</td>
-                <td className="px-4 py-4 font-semibold text-white">{ev.title}</td>
+                <td className="px-4 py-4 font-semibold text-ink">{ev.title}</td>
                 <td className="px-4 py-4">{ev.host}</td>
-                <td className="px-4 py-4 text-purple-300 font-bold">{ev.att}</td>
+                <td className="px-4 py-4 text-accent font-bold">{ev.att}</td>
               </tr>
             ))}
           </tbody>
@@ -237,8 +237,8 @@ function GamificationTab() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto py-8">
       <div className="text-center">
-        <h3 className="text-xl font-bold text-white mb-2">Boost Reading Engagement!</h3>
-        <p className="text-sm text-slate-400">Ranks update automatically based on reading history.</p>
+        <h3 className="text-xl font-bold text-ink mb-2">Boost Reading Engagement!</h3>
+        <p className="text-sm text-muted">Ranks update automatically based on reading history.</p>
       </div>
       <div className="flex gap-2">
         <input 
@@ -246,25 +246,25 @@ function GamificationTab() {
           placeholder="Member ID..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+          className="flex-1 rounded-lg border border-line bg-surface px-4 py-3 text-ink outline-none focus:border-accent"
         />
-        <button onClick={analyze} className="px-6 py-3 bg-[#C8A84B] hover:bg-amber-400 text-amber-950 font-black rounded-lg transition-colors">
+        <button onClick={analyze} className="px-6 py-3 bg-accent-bg hover:bg-warning text-warning font-black rounded-lg transition-colors">
           Analyze Profile
         </button>
       </div>
       
-      <div className="mt-8 border border-dashed border-[#1E3050] bg-[#0D1F38]/50 rounded-xl p-8 flex flex-col items-center justify-center min-h-[200px]">
+      <div className="mt-8 border border-dashed border-line bg-surface/50 rounded-xl p-8 flex flex-col items-center justify-center min-h-[200px]">
         {!result ? (
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Profile Data Will Appear Here</p>
+          <p className="text-muted font-bold uppercase tracking-widest text-sm">Profile Data Will Appear Here</p>
         ) : result === "Not Found" ? (
-          <p className="text-red-400 font-bold text-lg">Member Not Found.</p>
+          <p className="text-danger font-bold text-lg">Member Not Found.</p>
         ) : (
           <div className="text-center space-y-3">
-            <h2 className="text-4xl text-[#E6C96E] font-black">{result.badge} {result.name}</h2>
-            <p className="text-lg text-white">Current Rank: <span className="font-bold text-[#E6C96E]">{result.rank}</span></p>
-            <p className="text-slate-300">Books Read: <span className="font-bold text-white text-xl">{result.read}</span></p>
+            <h2 className="text-4xl text-accent-strong font-black">{result.badge} {result.name}</h2>
+            <p className="text-lg text-ink">Current Rank: <span className="font-bold text-accent-strong">{result.rank}</span></p>
+            <p className="text-body">Books Read: <span className="font-bold text-ink text-xl">{result.read}</span></p>
             {result.nextTgt !== "MAX" && (
-              <p className="text-xs text-blue-400 italic font-medium mt-4">
+              <p className="text-xs text-accent italic font-medium mt-4">
                 Read {result.nextTgt - result.read} more books to rank up!
               </p>
             )}
@@ -301,21 +301,21 @@ function AiProcurementTab() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto py-8">
       <div className="text-center space-y-4">
-        <p className="text-slate-400 text-lg">Analyzes circulation history to automatically suggest books to purchase based on high demand.</p>
+        <p className="text-muted text-lg">Analyzes circulation history to automatically suggest books to purchase based on high demand.</p>
         <button 
           onClick={runAi}
           disabled={loading}
-          className="px-8 py-4 bg-gradient-to-r from-red-500 to-amber-500 hover:from-red-400 hover:to-amber-400 text-white font-black rounded-xl shadow-xl transition-all disabled:opacity-50 text-lg"
+          className="px-8 py-4 bg-gradient-to-r from-danger to-warning hover:from-danger hover:to-warning text-ink font-black rounded-xl shadow-xl transition-all disabled:opacity-50 text-lg"
         >
           {loading ? "Analyzing patterns..." : "🤖 Run AI Demand Analysis"}
         </button>
       </div>
       
       {analysis !== null && (
-        <div className="mt-8 bg-[#0D1F38] border border-blue-900 rounded-xl p-6 text-slate-200">
-          <h3 className="font-bold text-emerald-400 mb-4 text-xl">✅ Analysis Complete:</h3>
+        <div className="mt-8 bg-surface border border-line rounded-xl p-6 text-body">
+          <h3 className="font-bold text-positive mb-4 text-xl">✅ Analysis Complete:</h3>
           {analysis.length === 0 ? (
-            <p className="text-slate-500 italic">Not enough data points yet.</p>
+            <p className="text-muted italic">Not enough data points yet.</p>
           ) : (
             <ul className="space-y-3">
               {analysis.map((line, i) => (

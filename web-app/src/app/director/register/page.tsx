@@ -84,13 +84,13 @@ export default function RegisterInstitution() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/director" className="text-xs font-bold text-blue-400 hover:text-blue-300">
+        <Link href="/director" className="text-xs font-bold text-accent hover:text-accent">
           ← Back to network overview
         </Link>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-white">
+        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink">
           Onboard a College
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-muted">
           Creates the institution, its administrator account, and its registry entry in one step.
           {" "}
           {entries.length > 0 && `${entries.length} institution${entries.length === 1 ? "" : "s"} registered so far.`}
@@ -98,8 +98,8 @@ export default function RegisterInstitution() {
       </div>
 
       {result && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
-          <h2 className="text-sm font-black uppercase tracking-widest text-emerald-400">
+        <div className="rounded-2xl border border-positive/30 bg-positive/5 p-5">
+          <h2 className="text-sm font-black uppercase tracking-widest text-positive">
             {result.name} registered
           </h2>
           <dl className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -110,27 +110,27 @@ export default function RegisterInstitution() {
           </dl>
 
           {result.temporaryPassword ? (
-            <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-300">
+            <div className="mt-4 rounded-xl border border-warning/40 bg-warning/10 p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-warning">
                 Temporary password — shown once
               </p>
-              <p className="mt-2 font-mono text-lg tracking-wider text-white">
+              <p className="mt-2 font-mono text-lg tracking-wider text-ink">
                 {result.temporaryPassword}
               </p>
-              <p className="mt-2 text-xs text-amber-200/80">
+              <p className="mt-2 text-xs text-warning/80">
                 It is not stored anywhere and cannot be retrieved again. Send it to the college
                 over a trusted channel and have them change it at first sign-in. If it is lost,
                 use a Firebase password reset rather than re-registering the college.
               </p>
             </div>
           ) : (
-            <p className="mt-4 text-xs text-slate-400">
+            <p className="mt-4 text-xs text-muted">
               An account already existed for {result.adminEmail}; it has been made administrator of
               this college. Its existing password is unchanged.
             </p>
           )}
 
-          <p className="mt-4 text-xs text-slate-400">
+          <p className="mt-4 text-xs text-muted">
             {result.status === "pending"
               ? "The college can sign in and run its library now, but will not report to the directorate until approved on the network overview."
               : "Approved. Its figures appear on the network overview after the next rollup."}
@@ -139,7 +139,7 @@ export default function RegisterInstitution() {
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
           <p className="font-bold">Could not register this institution.</p>
           <p className="mt-1 font-mono text-xs opacity-80">{error}</p>
         </div>
@@ -147,10 +147,10 @@ export default function RegisterInstitution() {
 
       <form
         onSubmit={submit}
-        className="space-y-6 rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl"
+        className="space-y-6 rounded-2xl border border-line bg-surface-2 p-6 shadow-xl"
       >
         <fieldset className="space-y-4" disabled={busy}>
-          <legend className="text-xs font-black uppercase tracking-widest text-blue-400">
+          <legend className="text-xs font-black uppercase tracking-widest text-accent">
             College
           </legend>
           <Input
@@ -162,14 +162,14 @@ export default function RegisterInstitution() {
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                District <span className="text-red-400">*</span>
+              <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+                District <span className="text-danger">*</span>
               </span>
               <select
                 required
                 value={form.district}
                 onChange={set("district")}
-                className="w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#C8A84B]"
+                className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-body outline-none focus:border-accent"
               >
                 <option value="">Select a district…</option>
                 {KPK_DISTRICTS.map((d) => (
@@ -193,7 +193,7 @@ export default function RegisterInstitution() {
         </fieldset>
 
         <fieldset className="space-y-4" disabled={busy}>
-          <legend className="text-xs font-black uppercase tracking-widest text-blue-400">
+          <legend className="text-xs font-black uppercase tracking-widest text-accent">
             Administrator account
           </legend>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -210,14 +210,14 @@ export default function RegisterInstitution() {
           <Input label="Phone" value={form.adminPhone} onChange={set("adminPhone")} />
         </fieldset>
 
-        <label className="flex items-start gap-3 rounded-xl border border-[#1E3050] bg-[#0D1F38] p-4">
+        <label className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
           <input
             type="checkbox"
             checked={autoApprove}
             onChange={(e) => setAutoApprove(e.target.checked)}
             className="mt-0.5"
           />
-          <span className="text-xs text-slate-300">
+          <span className="text-xs text-body">
             <span className="font-bold">Approve immediately.</span> Leave unchecked to place the
             college in the pending queue — the approval step is what keeps growth deliberate rather
             than letting colleges appear on the network unreviewed.
@@ -227,7 +227,7 @@ export default function RegisterInstitution() {
         <button
           type="submit"
           disabled={busy || !ready}
-          className="w-full rounded-lg bg-[#C8A84B] px-4 py-3 text-sm font-black uppercase tracking-widest text-[#1a1400] transition-colors hover:bg-[#E6C96E] disabled:opacity-40"
+          className="w-full rounded-lg bg-accent-bg px-4 py-3 text-sm font-black uppercase tracking-widest text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
         >
           {busy ? "Registering…" : "Register institution"}
         </button>
@@ -243,13 +243,13 @@ function Input({
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-400">
-        {label} {required && <span className="text-red-400">*</span>}
+      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+        {label} {required && <span className="text-danger">*</span>}
       </span>
       <input
         {...props}
         required={required}
-        className="w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-slate-200 outline-none focus:border-[#C8A84B]"
+        className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-body outline-none focus:border-accent"
       />
     </label>
   );
@@ -258,8 +258,8 @@ function Input({
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <dt className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</dt>
-      <dd className={`mt-0.5 text-sm text-white ${mono ? "font-mono" : ""}`}>{value}</dd>
+      <dt className="text-[10px] font-black uppercase tracking-widest text-muted">{label}</dt>
+      <dd className={`mt-0.5 text-sm text-ink ${mono ? "font-mono" : ""}`}>{value}</dd>
     </div>
   );
 }

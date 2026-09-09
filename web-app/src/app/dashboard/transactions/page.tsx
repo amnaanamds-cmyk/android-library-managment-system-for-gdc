@@ -106,22 +106,22 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">Issue & Return Books</h1>
-        <p className="text-sm text-slate-400">Record book loan transactions and return events</p>
+        <h1 className="text-3xl font-extrabold text-ink">Issue & Return Books</h1>
+        <p className="text-sm text-muted">Record book loan transactions and return events</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Issue Book Form */}
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl h-fit">
-          <h3 className="text-lg font-bold text-white mb-4">Issue a Book</h3>
+        <div className="rounded-xl border border-line bg-surface-2 p-6 shadow-xl h-fit">
+          <h3 className="text-lg font-bold text-ink mb-4">Issue a Book</h3>
           <form onSubmit={handleIssue} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Select Book</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Select Book</label>
               <select
                 required
                 value={bookId}
                 onChange={(e) => setBookId(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
               >
                 <option value="">-- Choose Book --</option>
                 {activeBooks.map(b => (
@@ -130,12 +130,12 @@ export default function TransactionsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Select Member</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Select Member</label>
               <select
                 required
                 value={memberId}
                 onChange={(e) => setMemberId(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
               >
                 <option value="">-- Choose Member --</option>
                 {activeMembers.map(m => (
@@ -146,7 +146,7 @@ export default function TransactionsPage() {
             <button
               type="submit"
               disabled={adding || !bookId || !memberId}
-              className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 py-3 text-sm font-bold text-white transition-all hover:from-blue-500 disabled:opacity-50"
+              className="bg-accent-bg w-full rounded-lg py-3 text-sm font-bold text-on-accent transition-all disabled:opacity-50"
             >
               {adding ? "Processing..." : "Issue Book"}
             </button>
@@ -154,21 +154,21 @@ export default function TransactionsPage() {
         </div>
 
         {/* Transactions list */}
-        <div className="lg:col-span-2 rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
+        <div className="lg:col-span-2 rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-white">Transaction History & Fines</h3>
-            <button className="px-3 py-1.5 bg-amber-900/50 border border-amber-900 hover:bg-amber-800 text-amber-400 text-xs font-bold rounded-lg transition-colors">
+            <h3 className="text-lg font-bold text-ink">Transaction History & Fines</h3>
+            <button className="px-3 py-1.5 bg-warning-soft/50 border border-warning hover:bg-warning-soft text-warning text-xs font-bold rounded-lg transition-colors">
               ⚖️ Fine Waivers
             </button>
           </div>
           {loadingIssues ? (
             <div className="py-12 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+              <table className="w-full text-left text-sm text-body">
+                <thead className="text-xs uppercase bg-surface/40 text-muted">
                   <tr>
                     <th className="px-4 py-3">Book Title</th>
                     <th className="px-4 py-3">Borrower</th>
@@ -178,16 +178,16 @@ export default function TransactionsPage() {
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-blue-950/40">
+                <tbody className="divide-y divide-line/40">
                   {issues?.map((issue) => (
-                    <tr key={issue.id} className="hover:bg-blue-950/10">
-                      <td className="px-4 py-4 font-semibold text-white">{issue.bookTitle}</td>
+                    <tr key={issue.id} className="hover:bg-surface-2/10">
+                      <td className="px-4 py-4 font-semibold text-ink">{issue.bookTitle}</td>
                       <td className="px-4 py-4">{issue.memberName}</td>
                       <td className="px-4 py-4 text-xs">{issue.issueDate}</td>
                       <td className="px-4 py-4 text-xs">{issue.dueDate}</td>
                       <td className="px-4 py-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                          issue.status === "Returned" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-400 border border-amber-800"
+                          issue.status === "Returned" ? "bg-positive-soft text-positive border border-positive" : "bg-warning-soft text-warning border border-warning"
                         }`}>
                           {issue.status === "Returned" ? "Returned" : "Active Loan"}
                         </span>
@@ -197,13 +197,13 @@ export default function TransactionsPage() {
                           <>
                             <button
                               onClick={() => alert(`Waiving fine for ${issue.memberName}...`)}
-                              className="text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                              className="text-xs font-bold text-warning hover:text-warning transition-colors"
                             >
                               Waive Fine
                             </button>
                             <button
                               onClick={() => handleReturn(issue.id)}
-                              className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                              className="text-xs font-bold text-accent hover:text-accent transition-colors"
                             >
                               Mark Returned
                             </button>
@@ -214,7 +214,7 @@ export default function TransactionsPage() {
                   ))}
                   {issues?.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-slate-500">
+                      <td colSpan={6} className="text-center py-8 text-muted">
                         No library transactions recorded.
                       </td>
                     </tr>

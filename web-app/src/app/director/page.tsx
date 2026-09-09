@@ -99,8 +99,8 @@ export default function DirectorateOverview() {
   if (loading) {
     return (
       <div className="flex flex-col items-center gap-4 py-24">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-transparent" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted">
           Loading network data…
         </p>
       </div>
@@ -113,8 +113,8 @@ export default function DirectorateOverview() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">Network Overview</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">Network Overview</h1>
+          <p className="mt-1 text-sm text-muted">
             Aggregated statistics across {totals.institutions} registered{" "}
             {totals.institutions === 1 ? "college" : "colleges"} in{" "}
             {districts.length} {districts.length === 1 ? "district" : "districts"}.
@@ -123,21 +123,21 @@ export default function DirectorateOverview() {
         <div className="flex gap-2">
           <Link
             href="/director/register"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-500"
+            className="rounded-lg bg-positive px-4 py-2 text-xs font-bold text-on-accent transition-colors hover:bg-positive"
           >
             + Add College
           </Link>
           <button
             onClick={() => void rebuild()}
             disabled={rebuilding}
-            className="rounded-lg border border-[#1E3050] px-4 py-2 text-xs font-bold text-slate-300 transition-colors hover:bg-slate-800 disabled:opacity-40"
+            className="rounded-lg border border-line px-4 py-2 text-xs font-bold text-body transition-colors hover:bg-surface-2 disabled:opacity-40"
           >
             {rebuilding ? "Recomputing…" : "↻ Recompute figures"}
           </button>
           <button
             onClick={exportCsv}
             disabled={visible.length === 0}
-            className="rounded-lg bg-[#C8A84B] px-4 py-2 text-xs font-bold text-[#1a1400] transition-colors hover:bg-[#E6C96E] disabled:opacity-40"
+            className="rounded-lg bg-accent-bg px-4 py-2 text-xs font-bold text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
           >
             ⬇ Export CSV
           </button>
@@ -179,11 +179,11 @@ export default function DirectorateOverview() {
 
       {/* Approval queue — the control point that stops unmanaged growth. */}
       {pending.length > 0 && (
-        <section className="rounded-2xl border border-[#C8A84B]/30 bg-[#C8A84B]/5 p-5">
-          <h2 className="text-sm font-black uppercase tracking-widest text-[#E6C96E]">
+        <section className="rounded-2xl border border-accent/30 bg-accent-bg/5 p-5">
+          <h2 className="text-sm font-black uppercase tracking-widest text-accent-strong">
             {pending.length} institution{pending.length === 1 ? "" : "s"} awaiting approval
           </h2>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-muted">
             A pending college can sign in and run its own library, but does not report to the
             directorate until approved.
           </p>
@@ -191,11 +191,11 @@ export default function DirectorateOverview() {
             {pending.map((p) => (
               <li
                 key={p.institutionId}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-950 bg-[#070F1E] px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3"
               >
                 <div>
-                  <p className="text-sm font-bold text-white">{p.name}</p>
-                  <p className="font-mono text-[11px] uppercase text-slate-500">
+                  <p className="text-sm font-bold text-ink">{p.name}</p>
+                  <p className="font-mono text-[11px] uppercase text-muted">
                     {p.institutionId}
                     {p.district && ` · ${p.district}`}
                     {p.adminName && ` · ${p.adminName}`}
@@ -206,14 +206,14 @@ export default function DirectorateOverview() {
                   <button
                     onClick={() => void setStatus(p.institutionId, "active")}
                     disabled={busy === p.institutionId}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-40"
+                    className="rounded-lg bg-positive px-3 py-1.5 text-xs font-bold text-on-accent hover:bg-positive disabled:opacity-40"
                   >
                     {busy === p.institutionId ? "Working…" : "Approve"}
                   </button>
                   <button
                     onClick={() => void setStatus(p.institutionId, "suspended")}
                     disabled={busy === p.institutionId}
-                    className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                    className="rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-body hover:bg-surface-2 disabled:opacity-40"
                   >
                     Reject
                   </button>
@@ -226,13 +226,13 @@ export default function DirectorateOverview() {
 
       {/* Network KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi label="Colleges" value={totals.institutions} icon="🏢" accent="text-[#E6C96E]" />
+        <Kpi label="Colleges" value={totals.institutions} icon="🏢" accent="text-accent-strong" />
         <Kpi label="Total Books" value={totals.totalBooks} icon="📚" />
         <Kpi label="Total Members" value={totals.members} icon="👥" />
-        <Kpi label="Active Loans" value={totals.issued} icon="🔄" accent="text-blue-400" />
+        <Kpi label="Active Loans" value={totals.issued} icon="🔄" accent="text-accent" />
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi label="Overdue Loans" value={totals.overdue} icon="⏰" accent="text-red-400" />
+        <Kpi label="Overdue Loans" value={totals.overdue} icon="⏰" accent="text-danger" />
         <Kpi label="Reservations" value={totals.reservations} icon="🔖" />
         <Kpi label="E-Books" value={totals.totalEbooks} icon="💾" />
         <Kpi
@@ -240,7 +240,7 @@ export default function DirectorateOverview() {
           value={totals.reporting}
           suffix={` / ${totals.institutions}`}
           icon="📡"
-          accent={totals.reporting < totals.institutions ? "text-amber-400" : "text-emerald-400"}
+          accent={totals.reporting < totals.institutions ? "text-warning" : "text-positive"}
         />
       </div>
 
@@ -266,17 +266,17 @@ export default function DirectorateOverview() {
 
       {/* District rollups */}
       {districts.length > 1 && (
-        <section className="overflow-hidden rounded-2xl border border-blue-950 bg-[#070F1E] shadow-xl">
-          <div className="border-b border-blue-950/60 p-5">
-            <h2 className="text-lg font-bold text-white">District Rollup</h2>
-            <p className="mt-1 text-xs text-slate-500">
+        <section className="overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-xl">
+          <div className="border-b border-line/60 p-5">
+            <h2 className="text-lg font-bold text-ink">District Rollup</h2>
+            <p className="mt-1 text-xs text-muted">
               Aggregated by <span className="font-mono">district</span> from the institution
               registry.
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-blue-950/30 text-[10px] font-black uppercase tracking-widest text-blue-400">
+              <thead className="bg-surface-2/30 text-[10px] font-black uppercase tracking-widest text-accent">
                 <tr>
                   <th className="px-5 py-3">District</th>
                   <th className="px-5 py-3 text-right">Colleges</th>
@@ -286,22 +286,22 @@ export default function DirectorateOverview() {
                   <th className="px-5 py-3 text-right">Overdue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-950/40">
+              <tbody className="divide-y divide-line/40">
                 {districts.map((d) => (
-                  <tr key={d.district} className="hover:bg-blue-950/20">
-                    <td className="px-5 py-3 font-bold text-white">{d.district}</td>
-                    <td className="px-5 py-3 text-right text-slate-300">{d.institutions}</td>
-                    <td className="px-5 py-3 text-right font-bold text-white">
+                  <tr key={d.district} className="hover:bg-surface-2/20">
+                    <td className="px-5 py-3 font-bold text-ink">{d.district}</td>
+                    <td className="px-5 py-3 text-right text-body">{d.institutions}</td>
+                    <td className="px-5 py-3 text-right font-bold text-ink">
                       {numberFmt.format(d.totalBooks)}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-300">
+                    <td className="px-5 py-3 text-right text-body">
                       {numberFmt.format(d.members)}
                     </td>
-                    <td className="px-5 py-3 text-right text-blue-300">
+                    <td className="px-5 py-3 text-right text-accent">
                       {numberFmt.format(d.issued)}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <span className={d.overdue > 0 ? "font-bold text-red-400" : "text-slate-500"}>
+                      <span className={d.overdue > 0 ? "font-bold text-danger" : "text-muted"}>
                         {numberFmt.format(d.overdue)}
                       </span>
                     </td>
@@ -314,20 +314,20 @@ export default function DirectorateOverview() {
       )}
 
       {/* College registry table */}
-      <div className="overflow-hidden rounded-2xl border border-blue-950 bg-[#070F1E] shadow-xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-950/60 p-5">
-          <h2 className="text-lg font-bold text-white">College Registry</h2>
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 p-5">
+          <h2 className="text-lg font-bold text-ink">College Registry</h2>
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, ID or district…"
-            className="w-64 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-xs text-slate-200 outline-none focus:border-[#C8A84B]"
+            className="w-64 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-body outline-none focus:border-accent"
           />
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-blue-950/30 text-[10px] font-black uppercase tracking-widest text-blue-400">
+            <thead className="bg-surface-2/30 text-[10px] font-black uppercase tracking-widest text-accent">
               <tr>
                 <Th onClick={() => toggleSort("name")} active={sortKey === "name"} asc={ascending}>
                   Institution
@@ -351,7 +351,7 @@ export default function DirectorateOverview() {
                 <th className="px-5 py-3 text-right">Manage</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-950/40">
+            <tbody className="divide-y divide-line/40">
               {visible.map((c) => (
                 <CollegeRow
                   key={c.institutionId}
@@ -365,7 +365,7 @@ export default function DirectorateOverview() {
                   <td colSpan={8} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 opacity-40">
                       <span className="text-4xl">🏢</span>
-                      <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                      <p className="text-sm font-bold uppercase tracking-wider text-muted">
                         {search ? "No college matches that search" : "No colleges registered yet"}
                       </p>
                     </div>
@@ -413,23 +413,23 @@ function CollegeRow({
   };
 
   return (
-    <tr className="group transition-colors hover:bg-blue-950/20">
+    <tr className="group transition-colors hover:bg-surface-2/20">
       <td className="px-5 py-4">
         <Link
           href={`/director/${encodeURIComponent(college.institutionId)}`}
           className="flex items-center gap-3"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/10 text-xs font-black text-blue-500">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-bg/10 text-xs font-black text-accent">
             {college.name?.[0]?.toUpperCase() || "C"}
           </div>
           <div>
-            <span className="font-bold text-white transition-colors group-hover:text-blue-400">
+            <span className="font-bold text-ink transition-colors group-hover:text-accent">
               {college.name}
             </span>
-            <p className="font-mono text-[10px] uppercase text-slate-600">
+            <p className="font-mono text-[10px] uppercase text-muted">
               {college.institutionId}
               {college.status !== "active" && (
-                <span className="ml-2 rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-400">
+                <span className="ml-2 rounded bg-warning/15 px-1.5 py-0.5 text-warning">
                   {college.status}
                 </span>
               )}
@@ -437,26 +437,26 @@ function CollegeRow({
           </div>
         </Link>
       </td>
-      <td className="px-5 py-4 text-[11px] text-slate-400">{college.district || "—"}</td>
-      <td className="px-5 py-4 text-right font-bold text-white">
+      <td className="px-5 py-4 text-[11px] text-muted">{college.district || "—"}</td>
+      <td className="px-5 py-4 text-right font-bold text-ink">
         {numberFmt.format(college.totalBooks)}
       </td>
-      <td className="px-5 py-4 text-right text-slate-300">{numberFmt.format(college.members)}</td>
-      <td className="px-5 py-4 text-right text-blue-300">{numberFmt.format(college.issued)}</td>
+      <td className="px-5 py-4 text-right text-body">{numberFmt.format(college.members)}</td>
+      <td className="px-5 py-4 text-right text-accent">{numberFmt.format(college.issued)}</td>
       <td className="px-5 py-4 text-right">
-        <span className={college.overdue > 0 ? "font-bold text-red-400" : "text-slate-500"}>
+        <span className={college.overdue > 0 ? "font-bold text-danger" : "text-muted"}>
           {numberFmt.format(college.overdue)}
         </span>
       </td>
       <td className="px-5 py-4 text-right">
         <span
           className={`text-[11px] font-bold ${
-            neverReported ? "text-slate-600" : stale ? "text-amber-400" : "text-emerald-400"
+            neverReported ? "text-muted" : stale ? "text-warning" : "text-positive"
           }`}
         >
           {neverReported ? "Not reporting" : relativeTime(college.lastSynced)}
         </span>
-        <p className="text-[10px] uppercase tracking-wider text-slate-600">{college.source}</p>
+        <p className="text-[10px] uppercase tracking-wider text-muted">{college.source}</p>
       </td>
       <td className="px-5 py-4 text-right">
         <button
@@ -465,8 +465,8 @@ function CollegeRow({
           title={suspended ? "Bring this college back into the network" : "Stop this college reporting"}
           className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-40 ${
             suspended
-              ? "bg-emerald-600 text-white hover:bg-emerald-500"
-              : "border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              ? "bg-positive text-on-accent hover:bg-positive"
+              : "border border-line text-body hover:bg-surface-2 hover:text-on-accent"
           }`}
         >
           {busy ? "…" : suspended ? "Reactivate" : "Suspend"}
@@ -486,9 +486,9 @@ function Banner({
   children: React.ReactNode;
 }) {
   const tones = {
-    amber: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-    red: "border-red-500/30 bg-red-500/10 text-red-300",
-    emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+    amber: "border-warning/30 bg-warning/10 text-warning",
+    red: "border-danger/30 bg-danger/10 text-danger",
+    emerald: "border-positive/30 bg-positive/10 text-positive",
   } as const;
   return (
     <div className={`rounded-xl border p-4 text-sm ${tones[tone]}`}>
@@ -515,8 +515,8 @@ function Th({
     <th className={`px-5 py-3 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         onClick={onClick}
-        className={`uppercase tracking-widest transition-colors hover:text-white ${
-          active ? "text-white" : ""
+        className={`uppercase tracking-widest transition-colors hover:text-ink ${
+          active ? "text-ink" : ""
         }`}
       >
         {children}
@@ -530,7 +530,7 @@ function Kpi({
   label,
   value,
   icon,
-  accent = "text-white",
+  accent = "text-ink",
   suffix = "",
 }: {
   label: string;
@@ -540,14 +540,14 @@ function Kpi({
   suffix?: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl transition-colors hover:border-blue-800">
+    <div className="group relative overflow-hidden rounded-2xl border border-line bg-surface-2 p-5 shadow-xl transition-colors hover:border-line">
       <div className="absolute -bottom-3 -right-3 text-5xl opacity-5 transition-transform duration-500 group-hover:scale-110">
         {icon}
       </div>
-      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-muted">{label}</p>
       <h2 className={`text-3xl font-black tracking-tighter ${accent}`}>
         {numberFmt.format(value)}
-        {suffix && <span className="text-lg text-slate-600">{suffix}</span>}
+        {suffix && <span className="text-lg text-muted">{suffix}</span>}
       </h2>
     </div>
   );

@@ -23,8 +23,8 @@ export default function RootPage() {
   }, [user, profile, loading, router]);
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[#050B14]">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+    <div className="flex h-screen w-full items-center justify-center bg-app">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
     </div>
   );
 }

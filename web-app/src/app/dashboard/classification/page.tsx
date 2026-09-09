@@ -83,12 +83,12 @@ export default function ClassificationPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">🗂️ Book Classification</h1>
-          <p className="text-sm text-slate-400">Assign DDC / LC classification numbers. Auto-suggest based on keywords.</p>
+          <h1 className="text-3xl font-extrabold text-ink">🗂️ Book Classification</h1>
+          <p className="text-sm text-muted">Assign DDC / LC classification numbers. Auto-suggest based on keywords.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={autoClassifyAll} disabled={autoRunning}
-            className="px-4 py-2 rounded-lg bg-violet-600 text-white font-bold text-sm hover:bg-violet-500 disabled:opacity-50 transition-colors">
+            className="px-4 py-2 rounded-lg bg-accent-bg text-on-accent font-bold text-sm hover:bg-accent-bg disabled:opacity-50 transition-colors">
             {autoRunning ? "🤖 Running..." : "🤖 Auto-Classify All"}
           </button>
         </div>
@@ -97,60 +97,60 @@ export default function ClassificationPage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Books", value: books?.length || 0, color: "text-blue-400" },
-          { label: "Classified", value: classified, color: "text-emerald-400" },
-          { label: "Pending", value: (books?.length || 0) - classified, color: "text-amber-400" },
+          { label: "Total Books", value: books?.length || 0, color: "text-accent" },
+          { label: "Classified", value: classified, color: "text-positive" },
+          { label: "Pending", value: (books?.length || 0) - classified, color: "text-warning" },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border border-blue-950 bg-[#070F1E] p-4 text-center">
+          <div key={s.label} className="rounded-xl border border-line bg-surface-2 p-4 text-center">
             <div className={`text-3xl font-extrabold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-slate-400 mt-1">{s.label}</div>
+            <div className="text-xs text-muted mt-1">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Edit Panel */}
       {editingBook && (
-        <div className="rounded-xl border border-violet-900/50 bg-[#070F1E] p-6 shadow-xl">
+        <div className="rounded-xl border border-violet-900/50 bg-surface-2 p-6 shadow-xl">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-violet-300">Classify: <span className="text-white">{editingBook.title}</span></h2>
-            <button onClick={() => setEditingBook(null)} className="text-slate-400 hover:text-white text-sm">✕ Cancel</button>
+            <h2 className="text-lg font-bold text-accent">Classify: <span className="text-ink">{editingBook.title}</span></h2>
+            <button onClick={() => setEditingBook(null)} className="text-muted hover:text-ink text-sm">✕ Cancel</button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="text-xs text-slate-400 font-bold block mb-1">Classification No. *</label>
+              <label className="text-xs text-muted font-bold block mb-1">Classification No. *</label>
               <input value={classNo} onChange={e => setClassNo(e.target.value)}
-                className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-violet-500 font-mono" />
+                className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent font-mono" />
             </div>
             <div>
-              <label className="text-xs text-slate-400 font-bold block mb-1">Subject Heading</label>
+              <label className="text-xs text-muted font-bold block mb-1">Subject Heading</label>
               <input value={subject} onChange={e => setSubject(e.target.value)}
-                className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none focus:border-violet-500" />
+                className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" />
             </div>
             <div>
-              <label className="text-xs text-slate-400 font-bold block mb-1">System</label>
+              <label className="text-xs text-muted font-bold block mb-1">System</label>
               <select value={system} onChange={e => setSystem(e.target.value)}
-                className="w-full rounded border border-[#1E3050] bg-[#0D1F38] px-3 py-2 text-sm text-[#E8EEF8] outline-none">
+                className="w-full rounded border border-line bg-surface px-3 py-2 text-sm text-ink outline-none">
                 <option>DDC</option><option>LC</option>
               </select>
             </div>
           </div>
           <div className="mb-4">
-            <p className="text-xs text-slate-400 mb-2 font-bold">🤖 AI Suggested: <span className="text-blue-400 font-mono">{autoClassify(editingBook.title, editingBook.category)}</span>
+            <p className="text-xs text-muted mb-2 font-bold">🤖 AI Suggested: <span className="text-accent font-mono">{autoClassify(editingBook.title, editingBook.category)}</span>
               <button onClick={() => setClassNo(autoClassify(editingBook.title, editingBook.category))}
-                className="ml-2 px-2 py-0.5 rounded bg-blue-900/40 text-blue-400 text-xs font-bold hover:bg-blue-800/40">Use</button>
+                className="ml-2 px-2 py-0.5 rounded bg-surface-2/40 text-accent text-xs font-bold hover:bg-surface-2/40">Use</button>
             </p>
             {/* DDC Quick Picker */}
-            <p className="text-xs text-slate-400 font-bold mb-2">Quick Pick from DDC Schedule:</p>
+            <p className="text-xs text-muted font-bold mb-2">Quick Pick from DDC Schedule:</p>
             <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
               {Object.entries(DDC_SCHEDULE).map(([code, data]) => (
                 <div key={code}>
                   <button onClick={() => setExpandedClass(expandedClass === code ? null : code)}
-                    className="px-2 py-1 rounded bg-[#1E3050] text-xs font-bold text-slate-300 hover:bg-blue-900/40">
+                    className="px-2 py-1 rounded bg-line text-xs font-bold text-body hover:bg-surface-2/40">
                     {code} {data.name.split(" ")[0]}
                   </button>
                   {expandedClass === code && Object.entries(data.subs).map(([sc, sn]) => (
                     <button key={sc} onClick={() => { setClassNo(sc); setExpandedClass(null); }}
-                      className="ml-1 px-2 py-0.5 rounded bg-violet-900/40 text-xs text-violet-300 hover:bg-violet-800/40">
+                      className="ml-1 px-2 py-0.5 rounded bg-violet-900/40 text-xs text-accent hover:bg-violet-800/40">
                       {sc}
                     </button>
                   ))}
@@ -160,7 +160,7 @@ export default function ClassificationPage() {
           </div>
           <div className="flex justify-end">
             <button onClick={saveClassification} disabled={saving}
-              className="px-6 py-2 rounded-lg bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors">
+              className="px-6 py-2 rounded-lg bg-positive text-on-accent font-bold text-sm hover:bg-positive disabled:opacity-50 transition-colors">
               {saving ? "Saving…" : "✅ Save Classification"}
             </button>
           </div>
@@ -170,20 +170,20 @@ export default function ClassificationPage() {
       {/* Search & Filter */}
       <div className="flex gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search books…"
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#070F1E] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-violet-500" />
+          className="flex-1 rounded-lg border border-line bg-surface-2 px-4 py-2 text-sm text-ink outline-none focus:border-accent" />
         <select value={filter} onChange={e => setFilter(e.target.value)}
-          className="rounded-lg border border-[#1E3050] bg-[#070F1E] px-3 py-2 text-sm text-[#E8EEF8] outline-none">
+          className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none">
           <option>All</option><option>Classified</option><option>Unclassified</option>
         </select>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-blue-950 bg-[#070F1E] overflow-hidden shadow-xl">
+      <div className="rounded-xl border border-line bg-surface-2 overflow-hidden shadow-xl">
         {loading ? (
-          <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>
+          <div className="py-12 flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" /></div>
         ) : (
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+          <table className="w-full text-left text-sm text-body">
+            <thead className="text-xs uppercase bg-surface/40 text-muted">
               <tr>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Author</th>
@@ -194,28 +194,28 @@ export default function ClassificationPage() {
                 <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-950/40">
+            <tbody className="divide-y divide-line/40">
               {filtered.map((book: any) => (
-                <tr key={book.id} className="hover:bg-blue-950/10 cursor-pointer" onDoubleClick={() => openEdit(book)}>
-                  <td className="px-4 py-3 font-semibold text-white">{book.title}</td>
+                <tr key={book.id} className="hover:bg-surface-2/10 cursor-pointer" onDoubleClick={() => openEdit(book)}>
+                  <td className="px-4 py-3 font-semibold text-ink">{book.title}</td>
                   <td className="px-4 py-3">{book.author || "—"}</td>
                   <td className="px-4 py-3">{book.category || "—"}</td>
-                  <td className="px-4 py-3 font-mono text-blue-300">{book.callNumber || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-accent">{book.callNumber || "—"}</td>
                   <td className="px-4 py-3">{book.classificationSystem || "—"}</td>
                   <td className="px-4 py-3">
                     {book.callNumber
-                      ? <span className="text-xs font-bold text-emerald-400">✅ Done</span>
-                      : <span className="text-xs font-bold text-amber-400">⏳ Pending</span>}
+                      ? <span className="text-xs font-bold text-positive">✅ Done</span>
+                      : <span className="text-xs font-bold text-warning">⏳ Pending</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => openEdit(book)}
-                      className="px-3 py-1 rounded bg-violet-500/10 border border-violet-500/30 text-xs font-bold text-violet-400 hover:bg-violet-500/20 transition-colors">
+                      className="px-3 py-1 rounded bg-accent-bg/10 border border-accent/30 text-xs font-bold text-accent hover:bg-accent-bg/20 transition-colors">
                       🗂️ Classify
                     </button>
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-slate-500">No books found.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted">No books found.</td></tr>}
             </tbody>
           </table>
         )}

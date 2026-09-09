@@ -56,28 +56,28 @@ export default function SerialsPage() {
     <div className="space-y-6 duration-500 animate-in fade-in">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#E8EEF8]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
             📰 Serials &amp; Periodicals
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-muted">
             {data.length} subscription{data.length === 1 ? "" : "s"} · {active} active
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-500"
+          className="rounded-lg bg-accent-bg px-4 py-2 text-sm font-bold text-on-accent hover:bg-accent-bg"
         >
           + New subscription
         </button>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-xs text-danger">
           {error}
         </div>
       )}
       {notice && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-300">
+        <div className="rounded-lg border border-positive/30 bg-positive/10 px-4 py-3 text-xs text-positive">
           {notice}
         </div>
       )}
@@ -87,12 +87,12 @@ export default function SerialsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search title, ISSN or publisher…"
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+          className="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-accent"
         />
         <select
           value={frequency}
           onChange={(e) => setFrequency(e.target.value)}
-          className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none"
+          className="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none"
         >
           <option value="All">All frequencies</option>
           {SERIAL_FREQUENCIES.map((f) => (
@@ -101,9 +101,9 @@ export default function SerialsPage() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-blue-950 bg-[#070F1E]">
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface-2">
         <table className="w-full text-left text-sm">
-          <thead className="bg-[#0D1F38]/50 text-[10px] uppercase tracking-widest text-slate-400">
+          <thead className="bg-surface/50 text-[10px] uppercase tracking-widest text-muted">
             <tr>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">ISSN</th>
@@ -114,28 +114,28 @@ export default function SerialsPage() {
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-blue-950/40">
+          <tbody className="divide-y divide-line/40">
             {serials.map((s) => (
-              <tr key={String(s.id)} className="hover:bg-blue-950/10">
-                <td className="px-4 py-3 font-bold text-white">{String(s.title ?? "—")}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-400">
+              <tr key={String(s.id)} className="hover:bg-surface-2/10">
+                <td className="px-4 py-3 font-bold text-ink">{String(s.title ?? "—")}</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted">
                   {String(s.issn ?? "—")}
                 </td>
-                <td className="px-4 py-3 text-slate-300">{String(s.frequency ?? "—")}</td>
-                <td className="px-4 py-3 text-slate-400">{String(s.publisher ?? "—")}</td>
+                <td className="px-4 py-3 text-body">{String(s.frequency ?? "—")}</td>
+                <td className="px-4 py-3 text-muted">{String(s.publisher ?? "—")}</td>
                 <td className="px-4 py-3 text-center">
-                  <span className="font-bold text-emerald-400">
+                  <span className="font-bold text-positive">
                     {Number(s.issuesReceived) || 0}
                   </span>
                   {s.lastIssueReceived ? (
-                    <p className="text-[10px] text-slate-500">last {String(s.lastIssueReceived)}</p>
+                    <p className="text-[10px] text-muted">last {String(s.lastIssueReceived)}</p>
                   ) : null}
                 </td>
                 <td className="px-4 py-3">
                   <select
                     value={String(s.status ?? "Active")}
                     onChange={(e) => updateRecord(String(s.id), { status: e.target.value })}
-                    className="rounded bg-[#1E3050] px-2 py-1 text-xs font-bold text-[#E8EEF8] outline-none"
+                    className="rounded bg-line px-2 py-1 text-xs font-bold text-ink outline-none"
                   >
                     {STATUSES.serial.map((st) => (
                       <option key={st} value={st}>{st}</option>
@@ -146,7 +146,7 @@ export default function SerialsPage() {
                   <button
                     onClick={() => receiveIssue(s)}
                     disabled={busy}
-                    className="rounded border border-emerald-600/40 bg-emerald-600/20 px-3 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-600/40 disabled:opacity-40"
+                    className="rounded border border-positive/40 bg-positive/20 px-3 py-1 text-xs font-bold text-positive hover:bg-positive/40 disabled:opacity-40"
                   >
                     Receive issue
                   </button>
@@ -156,7 +156,7 @@ export default function SerialsPage() {
                         deleteRecord(String(s.id));
                       }
                     }}
-                    className="ml-2 rounded border border-red-600/30 bg-red-600/10 px-3 py-1 text-xs font-bold text-red-400 hover:bg-red-600/20"
+                    className="ml-2 rounded border border-danger/30 bg-danger/10 px-3 py-1 text-xs font-bold text-danger hover:bg-danger/20"
                   >
                     Remove
                   </button>
@@ -168,7 +168,7 @@ export default function SerialsPage() {
                 <td colSpan={7} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-2 opacity-40">
                     <span className="text-4xl">📰</span>
-                    <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    <p className="text-sm font-bold uppercase tracking-wider text-muted">
                       {data.length === 0 ? "No subscriptions yet" : "Nothing matches"}
                     </p>
                   </div>
@@ -209,18 +209,18 @@ function AddSerialDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-md space-y-4 rounded-2xl border border-blue-900/50 bg-[#0D1C37] p-6">
-        <h2 className="text-lg font-bold text-white">New subscription</h2>
+      <div className="w-full max-w-md space-y-4 rounded-2xl border border-line/50 bg-surface-2 p-6">
+        <h2 className="text-lg font-bold text-ink">New subscription</h2>
         <Field label="Title" value={title} onChange={setTitle} />
         <Field label="ISSN (optional)" value={issn} onChange={setIssn} />
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#A0B4CC]">
+          <label className="block text-xs font-bold uppercase tracking-wider text-muted">
             Frequency
           </label>
           <select
             value={frequency}
             onChange={(e) => setFrequency(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none"
+            className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none"
           >
             {SERIAL_FREQUENCIES.map((f) => (
               <option key={f} value={f}>{f}</option>
@@ -234,7 +234,7 @@ function AddSerialDialog({
           onChange={setSubscriptionEnd}
         />
         <div className="flex justify-end gap-3 pt-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-white">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-muted hover:text-ink">
             Cancel
           </button>
           <button
@@ -251,7 +251,7 @@ function AddSerialDialog({
               });
               setSaving(false);
             }}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-40"
+            className="rounded-lg bg-accent-bg px-5 py-2 text-sm font-bold text-on-accent hover:bg-accent-bg disabled:opacity-40"
           >
             {saving ? "Saving…" : "Add"}
           </button>
@@ -272,13 +272,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-bold uppercase tracking-wider text-[#A0B4CC]">
+      <label className="block text-xs font-bold uppercase tracking-wider text-muted">
         {label}
       </label>
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+        className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-accent"
       />
     </div>
   );

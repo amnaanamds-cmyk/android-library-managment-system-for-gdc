@@ -48,19 +48,19 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8] tracking-tight">📊 Library Reports & Analytics</h1>
-        <p className="text-sm text-slate-400 mt-1">Generate professional reports, interactive charts, and insights.</p>
+        <h1 className="text-3xl font-extrabold text-ink tracking-tight">📊 Library Reports & Analytics</h1>
+        <p className="text-sm text-muted mt-1">Generate professional reports, interactive charts, and insights.</p>
       </div>
 
       {/* Financial Valuation */}
-      <div className="bg-[#0D1F38] border-2 border-[#C8A84B] rounded-xl p-6 flex items-center justify-between shadow-xl shadow-amber-900/10">
+      <div className="bg-surface border-2 border-accent rounded-xl p-6 flex items-center justify-between shadow-xl shadow-amber-900/10">
         <div className="flex items-center gap-6">
           <span className="text-5xl">🏦</span>
           <div>
-            <h3 className="text-[#C8A84B] font-black text-2xl">
+            <h3 className="text-accent font-black text-2xl">
               Total Collection Value: Rs. {val?.totalValue?.toLocaleString() || "..."}
             </h3>
-            <p className="text-slate-400 font-bold text-sm">
+            <p className="text-muted font-bold text-sm">
               {val?.pricedCount || 0} / {val?.totalBooks || 0} books priced | Avg: Rs. {val?.pricedCount ? Math.round(val.totalValue / val.pricedCount) : 0}
             </p>
           </div>
@@ -69,25 +69,25 @@ export default function ReportsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Availability Ratio */}
-        <div className="bg-[#071428] border border-blue-950 rounded-xl p-6 shadow-xl border-t-4 border-t-emerald-500">
-          <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
+        <div className="bg-app border border-line rounded-xl p-6 shadow-xl border-t-4 border-t-emerald-500">
+          <h3 className="font-bold text-ink text-lg mb-4 flex items-center gap-2">
             <span>🥑</span> Availability Ratio
           </h3>
           <div className="space-y-4">
-            <ProgressBar label={`Available (${val?.available || 0})`} value={val?.available || 0} total={val?.totalBooks || 1} color="bg-emerald-500" />
-            <ProgressBar label={`Issued (${val?.issued || 0})`} value={val?.issued || 0} total={val?.totalBooks || 1} color="bg-amber-500" />
-            <ProgressBar label={`Lost/Other (${val?.lost || 0})`} value={val?.lost || 0} total={val?.totalBooks || 1} color="bg-red-500" />
+            <ProgressBar label={`Available (${val?.available || 0})`} value={val?.available || 0} total={val?.totalBooks || 1} color="bg-positive" />
+            <ProgressBar label={`Issued (${val?.issued || 0})`} value={val?.issued || 0} total={val?.totalBooks || 1} color="bg-warning" />
+            <ProgressBar label={`Lost/Other (${val?.lost || 0})`} value={val?.lost || 0} total={val?.totalBooks || 1} color="bg-danger" />
           </div>
         </div>
 
         {/* WhatsApp Overdue Reminders */}
-        <div className="bg-[#0D1F38] border border-[#25D366]/30 rounded-xl p-6 shadow-xl">
+        <div className="bg-surface border border-[#25D366]/30 rounded-xl p-6 shadow-xl">
           <h3 className="font-bold text-[#25D366] text-lg mb-2 flex items-center gap-2">
             <span>📱</span> WhatsApp Reminders
           </h3>
-          <p className="text-sm text-slate-400 mb-6">
+          <p className="text-sm text-muted mb-6">
             Send polite, auto-filled WhatsApp messages to patrons with overdue books.
-            Currently tracking <span className="font-black text-white">{val?.overdueCount || 0} overdue</span> issues.
+            Currently tracking <span className="font-black text-ink">{val?.overdueCount || 0} overdue</span> issues.
           </p>
           <button 
             disabled={!val?.overdueCount}
@@ -123,11 +123,11 @@ function ProgressBar({ label, value, total, color }: { label: string, value: num
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div>
-      <div className="flex justify-between text-xs font-bold text-slate-300 mb-1">
+      <div className="flex justify-between text-xs font-bold text-body mb-1">
         <span>{label}</span>
         <span>{pct}%</span>
       </div>
-      <div className="w-full bg-[#0D1F38] rounded-full h-3">
+      <div className="w-full bg-surface rounded-full h-3">
         <div className={`${color} h-3 rounded-full`} style={{ width: `${pct}%` }}></div>
       </div>
     </div>
@@ -136,17 +136,17 @@ function ProgressBar({ label, value, total, color }: { label: string, value: num
 
 function ReportCard({ icon, title, desc, btnText, color }: { icon: string, title: string, desc: string, btnText: string, color: string }) {
   const colorMap: Record<string, string> = {
-    blue: "border-t-blue-500 bg-blue-600 hover:bg-blue-500 text-white",
-    amber: "border-t-[#C8A84B] bg-[#C8A84B] hover:bg-amber-400 text-amber-950",
-    emerald: "border-t-emerald-500 bg-emerald-600 hover:bg-emerald-500 text-white"
+    blue: "border-t-blue-500 bg-accent-bg hover:bg-accent-bg text-on-accent",
+    amber: "border-t-accent bg-accent-bg hover:bg-warning text-warning",
+    emerald: "border-t-emerald-500 bg-positive hover:bg-positive text-on-accent"
   };
   const btnClass = colorMap[color];
 
   return (
-    <div className={`bg-[#071428] border border-blue-950 rounded-xl p-6 flex flex-col h-full border-t-4 ${btnClass.split(' ')[0]}`}>
+    <div className={`bg-app border border-line rounded-xl p-6 flex flex-col h-full border-t-4 ${btnClass.split(' ')[0]}`}>
       <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-      <p className="text-sm text-slate-400 mb-6 flex-1">{desc}</p>
+      <h3 className="text-lg font-bold text-ink mb-2">{title}</h3>
+      <p className="text-sm text-muted mb-6 flex-1">{desc}</p>
       <button className={`w-full py-2.5 rounded-lg font-bold shadow-lg transition-colors ${btnClass.split(' ').slice(1).join(' ')}`}>
         {btnText}
       </button>

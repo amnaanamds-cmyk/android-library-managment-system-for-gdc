@@ -95,8 +95,8 @@ export default function CollegeDetail() {
   if (loading) {
     return (
       <div className="flex flex-col items-center gap-4 py-24">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-line border-t-transparent" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted">
           Loading {collegeId}…
         </p>
       </div>
@@ -108,32 +108,32 @@ export default function CollegeDetail() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/director" className="text-xs font-bold text-blue-400 hover:text-blue-300">
+        <Link href="/director" className="text-xs font-bold text-accent hover:text-accent">
           ← Back to network overview
         </Link>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">{name}</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-wider text-slate-500">
+            <h1 className="text-3xl font-extrabold tracking-tight text-ink">{name}</h1>
+            <p className="mt-1 font-mono text-xs uppercase tracking-wider text-muted">
               {collegeId}
               {snapshot?.district ? ` · ${snapshot.district}` : ""}
             </p>
           </div>
           {snapshot && (
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted">
                 Last published
               </p>
               <p
                 className={`text-sm font-bold ${
-                  isStale(snapshot) ? "text-amber-400" : "text-emerald-400"
+                  isStale(snapshot) ? "text-warning" : "text-positive"
                 }`}
               >
                 {snapshot.lastSynced
                   ? new Date(snapshot.lastSynced).toLocaleString("en-PK")
                   : "Never"}
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
+              <p className="text-[10px] uppercase tracking-wider text-muted">
                 {snapshot.source === "summary" ? "server rollup" : snapshot.source}
               </p>
             </div>
@@ -142,7 +142,7 @@ export default function CollegeDetail() {
       </div>
 
       {!snapshot && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
           <p className="font-bold">This college has not published a snapshot yet.</p>
           <p className="mt-1 text-xs opacity-80">
             Aggregate counts appear once its desktop, web, or Android app completes a sync while
@@ -155,11 +155,11 @@ export default function CollegeDetail() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Books" value={snapshot.totalBooks} />
           <Stat label="Members" value={snapshot.members} />
-          <Stat label="Active Loans" value={snapshot.issued} accent="text-blue-400" />
+          <Stat label="Active Loans" value={snapshot.issued} accent="text-accent" />
           <Stat
             label="Overdue"
             value={snapshot.overdue}
-            accent={snapshot.overdue > 0 ? "text-red-400" : "text-slate-400"}
+            accent={snapshot.overdue > 0 ? "text-danger" : "text-muted"}
           />
           <Stat label="E-Books" value={snapshot.totalEbooks} />
           <Stat label="Reservations" value={snapshot.reservations} />
@@ -167,7 +167,7 @@ export default function CollegeDetail() {
             label="Unsynced Records"
             value={snapshot.recordsMissingSyncEnvelope}
             accent={
-              snapshot.recordsMissingSyncEnvelope > 0 ? "text-amber-400" : "text-slate-400"
+              snapshot.recordsMissingSyncEnvelope > 0 ? "text-warning" : "text-muted"
             }
           />
           <Stat
@@ -184,14 +184,14 @@ export default function CollegeDetail() {
 
       {/* Public catalogue analysis */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Catalogue by Category</h3>
+        <div className="rounded-2xl border border-line bg-surface-2 p-6 shadow-xl">
+          <h3 className="mb-4 text-lg font-bold text-ink">Catalogue by Category</h3>
           {catalogueError ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               Catalogue not readable for this college ({catalogueError}).
             </p>
           ) : categories.length === 0 ? (
-            <p className="text-xs text-slate-500">No catalogue records found.</p>
+            <p className="text-xs text-muted">No catalogue records found.</p>
           ) : (
             <div className="space-y-3">
               {categories.map(([label, count]) => {
@@ -199,14 +199,14 @@ export default function CollegeDetail() {
                 return (
                   <div key={label}>
                     <div className="mb-1 flex justify-between text-xs">
-                      <span className="font-semibold text-slate-300">{label}</span>
-                      <span className="text-slate-500">
+                      <span className="font-semibold text-body">{label}</span>
+                      <span className="text-muted">
                         {numberFmt.format(count)} · {pct}%
                       </span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-blue-950">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-[#C8A84B]"
+                        className="bg-accent-bg h-full rounded-full"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -217,31 +217,31 @@ export default function CollegeDetail() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Catalogue Availability</h3>
+        <div className="rounded-2xl border border-line bg-surface-2 p-6 shadow-xl">
+          <h3 className="mb-4 text-lg font-bold text-ink">Catalogue Availability</h3>
           {catalogueError ? (
-            <p className="text-xs text-slate-500">Not available.</p>
+            <p className="text-xs text-muted">Not available.</p>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-emerald-900/40 bg-emerald-500/5 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">
+                <div className="rounded-xl border border-positive/40 bg-positive/5 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-positive">
                     On shelf
                   </p>
-                  <p className="mt-1 text-3xl font-black text-emerald-400">
+                  <p className="mt-1 text-3xl font-black text-positive">
                     {numberFmt.format(availability.available)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-blue-900/40 bg-blue-500/5 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                <div className="rounded-xl border border-line/40 bg-accent-bg/5 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-accent">
                     On loan
                   </p>
-                  <p className="mt-1 text-3xl font-black text-blue-400">
+                  <p className="mt-1 text-3xl font-black text-accent">
                     {numberFmt.format(availability.issued)}
                   </p>
                 </div>
               </div>
-              <p className="mt-4 text-[11px] text-slate-500">
+              <p className="mt-4 text-[11px] text-muted">
                 Counted from {numberFmt.format(books.length)} catalogue records readable by the
                 directorate. Patron-level records remain private to the college.
               </p>
@@ -251,27 +251,27 @@ export default function CollegeDetail() {
       </div>
 
       {(institution?.email || institution?.phone || snapshot?.contactEmail) && (
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6">
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-400">
+        <div className="rounded-2xl border border-line bg-surface-2 p-6">
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">
             Contact
           </h3>
           <dl className="grid gap-3 text-sm sm:grid-cols-3">
             {(snapshot?.contactEmail || institution?.email) && (
               <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Email</dt>
-                <dd className="text-slate-300">{snapshot?.contactEmail || institution?.email}</dd>
+                <dt className="text-[10px] uppercase tracking-widest text-muted">Email</dt>
+                <dd className="text-body">{snapshot?.contactEmail || institution?.email}</dd>
               </div>
             )}
             {(snapshot?.phone || institution?.phone) && (
               <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Phone</dt>
-                <dd className="text-slate-300">{snapshot?.phone || institution?.phone}</dd>
+                <dt className="text-[10px] uppercase tracking-widest text-muted">Phone</dt>
+                <dd className="text-body">{snapshot?.phone || institution?.phone}</dd>
               </div>
             )}
             {(snapshot?.district || institution?.address) && (
               <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Address</dt>
-                <dd className="text-slate-300">{snapshot?.district || institution?.address}</dd>
+                <dt className="text-[10px] uppercase tracking-widest text-muted">Address</dt>
+                <dd className="text-body">{snapshot?.district || institution?.address}</dd>
               </div>
             )}
           </dl>
@@ -284,7 +284,7 @@ export default function CollegeDetail() {
 function Stat({
   label,
   value,
-  accent = "text-white",
+  accent = "text-ink",
   prefix = "",
   suffix = "",
 }: {
@@ -295,8 +295,8 @@ function Stat({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl">
-      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+    <div className="rounded-2xl border border-line bg-surface-2 p-5 shadow-xl">
+      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-muted">
         {label}
       </p>
       <p className={`text-2xl font-black tracking-tighter ${accent}`}>

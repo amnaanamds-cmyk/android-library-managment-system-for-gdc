@@ -66,25 +66,36 @@ export default function DashboardOverview() {
     activeIssues,
   ]);
 
-  const stats = [
-    { name: "Total Books Cataloged", value: totalBooks, icon: "📚", color: "from-blue-600 to-indigo-600" },
-    { name: "Registered Members", value: totalMembers, icon: "👥", color: "from-emerald-600 to-teal-600" },
-    { name: "Active Book Issues", value: activeLoans, icon: "🔄", color: "from-[#C8A84B] to-amber-600" },
-    { name: "Overdue Loans", value: overdueIssues.length, icon: "⏰", color: "from-red-600 to-rose-600" },
+  // Same rule as the desktop dashboard: a tile is neutral unless its own value
+  // means something. Four gradient tiles in four different hues gave the
+  // Overdue figure - the only one that ever needs acting on - no more weight
+  // than the book count.
+  const stats: { name: string; value: number; icon: string; tone?: "warning" | "danger" }[] = [
+    { name: "Books Catalogued", value: totalBooks, icon: "📚" },
+    { name: "Registered Members", value: totalMembers, icon: "👥" },
+    { name: "Books on Loan", value: activeLoans, icon: "🔄" },
+    {
+      name: "Overdue Loans",
+      value: overdueIssues.length,
+      icon: "⏰",
+      tone: overdueIssues.length > 0 ? "danger" : undefined,
+    },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">Dashboard Overview</h1>
-        <p className="text-sm text-slate-400">Real-time statistics for your active institution</p>
+        <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
+        <p className="text-sm text-muted">
+          Live figures for {profile?.institutionId || "your institution"}
+        </p>
       </div>
 
       {booksError && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+        <div className="rounded-xl border border-danger/40 bg-danger-soft p-4 text-sm text-danger">
           <p className="font-bold">Cannot read this institution&apos;s data.</p>
           <p className="mt-1 font-mono text-xs opacity-80">{booksError}</p>
-          <p className="mt-2 text-xs text-red-200/70">
+          <p className="mt-2 text-xs opacity-80">
             A permission error here usually means your profile&apos;s{" "}
             <span className="font-mono">institutionId</span> does not match the institution you are
             trying to open, or the current <span className="font-mono">firestore.rules</span> have
@@ -93,71 +104,96 @@ export default function DashboardOverview() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat, i) => (
-          <div key={i} className="flex items-center justify-between rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.name}</p>
-              <h2 className="mt-2 text-4xl font-extrabold text-white">
-                {loading ? (
-                  <span className="inline-block h-6 w-12 animate-pulse rounded bg-slate-800" />
-                ) : (
-                  stat.value
-                )}
-              </h2>
-            </div>
-            <span className={`rounded-lg bg-gradient-to-br p-3 text-4xl text-white ${stat.color}`}>
-              {stat.icon}
-            </span>
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <div
+            key={stat.name}
+            className={`rounded-xl border border-line bg-surface p-5 border-l-[3px] ${
+              stat.tone === "danger"
+                ? "border-l-danger"
+                : stat.tone === "warning"
+                  ? "border-l-warning"
+                  : "border-l-line-strong"
+            }`}
+          >
+            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-muted">
+              <span className="text-sm">{stat.icon}</span>
+              {stat.name}
+            </p>
+            <h2
+              className={`mt-2 text-3xl font-extrabold ${
+                stat.tone === "danger"
+                  ? "text-danger"
+                  : stat.tone === "warning"
+                    ? "text-warning"
+                    : "text-ink"
+              }`}
+            >
+              {loading ? (
+                <span className="inline-block h-7 w-14 animate-pulse rounded bg-surface-2" />
+              ) : (
+                stat.value.toLocaleString()
+              )}
+            </h2>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Recent Books */}
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Newly Added Books</h3>
-          <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Recently added */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted">
+            Newly Added Books
+          </h3>
+          <div className="divide-y divide-line">
             {[...books]
               .sort((a, b) => (Number(b.lastUpdated) || 0) - (Number(a.lastUpdated) || 0))
               .slice(0, 5)
               .map((book, idx) => (
-                <div key={book.id || idx} className="flex items-center justify-between border-b border-blue-950/40 pb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-200">{book.title}</p>
-                    <p className="text-xs text-slate-400">{book.author || "Unknown Author"}</p>
+                <div key={book.id || idx} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">{book.title}</p>
+                    <p className="truncate text-xs text-muted">{book.author || "Unknown author"}</p>
                   </div>
-                  <span className="rounded border border-blue-800 bg-blue-950 px-2 py-0.5 text-xs text-blue-400">
+                  <span className="shrink-0 rounded border border-line px-2 py-0.5 text-xs text-muted">
                     {book.category || book.subject || "General"}
                   </span>
                 </div>
               ))}
-            {books.length === 0 && <p className="text-xs text-slate-500">No books cataloged yet.</p>}
+            {books.length === 0 && (
+              <p className="py-2 text-xs text-muted">No books catalogued yet.</p>
+            )}
           </div>
         </div>
 
-        {/* Active Issues */}
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Active Issues</h3>
-          <div className="space-y-4">
+        {/* On loan */}
+        <div className="rounded-xl border border-line bg-surface p-5">
+          <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-muted">
+            Books on Loan
+          </h3>
+          <div className="divide-y divide-line">
             {activeIssues.slice(0, 5).map((issue, idx) => (
-              <div key={issue.id || idx} className="flex items-center justify-between border-b border-blue-950/40 pb-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-200">
-                    {issue.bookTitle || `Book ID: ${issue.bookId}`}
+              <div key={issue.id || idx} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {issue.bookTitle || `Book ${issue.bookId}`}
                   </p>
-                  <p className="text-xs text-slate-400">
-                    Issued to: {issue.memberName || `Member ID: ${issue.memberId}`}
+                  <p className="truncate text-xs text-muted">
+                    {issue.memberName || `Member ${issue.memberId}`}
                   </p>
                 </div>
-                <span className={`text-xs ${isOverdue(issue) ? "font-bold text-red-400" : "text-[#E6C96E]"}`}>
-                  Due: {issue.dueDate || "N/A"}
+                <span
+                  className={`shrink-0 text-xs ${
+                    isOverdue(issue) ? "font-bold text-danger" : "text-muted"
+                  }`}
+                >
+                  Due {issue.dueDate || "—"}
                 </span>
               </div>
             ))}
             {activeIssues.length === 0 && (
-              <p className="text-xs text-slate-500">No active book loans at the moment.</p>
+              <p className="py-2 text-xs text-muted">Nothing is on loan right now.</p>
             )}
           </div>
         </div>

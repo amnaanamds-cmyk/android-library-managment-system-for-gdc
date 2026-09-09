@@ -139,20 +139,20 @@ export default function OnboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#060C18] via-[#0D1B2A] to-[#060C18] px-4 py-12">
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-blue-900/50 bg-[#0D1C37]/90 p-8 shadow-2xl backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-app via-app to-app px-4 py-12">
+      <div className="w-full max-w-md space-y-8 rounded-2xl border border-line/50 bg-surface-2/90 p-8 shadow-2xl backdrop-blur">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-[#E6C96E]">Welcome to NEXLIB</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <h2 className="text-3xl font-extrabold text-accent-strong">Welcome to NEXLIB</h2>
+          <p className="mt-2 text-sm text-muted">
             Set up or join an institution to continue
           </p>
         </div>
 
-        <div className="flex border-b border-blue-900/30">
+        <div className="flex border-b border-line/30">
           <button
             onClick={() => { setTab("create"); setErrorMsg(null); }}
             className={`flex-1 py-3 text-center text-sm font-semibold transition-colors ${
-              tab === "create" ? "border-b-2 border-[#C8A84B] text-white" : "text-slate-400 hover:text-white"
+              tab === "create" ? "border-b-2 border-accent text-ink" : "text-muted hover:text-ink"
             }`}
           >
             Create Institution
@@ -160,7 +160,7 @@ export default function OnboardPage() {
           <button
             onClick={() => { setTab("join"); setErrorMsg(null); }}
             className={`flex-1 py-3 text-center text-sm font-semibold transition-colors ${
-              tab === "join" ? "border-b-2 border-[#C8A84B] text-white" : "text-slate-400 hover:text-white"
+              tab === "join" ? "border-b-2 border-accent text-ink" : "text-muted hover:text-ink"
             }`}
           >
             Join Institution
@@ -170,7 +170,7 @@ export default function OnboardPage() {
         {tab === "create" ? (
           <form onSubmit={handleCreate} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#A0B4CC]">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">
                 College / Institution Name
               </label>
               <input
@@ -178,12 +178,12 @@ export default function OnboardPage() {
                 required
                 value={collegeName}
                 onChange={(e) => setCollegeName(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-accent"
                 placeholder="e.g. Govt Degree College Sherpao"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#A0B4CC] mt-4">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted mt-4">
                 College Unique ID
               </label>
               <input
@@ -191,14 +191,14 @@ export default function OnboardPage() {
                 required
                 value={collegeId}
                 onChange={(e) => setCollegeId(e.target.value)}
-                className="mt-2 w-full uppercase rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full uppercase rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink outline-none focus:border-accent"
                 placeholder="e.g. GDC-MARDAN-01"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-gradient-to-r from-[#1E5FD4] to-[#2872F0] py-3 text-sm font-bold text-white transition-all hover:from-[#2872F0] focus:outline-none disabled:opacity-50"
+              className="bg-accent-bg w-full rounded-lg py-3 text-sm font-bold text-on-accent transition-all focus:outline-none disabled:opacity-50"
             >
               {loading ? "Creating..." : "Create & Enter"}
             </button>
@@ -207,16 +207,16 @@ export default function OnboardPage() {
               <div className="mt-8 flex flex-col items-center justify-center rounded-xl bg-white p-6">
                 <h3 className="mb-4 text-lg font-bold text-[#1E3A8A]">Device Link QR</h3>
                 <QRCodeCanvas value={createdInst.qrData} size={200} />
-                <p className="mt-4 text-center text-sm font-semibold text-slate-700">
+                <p className="mt-4 text-center text-sm font-semibold text-body">
                   College ID: {createdInst.id}
                 </p>
-                <p className="mt-2 text-center text-xs text-slate-500">
+                <p className="mt-2 text-center text-xs text-muted">
                   Scan this code with NEXLIB Android to login instantly.
                 </p>
                 <button
                   type="button"
                   onClick={() => router.push("/dashboard")}
-                  className="mt-6 w-full rounded-lg bg-[#2872F0] py-3 text-sm font-bold text-white"
+                  className="mt-6 w-full rounded-lg bg-accent-bg py-3 text-sm font-bold text-ink"
                 >
                   Continue to Dashboard
                 </button>
@@ -226,7 +226,7 @@ export default function OnboardPage() {
         ) : (
           <form onSubmit={handleJoin} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#A0B4CC]">
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">
                 College Unique ID
               </label>
               <input
@@ -234,29 +234,29 @@ export default function OnboardPage() {
                 required
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
-                className="mt-2 w-full uppercase text-center tracking-widest rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-3 text-lg font-bold text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full uppercase text-center tracking-widest rounded-lg border border-line bg-surface px-4 py-3 text-lg font-bold text-ink outline-none focus:border-accent"
                 placeholder="GDC-MARDAN-01"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-gradient-to-r from-[#1E5FD4] to-[#2872F0] py-3 text-sm font-bold text-white transition-all hover:from-[#2872F0] focus:outline-none disabled:opacity-50"
+              className="bg-accent-bg w-full rounded-lg py-3 text-sm font-bold text-on-accent transition-all focus:outline-none disabled:opacity-50"
             >
               {loading ? "Joining..." : "Join & Enter"}
             </button>
             
             <div className="relative flex items-center py-2">
-              <div className="flex-grow border-t border-[#1E3050]"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-500 text-xs">OR</span>
-              <div className="flex-grow border-t border-[#1E3050]"></div>
+              <div className="flex-grow border-t border-line"></div>
+              <span className="flex-shrink-0 mx-4 text-muted text-xs">OR</span>
+              <div className="flex-grow border-t border-line"></div>
             </div>
 
             {!showScanner ? (
               <button
                 type="button"
                 onClick={() => setShowScanner(true)}
-                className="w-full rounded-lg border border-[#C8A84B] py-3 text-sm font-bold text-[#C8A84B] transition-all hover:bg-[#C8A84B]/10 focus:outline-none"
+                className="w-full rounded-lg border border-accent py-3 text-sm font-bold text-accent transition-all hover:bg-accent-bg/10 focus:outline-none"
               >
                 Scan QR Code
               </button>
@@ -279,7 +279,7 @@ export default function OnboardPage() {
                 <button
                   type="button"
                   onClick={() => setShowScanner(false)}
-                  className="mt-4 text-sm text-slate-400 hover:text-white"
+                  className="mt-4 text-sm text-muted hover:text-ink"
                 >
                   Cancel Scan
                 </button>
@@ -289,7 +289,7 @@ export default function OnboardPage() {
         )}
 
         {errorMsg && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-300">
+          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-center text-xs text-danger">
             ⚠️ {errorMsg}
           </div>
         )}

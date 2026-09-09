@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
+/*
+ * One palette for the whole portal.
+ *
+ * Every page used to pick its own colours as arbitrary hex values -
+ * bg-[#0D1F38] here, bg-[#070F1E] there, a gold accent on some screens and a
+ * blue one on others - so no two dashboards looked like the same product, and
+ * the theme toggle in the dashboard shell only recoloured the shell while every
+ * page underneath stayed dark.
+ *
+ * These tokens fix both. They are declared here, re-declared under .dark, and
+ * exposed to Tailwind through @theme inline, so `bg-surface`, `text-muted`,
+ * `border-line` and friends follow the theme everywhere, opacity modifiers
+ * included (`bg-surface/40`).
+ *
+ * The rule, same as the desktop app's ui/theme.py: neutrals do the layout,
+ * `accent` marks the one interactive thing, and positive/warning/danger mark
+ * state and nothing else. An Overdue figure is red because it is overdue, not
+ * because it is the fourth card along.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --app: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --text: #0f172a;
+  --text-body: #334155;
+  --muted: #64748b;
+  /* `accent` is for text, icons and borders; `accent-bg` is for filled
+     surfaces. They differ on dark because one colour cannot both read as small
+     text on a dark card and carry white text on top of it. */
+  --accent: #1d4ed8;
+  --accent-strong: #1e40af;
+  --accent-bg: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --on-accent: #ffffff;
+  --positive: #15803d;
+  --positive-soft: #f0fdf4;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+}
+
+.dark {
+  --app: #0f172a;
+  --surface: #1e293b;
+  --surface-2: #172033;
+  --line: #334155;
+  --line-strong: #475569;
+  --text: #f1f5f9;
+  --text-body: #cbd5e1;
+  --muted: #94a3b8;
+  /* Lifted a step on dark: #1d4ed8 on #1e293b fails contrast for small text. */
+  --accent: #60a5fa;
+  --accent-strong: #93c5fd;
+  --accent-bg: #2563eb;
+  --accent-soft: #1e3a5f;
+  --on-accent: #ffffff;
+  --positive: #4ade80;
+  --positive-soft: #14342a;
+  --warning: #fbbf24;
+  --warning-soft: #3b2f14;
+  --danger: #f87171;
+  --danger-soft: #3b1d1d;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-app: var(--app);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-body: var(--text-body);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-bg: var(--accent-bg);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--app);
+  color: var(--text-body);
+  /* Was `Arial, Helvetica, sans-serif`, which overrode the Geist font the
+     layout goes to the trouble of loading. */
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Tables and long lists read better with a consistent rhythm than with each
+   page inventing its own padding. */
+th {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  color: var(--muted);
 }

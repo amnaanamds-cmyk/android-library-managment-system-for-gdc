@@ -21,11 +21,11 @@ export default function DirectorateRedirect() {
 
   return (
     <div className="flex flex-col items-center gap-4 py-24">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-line border-t-transparent" />
+      <p className="text-xs font-bold uppercase tracking-widest text-muted">
         Opening the directorate portal…
       </p>
-      <Link href="/director" className="text-xs font-bold text-blue-400 hover:text-blue-300">
+      <Link href="/director" className="text-xs font-bold text-accent hover:text-accent">
         Continue to /director
       </Link>
     </div>

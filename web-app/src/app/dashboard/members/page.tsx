@@ -130,8 +130,8 @@ export default function MembersPage() {
     <div className="space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-[#E8EEF8]">👥 Members Directory</h1>
-          <p className="text-sm text-slate-400">Manage students, faculty, and librarian roles</p>
+          <h1 className="text-3xl font-extrabold text-ink">👥 Members Directory</h1>
+          <p className="text-sm text-muted">Manage students, faculty, and librarian roles</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <input 
@@ -141,16 +141,16 @@ export default function MembersPage() {
             accept=".csv, .xlsx, .xls"
             onChange={handleFileChange}
           />
-          <button onClick={handleImportClick} disabled={adding} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={handleImportClick} disabled={adding} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             📥 Import
           </button>
-          <button onClick={handleExportCSV} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={handleExportCSV} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             📤 Export CSV
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             🖨️ Batch ID Cards
           </button>
-          <button onClick={comingSoon} className="bg-[#1E3050] text-[#A0B4CC] border border-[#1E3050] rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-[#2A4166] transition-colors shadow">
+          <button onClick={comingSoon} className="bg-line text-muted border border-line rounded-md px-3 py-1.5 text-xs font-semibold hover:bg-line transition-colors shadow">
             ✉️ Bulk Email
           </button>
         </div>
@@ -160,15 +160,15 @@ export default function MembersPage() {
         <input 
           type="text"
           placeholder="🔍 Search by name, email, or phone..."
-          className="flex-1 rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+          className="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none focus:border-accent"
         />
-        <select className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none">
+        <select className="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none">
           <option>All Roles</option>
           <option>Student</option>
           <option>Faculty</option>
           <option>Librarian</option>
         </select>
-        <select className="rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2 text-sm text-[#E8EEF8] outline-none">
+        <select className="rounded-lg border border-line bg-surface px-4 py-2 text-sm text-ink outline-none">
           <option>All Status</option>
           <option>Active</option>
           <option>Suspended</option>
@@ -177,46 +177,46 @@ export default function MembersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Add Member Form */}
-        <div className="rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl h-fit">
-          <h3 className="text-lg font-bold text-white mb-4">Register New Member</h3>
+        <div className="rounded-xl border border-line bg-surface-2 p-6 shadow-xl h-fit">
+          <h3 className="text-lg font-bold text-ink mb-4">Register New Member</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Full Name</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Full Name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
                 placeholder="e.g. Ahmad Khan"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Email Address</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
                 placeholder="e.g. ahmad@gmail.com"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Phone</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Phone</label>
               <input
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
                 placeholder="e.g. +923001234567"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Library Role</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-muted">Library Role</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-4 py-2.5 text-sm text-[#E8EEF8] outline-none focus:border-[#C8A84B]"
+                className="mt-2 w-full rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink outline-none focus:border-accent"
               >
                 <option value="Student">Student</option>
                 <option value="Faculty">Faculty</option>
@@ -226,7 +226,7 @@ export default function MembersPage() {
             <button
               type="submit"
               disabled={adding}
-              className="w-full rounded-lg bg-gradient-to-r from-[#1E5FD4] to-[#2872F0] py-3 text-sm font-bold text-white transition-all hover:from-[#2872F0] hover:to-[#3D8EFF] shadow-lg disabled:opacity-50"
+              className="bg-accent-bg w-full rounded-lg py-3 text-sm font-bold text-on-accent transition-all shadow-lg disabled:opacity-50"
             >
               {adding ? "Registering..." : "➕ Register Member"}
             </button>
@@ -234,21 +234,21 @@ export default function MembersPage() {
         </div>
 
         {/* Members List Table */}
-        <div className="lg:col-span-2 rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl overflow-hidden">
+        <div className="lg:col-span-2 rounded-xl border border-line bg-surface-2 p-6 shadow-xl overflow-hidden">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-white">Registered Members</h3>
-            <button className="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-blue-200 text-xs font-bold rounded-lg transition-colors">
+            <h3 className="text-lg font-bold text-ink">Registered Members</h3>
+            <button className="px-3 py-1.5 bg-surface-2 hover:bg-surface-2 text-accent text-xs font-bold rounded-lg transition-colors">
               🖨️ Bulk Print All IDs
             </button>
           </div>
           {loading ? (
             <div className="py-12 flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#C8A84B] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="text-xs uppercase bg-[#0D1F38]/40 text-slate-400">
+              <table className="w-full text-left text-sm text-body">
+                <thead className="text-xs uppercase bg-surface/40 text-muted">
                   <tr>
                     <th className="px-4 py-3">Name</th>
                     <th className="px-4 py-3">Email</th>
@@ -257,15 +257,15 @@ export default function MembersPage() {
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-blue-950/40">
+                <tbody className="divide-y divide-line/40">
                   {members?.map((member) => (
-                    <tr key={member.id} className="hover:bg-blue-950/10">
-                      <td className="px-4 py-4 font-semibold text-white">{member.name}</td>
+                    <tr key={member.id} className="hover:bg-surface-2/10">
+                      <td className="px-4 py-4 font-semibold text-ink">{member.name}</td>
                       <td className="px-4 py-4">{member.email || "—"}</td>
                       <td className="px-4 py-4">{member.phone || "—"}</td>
                       <td className="px-4 py-4">
                         <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                          member.role === "Librarian" ? "text-amber-400" : "text-blue-400"
+                          member.role === "Librarian" ? "text-warning" : "text-accent"
                         }`}>
                           {member.role || "Student"}
                         </span>
@@ -273,13 +273,13 @@ export default function MembersPage() {
                       <td className="px-4 py-4 text-right space-x-3">
                         <button
                           onClick={() => alert(`Printing Digital ID for ${member.name}...`)}
-                          className="px-3 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                          className="px-3 py-1 rounded bg-positive/10 border border-positive/30 text-xs font-bold text-positive hover:bg-positive/20 transition-colors"
                         >
                           🖨️ ID
                         </button>
                         <button
                           onClick={() => deleteRecord(member.id)}
-                          className="px-3 py-1 rounded bg-red-500/10 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+                          className="px-3 py-1 rounded bg-danger/10 border border-danger/30 text-xs font-bold text-danger hover:bg-danger/20 transition-colors"
                         >
                           🗑️ Delete
                         </button>
@@ -288,7 +288,7 @@ export default function MembersPage() {
                   ))}
                   {members?.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="text-center py-8 text-slate-500">
+                      <td colSpan={5} className="text-center py-8 text-muted">
                         No registered members in this institution.
                       </td>
                     </tr>
