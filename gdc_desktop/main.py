@@ -16,7 +16,6 @@ import config
 from services.firebase_service import FirebaseService
 from services.database_helper import DatabaseHelper
 from services.sync_service import SyncService
-from services.directorate_sync_service import DirectorateSyncService
 from services.auth_service import AuthService
 from ui.login_screen import LoginScreen
 from ui.main_window import MainWindow
@@ -103,7 +102,11 @@ class LibraryApp(QApplication):
         
         # Setup sync service (background thread)
         self.sync_service = SyncService(self.db_helper, self.fb_service)
-        self.directorate_sync = DirectorateSyncService(self.db_helper)
+        # There is no second directorate service. This client reports to the
+        # directorate through Firestore (RegistryService, inside SyncService).
+        # The old DirectorateSyncService POSTed to a separate FastAPI server at
+        # DIRECTORATE_API_URL that nothing deploys, so it retried on a 15-second
+        # timeout forever and made the app feel slow for no benefit.
 
         # Setup main router (QStackedWidget)
         self.router = QStackedWidget()
@@ -123,11 +126,8 @@ class LibraryApp(QApplication):
             # Start Sync Service
             if not self.sync_service.isRunning():
                 self.sync_service.start()
-            if not self.directorate_sync.isRunning():
-                self.directorate_sync.start()
-
             # 2. Main Window
-            self.main_window = MainWindow(self.auth_service, self.fb_service, self.db_helper, self.sync_service, self.directorate_sync)
+            self.main_window = MainWindow(self.auth_service, self.fb_service, self.db_helper, self.sync_service)
             self.main_window.logout_requested.connect(self._on_logout)
             
             self.router.addWidget(self.main_window)

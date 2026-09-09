@@ -121,6 +121,12 @@ export default function DirectorateOverview() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/director/register"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-500"
+          >
+            + Add College
+          </Link>
           <button
             onClick={() => void rebuild()}
             disabled={rebuilding}
@@ -342,15 +348,21 @@ export default function DirectorateOverview() {
                 <Th onClick={() => toggleSort("lastSynced")} active={sortKey === "lastSynced"} asc={ascending} align="right">
                   Last Sync
                 </Th>
+                <th className="px-5 py-3 text-right">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-950/40">
               {visible.map((c) => (
-                <CollegeRow key={c.institutionId} college={c} />
+                <CollegeRow
+                  key={c.institutionId}
+                  college={c}
+                  onSetStatus={setStatus}
+                  busy={busy === c.institutionId}
+                />
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 opacity-40">
                       <span className="text-4xl">🏢</span>
                       <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
@@ -368,9 +380,37 @@ export default function DirectorateOverview() {
   );
 }
 
-function CollegeRow({ college }: { college: DirectorateSnapshot }) {
+function CollegeRow({
+  college,
+  onSetStatus,
+  busy,
+}: {
+  college: DirectorateSnapshot;
+  onSetStatus: (id: string, status: "active" | "pending" | "suspended") => Promise<boolean>;
+  busy: boolean;
+}) {
   const stale = isStale(college);
   const neverReported = !college.lastSynced;
+  const suspended = college.status === "suspended";
+
+  // Suspend is the "remove" for a college. A college is never hard-deleted:
+  // its books, patrons and loan history stay intact, it simply stops reporting
+  // to the directorate and can be brought back. Deleting the tenant would
+  // destroy a real library's catalogue, which no dashboard button should do.
+  const toggle = async () => {
+    const next = suspended ? "active" : "suspended";
+    if (
+      !suspended &&
+      !window.confirm(
+        `Suspend ${college.name}?\n\n` +
+          "It stops appearing in directorate figures. Its own staff can still " +
+          "run their library, and nothing is deleted. You can reactivate it here.",
+      )
+    ) {
+      return;
+    }
+    await onSetStatus(college.institutionId, next);
+  };
 
   return (
     <tr className="group transition-colors hover:bg-blue-950/20">
@@ -417,6 +457,20 @@ function CollegeRow({ college }: { college: DirectorateSnapshot }) {
           {neverReported ? "Not reporting" : relativeTime(college.lastSynced)}
         </span>
         <p className="text-[10px] uppercase tracking-wider text-slate-600">{college.source}</p>
+      </td>
+      <td className="px-5 py-4 text-right">
+        <button
+          onClick={toggle}
+          disabled={busy}
+          title={suspended ? "Bring this college back into the network" : "Stop this college reporting"}
+          className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors disabled:opacity-40 ${
+            suspended
+              ? "bg-emerald-600 text-white hover:bg-emerald-500"
+              : "border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+          }`}
+        >
+          {busy ? "…" : suspended ? "Reactivate" : "Suspend"}
+        </button>
       </td>
     </tr>
   );

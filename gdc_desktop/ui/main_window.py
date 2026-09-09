@@ -108,14 +108,13 @@ class MainWindow(QtWidgets.QMainWindow):
     @classmethod
     def instance(cls): return cls._instance
 
-    def __init__(self, auth_service, firebase_service, db_helper, sync_service, directorate_sync=None):
+    def __init__(self, auth_service, firebase_service, db_helper, sync_service):
         super().__init__()
         MainWindow._instance = self
         self.auth = auth_service
         self.fb = firebase_service
         self.db = db_helper
         self.sync = sync_service
-        self.directorate_sync = directorate_sync
         self.is_dark = (getattr(config, 'DEFAULT_THEME', 'dark') == "dark")
         self.current_screen = ""
         self._nav_btns = {}
@@ -425,12 +424,8 @@ class MainWindow(QtWidgets.QMainWindow):
             elif key == "digital_id":
                 from ui.screens.digital_id_screen import DigitalIdScreen
                 screen = DigitalIdScreen(self.db)
-            elif key == "directorate":
-                from ui.screens.directorate_dashboard import DirectorateDashboardScreen
-                screen = DirectorateDashboardScreen(self.fb)
-
             if screen:
-                if key in ("dashboard", "settings", "enterprise", "director", "directorate"):
+                if key in ("dashboard", "settings", "enterprise", "director"):
                     screen.setMinimumHeight(1000)
 
                 scroll = QtWidgets.QScrollArea()
@@ -666,8 +661,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
         self.auth.sign_out()
         self.sync.stop()
-        if getattr(self, "directorate_sync", None):
-            self.directorate_sync.stop()
         self._idle_timer.stop()
         self.logout_requested.emit()
 
@@ -687,8 +680,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event):
         if hasattr(self, "sync") and self.sync:
             self.sync.stop()
-        if getattr(self, "directorate_sync", None):
-            self.directorate_sync.stop()
         if hasattr(self, "_idle_timer") and self._idle_timer:
             self._idle_timer.stop()
         super().closeEvent(event)
