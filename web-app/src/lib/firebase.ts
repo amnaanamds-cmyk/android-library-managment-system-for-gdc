@@ -7,7 +7,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBnDlkWcFqCWaXq9YSl2CFMzBb3yh3pIlE",
+  apiKey: "AIzaSyCDhboGleaMssC2Sl97uKcRcw1o9t1EkXg",
   authDomain: "nexlib-e7970.firebaseapp.com",
   projectId: "nexlib-e7970",
   storageBucket: "nexlib-e7970.firebasestorage.app",
