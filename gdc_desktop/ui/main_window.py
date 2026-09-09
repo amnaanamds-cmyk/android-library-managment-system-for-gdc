@@ -441,13 +441,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def _update_sync_status(self, text: str):
+        from ui.theme import palette
+        p = palette(self.is_dark)
         self.status_lbl.setText(text)
         if "Offline" in text:
-            self.status_lbl.setStyleSheet("color: #EF4444;")
+            self.status_lbl.setStyleSheet(f"color: {p['danger']};")
         elif "Syncing" in text:
-            self.status_lbl.setStyleSheet("color: #F59E0B;")
+            self.status_lbl.setStyleSheet(f"color: {p['warning']};")
         else:
-            self.status_lbl.setStyleSheet("color: #2EC98A;")
+            self.status_lbl.setStyleSheet(f"color: {p['positive']};")
+
+        # Re-enable the manual sync button on the real outcome rather than on a
+        # timer. It used to say "RECONNECTED" two seconds after the click
+        # whether or not anything had connected.
+        if getattr(self, "_manual_sync_pending", False) and "Syncing" not in text:
+            self._manual_sync_pending = False
+            self.sync_btn.setEnabled(True)
+            self.sync_btn.setText("\U0001f504  FORCE SYNC NOW")
 
     def _toggle_agent(self):
         if not self.agent_overlay:
@@ -588,14 +598,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _do_manual_sync(self):
         self.sync_btn.setEnabled(False)
-        self.sync_btn.setText("Syncing Cloud...")
-        
-        # Real-time force reconnect
+        self.sync_btn.setText("Syncing…")
+        self._manual_sync_pending = True
+
+        # Returns immediately; the sync thread does the work and reports back
+        # through sync_status, which re-enables this button.
         self.sync.force_reconnect()
         self._cmd_refresh()
 
-        QtCore.QTimer.singleShot(2000, lambda: self.sync_btn.setText("\u2705 RECONNECTED"))
-        QtCore.QTimer.singleShot(4000, lambda: (self.sync_btn.setEnabled(True), self.sync_btn.setText("\U0001f504 FORCE SYNC NOW")))
+        # Safety net: if the thread never reports (it is dead, or mock mode
+        # emits nothing), give the button back rather than leaving it stuck.
+        QtCore.QTimer.singleShot(15000, self._release_manual_sync)
+
+    def _release_manual_sync(self):
+        if getattr(self, "_manual_sync_pending", False):
+            self._manual_sync_pending = False
+            self.sync_btn.setEnabled(True)
+            self.sync_btn.setText("\U0001f504  FORCE SYNC NOW")
 
     def _show_link_qr(self):
         try:

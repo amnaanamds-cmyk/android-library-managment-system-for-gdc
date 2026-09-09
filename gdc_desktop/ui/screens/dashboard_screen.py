@@ -1,21 +1,27 @@
 """
-ui/screens/dashboard_screen.py — Overview dashboard with live stat cards,
-fine counter, monthly issues bar chart, and quick action floating buttons.
+ui/screens/dashboard_screen.py - the librarian's overview screen.
+
+Colour discipline: everything here draws from ui.theme. The stat tiles are
+neutral by default and only take a colour when the number itself means
+something is wrong - an overdue count above zero, reservations waiting. When
+all seven tiles were coloured, the overdue one no longer stood out, which is
+the one a librarian needs to spot from across the desk.
 """
 import time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QScrollArea, QGridLayout, QPushButton, QToolButton
+    QGridLayout, QPushButton
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QFont
 
 import config
+from ui.theme import current_palette
+
 import matplotlib
 try:
     matplotlib.use('QtAgg')
-    from matplotlib.backends.backend_q6agg import FigureCanvasQTAgg as FigureCanvas
-    from matplotlib.backends.backend_q6agg import NavigationToolbar2QT as NavigationToolbar
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
     HAS_MATPLOTLIB = True
 except Exception:
     HAS_MATPLOTLIB = False
@@ -23,39 +29,77 @@ from matplotlib.figure import Figure
 
 
 class StatCard(QFrame):
-    STYLE = """
-    QFrame {{
-        background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-            stop:0 {c1}, stop:1 {c2});
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.08);
-    }}
-    QLabel#cardIcon {{ font-size: 32px; }}
-    QLabel#cardVal  {{ color: white; font-size: 32px; font-weight: 900; font-family: 'Segoe UI'; }}
-    QLabel#cardLbl  {{ color: rgba(255,255,255,0.75); font-size: 12px; font-family: 'Segoe UI'; }}
+    """One metric. Neutral unless its value indicates a state.
+
+    tone is one of "neutral", "positive", "warning", "danger". Pass a
+    tone_rule callable to recolour the tile from the value on each update -
+    that is how Overdue turns red only when there actually are overdue books.
     """
 
-    def __init__(self, icon, label, value="\u2014", c1="#1E5FD4", c2="#2872F0"):
+    def __init__(self, icon, label, value="—", tone="neutral", tone_rule=None):
         super().__init__()
-        self.setStyleSheet(self.STYLE.format(c1=c1, c2=c2))
-        self.setMinimumSize(180, 120)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
+        self.p = current_palette()
+        self._tone_rule = tone_rule
+        self._tone = tone
+        self.setMinimumSize(180, 108)
 
-        icon_lbl = QLabel(icon)
-        icon_lbl.setObjectName("cardIcon")
-        layout.addWidget(icon_lbl)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(2)
+
+        top = QHBoxLayout()
+        top.setSpacing(8)
+        self.icon_lbl = QLabel(icon)
+        self.icon_lbl.setObjectName("cardIcon")
+        top.addWidget(self.icon_lbl)
+        self.txt_lbl = QLabel(label.upper())
+        self.txt_lbl.setObjectName("cardLbl")
+        top.addWidget(self.txt_lbl)
+        top.addStretch()
+        layout.addLayout(top)
 
         self.val_lbl = QLabel(str(value))
         self.val_lbl.setObjectName("cardVal")
         layout.addWidget(self.val_lbl)
+        layout.addStretch()
 
-        txt_lbl = QLabel(label)
-        txt_lbl.setObjectName("cardLbl")
-        layout.addWidget(txt_lbl)
+        self._apply_tone()
+
+    def _apply_tone(self):
+        p = self.p
+        accent = p.get(self._tone, p["text_muted"]) if self._tone != "neutral" else p["border_strong"]
+        value_colour = p[self._tone] if self._tone != "neutral" else p["text"]
+        self.setStyleSheet(f"""
+        QFrame {{
+            background: {p['surface']};
+            border: 1px solid {p['border']};
+            border-left: 3px solid {accent};
+            border-radius: 12px;
+        }}
+        QLabel {{ border: none; background: transparent; }}
+        QLabel#cardIcon {{ font-size: 15px; }}
+        QLabel#cardLbl  {{ color: {p['text_muted']}; font-size: 11px; font-weight: 700;
+                           letter-spacing: 0.6px; }}
+        QLabel#cardVal  {{ color: {value_colour}; font-size: 30px; font-weight: 800; }}
+        """)
 
     def update_value(self, val):
         self.val_lbl.setText(str(val))
+        if self._tone_rule is not None:
+            tone = self._tone_rule(val)
+            if tone != self._tone:
+                self._tone = tone
+                self._apply_tone()
+
+
+def _tone_when_nonzero(tone):
+    """Neutral at zero, `tone` above it. Used by Overdue and Reservations."""
+    def rule(val):
+        try:
+            return tone if float(str(val).replace(",", "")) > 0 else "neutral"
+        except (TypeError, ValueError):
+            return "neutral"
+    return rule
 
 
 class StatsWorker(QThread):
@@ -132,6 +176,7 @@ class DashboardScreen(QWidget):
         super().__init__()
         self.fb = firebase_service
         self.db = db_helper
+        self.p = current_palette()
         self.worker = None
         self._build_ui()
         self._timer = QTimer(self)
@@ -139,215 +184,275 @@ class DashboardScreen(QWidget):
         self._timer.start(60_000)
         QTimer.singleShot(500, self.refresh)
 
-    def launch_kiosk(self):
-        from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Kiosk Mode", "Self-Checkout Kiosk Mode initiated. The system is now locked to Patron Self-Service RFID Scanning.")
-
-    def launch_gate(self):
-        from PyQt6.QtWidgets import QMessageBox
-        QMessageBox.information(self, "Gate Check-in Monitor", "Smart Turnstile Tracking active.\nMonitoring physical patron entry/exit via digital library passes (RFID/NFC).")
-
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 28, 32, 28)
-        layout.setSpacing(20)
+        layout.setSpacing(18)
 
-        # Institutional Hero Banner
+        layout.addWidget(self._build_banner())
+        layout.addLayout(self._build_header())
+        layout.addWidget(self._build_ai_card())
+        layout.addLayout(self._build_stats_grid())
+        layout.addWidget(self._section_label("Quick Actions"))
+        layout.addLayout(self._build_quick_actions())
+        layout.addLayout(self._build_charts_and_activity())
+        layout.addStretch()
+
+    # ---------------------------------------------------------------- banner
+    def _build_banner(self):
+        p = self.p
         self.banner = QFrame()
-        self.banner.setFixedHeight(160)
-        self.banner.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1E3A8A, stop:1 #3B82F6);
-                border-radius: 20px;
-            }
+        self.banner.setFixedHeight(132)
+        # The one gradient in the app. Because nothing else uses one, it reads
+        # as the masthead rather than as decoration.
+        self.banner.setStyleSheet(f"""
+            QFrame {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #16264A, stop:1 #23407A);
+                border-radius: 14px;
+            }}
+            QLabel {{ background: transparent; border: none; }}
         """)
         banner_lay = QHBoxLayout(self.banner)
-        banner_lay.setContentsMargins(30, 0, 30, 0)
+        banner_lay.setContentsMargins(28, 0, 28, 0)
 
-        banner_text_v = QVBoxLayout()
-        banner_text_v.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        text_v = QVBoxLayout()
+        text_v.setSpacing(4)
+        text_v.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
-        c_name = getattr(config, 'COLLEGE_NAME', 'Government Degree College').upper()
-        welcome_lbl = QLabel(f"WELCOME TO {c_name}")
-        welcome_lbl.setStyleSheet("color: white; font-size: 26px; font-weight: 900; letter-spacing: 1px; background: transparent;")
+        c_name = getattr(config, 'COLLEGE_NAME', 'Government Degree College')
+        name_lbl = QLabel(c_name)
+        name_lbl.setStyleSheet("color: #FFFFFF; font-size: 23px; font-weight: 800;")
 
-        sub_welcome = QLabel("GDC LIBRARY MANAGEMENT SYSTEM — ARCHIVAL & DIGITAL REPOSITORY")
-        sub_welcome.setStyleSheet("color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 600; background: transparent;")
+        sub = QLabel("NEXLIB  ·  Library Management System  ·  "
+                     "Higher Education Department, Khyber Pakhtunkhwa")
+        sub.setStyleSheet("color: rgba(255,255,255,0.72); font-size: 12px; font-weight: 600;")
 
-        banner_text_v.addWidget(welcome_lbl)
-        banner_text_v.addWidget(sub_welcome)
-        banner_lay.addLayout(banner_text_v)
+        text_v.addWidget(name_lbl)
+        text_v.addWidget(sub)
+        banner_lay.addLayout(text_v)
         banner_lay.addStretch()
 
-        # Quick Stats in Banner
-        self.banner_stats = QLabel("EST. 2024")
-        self.banner_stats.setStyleSheet("color: white; background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 10px; font-weight: bold;")
+        self.banner_stats = QLabel(getattr(config, 'COLLEGE_ID', '') or "")
+        self.banner_stats.setStyleSheet(
+            "color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.12);"
+            "padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px;"
+        )
         banner_lay.addWidget(self.banner_stats)
+        return self.banner
 
-        layout.addWidget(self.banner)
-
-        # Header (Secondary)
+    # ---------------------------------------------------------------- header
+    def _build_header(self):
+        p = self.p
         hdr = QHBoxLayout()
-        title = QLabel("📊  Dashboard Overview")
-        title.setStyleSheet("font-size: 24px; font-weight: 800; color: #1E3A8A;")
+        hdr.setSpacing(8)
+
+        title = QLabel("Dashboard")
+        title.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {p['text']};")
         hdr.addWidget(title)
+
+        self.last_update = QLabel("·  updated —")
+        self.last_update.setStyleSheet(f"color: {p['text_muted']}; font-size: 12px;")
+        hdr.addWidget(self.last_update)
         hdr.addStretch()
-        self.refresh_btn = QPushButton("\U0001f504  Refresh")
-        self.refresh_btn.setStyleSheet(
-            "background: rgba(30,95,212,0.2); color: #6B8CAE; border: 1px solid #1E3050;"
-            "border-radius: 8px; padding: 7px 14px; font-size: 12px;"
-        )
-        self.refresh_btn.clicked.connect(self.refresh)
 
-        self.kiosk_btn = QPushButton("\U0001f4df Launch Self-Checkout Kiosk")
-        self.kiosk_btn.setStyleSheet(
-            "background: #F59E0B; color: white; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: bold;"
-        )
-        self.kiosk_btn.clicked.connect(self.launch_kiosk)
-
-        self.gate_btn = QPushButton("\U0001f4cd Gate Check-in (Geo-Fence)")
-        self.gate_btn.setStyleSheet(
-            "background: #059669; color: white; border-radius: 8px; padding: 7px 14px; font-size: 12px; font-weight: bold;"
-        )
-        self.gate_btn.clicked.connect(self.launch_gate)
-
+        # These two used to pop a message box claiming a turnstile was being
+        # monitored. Nothing was. Both features exist for real on their own
+        # screens, so the buttons now go there.
+        self.gate_btn = self._ghost_button("Gate Log")
+        self.gate_btn.clicked.connect(lambda: self._navigate("visitor_log"))
         hdr.addWidget(self.gate_btn)
+
+        self.kiosk_btn = self._ghost_button("Self-Checkout")
+        self.kiosk_btn.clicked.connect(lambda: self._navigate("opac"))
         hdr.addWidget(self.kiosk_btn)
+
+        self.refresh_btn = self._ghost_button("↻  Refresh")
+        self.refresh_btn.clicked.connect(self.refresh)
         hdr.addWidget(self.refresh_btn)
-        layout.addLayout(hdr)
+        return hdr
 
-        self.last_update = QLabel("Last updated: \u2014")
-        self.last_update.setStyleSheet("color: #4D6A90; font-size: 11px;")
-        layout.addWidget(self.last_update)
+    def _ghost_button(self, text):
+        p = self.p
+        btn = QPushButton(text)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {p['surface']}; color: {p['text_body']};
+                border: 1px solid {p['border']}; border-radius: 8px;
+                padding: 7px 14px; font-size: 12px; font-weight: 600;
+            }}
+            QPushButton:hover {{ border-color: {p['accent']}; color: {p['accent']}; }}
+            QPushButton:disabled {{ color: {p['text_muted']}; }}
+        """)
+        return btn
 
-        # AI Hub Greeting
+    def _section_label(self, text):
+        lbl = QLabel(text.upper())
+        lbl.setStyleSheet(
+            f"color: {self.p['text_muted']}; font-size: 11px; font-weight: 700;"
+            "letter-spacing: 0.8px; margin-top: 6px;"
+        )
+        return lbl
+
+    # -------------------------------------------------------------- AI card
+    def _build_ai_card(self):
+        p = self.p
         self.ai_card = QFrame()
-        self.ai_card.setStyleSheet("background: rgba(30, 95, 212, 0.05); border: 1.5px solid #1E5FD4; border-radius: 12px; margin-bottom: 5px;")
+        self.ai_card.setStyleSheet(f"""
+            QFrame {{ background: {p['accent_soft']}; border: 1px solid {p['border']};
+                      border-radius: 12px; }}
+            QLabel {{ border: none; background: transparent; }}
+        """)
         ai_lay = QHBoxLayout(self.ai_card)
-        ai_icon = QLabel("🤖")
-        ai_icon.setStyleSheet("font-size: 28px; border:none; background:transparent;")
-        ai_lay.addWidget(ai_icon)
+        ai_lay.setContentsMargins(16, 12, 16, 12)
 
         ai_v = QVBoxLayout()
-        ai_title = QLabel("AI Librarian Co-Pilot Active")
-        ai_title.setStyleSheet("font-weight: bold; color: #1E5FD4; font-size: 14px; border:none; background:transparent;")
-        self.ai_msg = QLabel("Welcome back! I'm analyzing your library status... Click the sidebar button to chat with me anytime.")
+        ai_v.setSpacing(2)
+        ai_title = QLabel("AI Librarian")
+        ai_title.setStyleSheet(f"font-weight: 700; color: {p['accent']}; font-size: 13px;")
+        self.ai_msg = QLabel("Ask for a read on today's circulation, overdue risk or stock gaps.")
         self.ai_msg.setWordWrap(True)
-        self.ai_msg.setStyleSheet("font-size: 13px; color: #475569; border:none; background:transparent;")
-        ai_v.addWidget(ai_title); ai_v.addWidget(self.ai_msg)
+        self.ai_msg.setStyleSheet(f"font-size: 12px; color: {p['text_body']};")
+        ai_v.addWidget(ai_title)
+        ai_v.addWidget(self.ai_msg)
         ai_lay.addLayout(ai_v, stretch=1)
 
-        ai_btn = QPushButton("Ask AI for Insights")
-        ai_btn.setStyleSheet("background: #C8A84B; color: #0D1B2A; font-weight: bold; border-radius: 8px; padding: 10px 15px;")
+        ai_btn = QPushButton("Ask for insights")
+        ai_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        ai_btn.setStyleSheet(
+            f"background: {p['accent']}; color: {p['on_accent']}; font-weight: 700;"
+            "border: none; border-radius: 8px; padding: 9px 16px; font-size: 12px;"
+        )
         ai_btn.clicked.connect(self._run_dashboard_ai)
         ai_lay.addWidget(ai_btn)
-        layout.addWidget(self.ai_card)
+        return self.ai_card
 
-        # Stats grid (7 cards including fine counter)
+    # ------------------------------------------------------------ stat grid
+    def _build_stats_grid(self):
         grid = QGridLayout()
-        grid.setSpacing(16)
+        grid.setSpacing(14)
 
         self.cards = {
-            "totalBooks":        StatCard("\U0001f4da", "Total Books",    c1="#1E5FD4", c2="#2872F0"),
-            "availableBooks":    StatCard("\u2705", "Available",      c1="#059669", c2="#10B981"),
-            "issuedBooks":       StatCard("\U0001f4d6", "Issued",         c1="#D97706", c2="#F59E0B"),
-            "totalMembers":      StatCard("\U0001f465", "Total Members",  c1="#7C3AED", c2="#8B5CF6"),
-            "overdueCount":      StatCard("\u23f0", "Overdue",        c1="#DC2626", c2="#EF4444"),
-            "pendingReservations": StatCard("\U0001f514", "Reservations", c1="#0891B2", c2="#06B6D4"),
-            "totalFineCollected": StatCard("\U0001f4b0", "Fine Collected", c1="#059669", c2="#34D399"),
+            "totalBooks":          StatCard("\U0001f4da", "Total Books"),
+            "availableBooks":      StatCard("✓", "Available"),
+            "issuedBooks":         StatCard("\U0001f4d6", "Issued"),
+            "totalMembers":        StatCard("\U0001f465", "Members"),
+            "overdueCount":        StatCard("⏰", "Overdue",
+                                            tone_rule=_tone_when_nonzero("danger")),
+            "pendingReservations": StatCard("\U0001f514", "Reservations",
+                                            tone_rule=_tone_when_nonzero("warning")),
+            "totalFineCollected":  StatCard("\U0001f4b0", "Fines Collected"),
         }
-        positions = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2),(2,0)]
-        for (r,c), card in zip(positions, self.cards.values()):
+        positions = [(0, 0), (0, 1), (0, 2), (0, 3), (1, 0), (1, 1), (1, 2)]
+        for (r, c), card in zip(positions, self.cards.values()):
             grid.addWidget(card, r, c)
-        layout.addLayout(grid)
+        for col in range(4):
+            grid.setColumnStretch(col, 1)
+        return grid
 
-        # Feature 2.6: Quick Action Floating Buttons
-        qa_label = QLabel("\u26a1  Quick Actions")
-        qa_label.setStyleSheet("font-size: 14px; font-weight: 700; color: #C8A84B; font-family: 'Inter', 'Segoe UI'; margin-top: 4px;")
-        layout.addWidget(qa_label)
-
+    # -------------------------------------------------------- quick actions
+    def _build_quick_actions(self):
+        p = self.p
         qa_row = QHBoxLayout()
-        qa_row.setSpacing(10)
+        qa_row.setSpacing(8)
         self._qa_btns = []
+
+        # Exactly one primary. Issuing and returning is what the front desk
+        # does all day; everything else is a secondary route to a screen.
         qa_items = [
-            ("\U0001f4d5 Issue Book", "#059669", "issue_return"),
-            ("\U0001f504 Return Book", "#D97706", "issue_return"),
-            ("\U0001f4da Add Book", "#1E5FD4", "books"),
-            ("\U0001f465 Add Member", "#7C3AED", "members"),
-            ("\U0001f50d Search OPAC", "#0891B2", "opac"),
-            ("\U0001f4ca Reports", "#C8A84B", "reports"),
+            ("Issue / Return", "issue_return", True),
+            ("Add Book", "books", False),
+            ("Add Member", "members", False),
+            ("Search Catalogue", "opac", False),
+            ("Reports", "reports", False),
         ]
-        for text, color, nav_key in qa_items:
-            btn = QPushButton(text)
-            btn.setStyleSheet(
-                f"background: {color}; color: white; border: none; border-radius: 8px; "
-                f"padding: 8px 16px; font-size: 12px; font-weight: 700; font-family: 'Inter', 'Segoe UI';"
-            )
+        for text, nav_key, primary in qa_items:
+            if primary:
+                btn = QPushButton(text)
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.setStyleSheet(
+                    f"background: {p['accent']}; color: {p['on_accent']}; border: none;"
+                    "border-radius: 8px; padding: 9px 18px; font-size: 12px; font-weight: 700;"
+                )
+            else:
+                btn = self._ghost_button(text)
             btn.clicked.connect(lambda _, k=nav_key: self._navigate(k))
             qa_row.addWidget(btn)
             self._qa_btns.append((btn, nav_key))
         qa_row.addStretch()
-        layout.addLayout(qa_row)
+        return qa_row
 
-        # Charts and Activity
+    # ---------------------------------------------------- charts + activity
+    def _build_charts_and_activity(self):
+        p = self.p
         chart_lay = QHBoxLayout()
+        chart_lay.setSpacing(14)
 
         if HAS_MATPLOTLIB:
-            # Feature 2.7: Dual chart — Category breakdown + Monthly issues
             chart_container = QFrame()
             chart_container.setObjectName("Card")
+            chart_container.setMinimumHeight(300)
             chart_vlay = QVBoxLayout(chart_container)
             chart_vlay.setContentsMargins(12, 12, 12, 12)
 
-            self.figure = Figure(figsize=(5, 4), dpi=100, facecolor='#0D1F38')
+            self.figure = Figure(figsize=(5, 4), dpi=100, facecolor=p["chart_bg"])
             self.canvas = FigureCanvas(self.figure)
 
             self.ax_cat = self.figure.add_subplot(121)
-            self.ax_cat.set_facecolor('#071428')
-            self.ax_cat.tick_params(colors='#A0B4CC', labelsize=7)
-            for spine in self.ax_cat.spines.values():
-                spine.set_color('#1E3050')
-            self.ax_cat.set_title("Categories", color="#E8EEF8", fontsize=9, fontweight='bold')
-
             self.ax_month = self.figure.add_subplot(122)
-            self.ax_month.set_facecolor('#071428')
-            self.ax_month.tick_params(colors='#A0B4CC', labelsize=7)
-            for spine in self.ax_month.spines.values():
-                spine.set_color('#1E3050')
-            self.ax_month.set_title("Monthly Issues", color="#E8EEF8", fontsize=9, fontweight='bold')
+            for ax, title in ((self.ax_cat, "Categories"),
+                              (self.ax_month, "Monthly Issues")):
+                self._style_axes(ax, title)
 
             self.figure.tight_layout(pad=2)
 
-            # Feature 3: Add interactive toolbar
             self.toolbar = NavigationToolbar(self.canvas, self)
-            self.toolbar.setStyleSheet("background: #0D1F38; color: white;")
+            self.toolbar.setStyleSheet(
+                f"background: {p['surface']}; color: {p['text_body']}; border: none;"
+            )
 
             chart_vlay.addWidget(self.toolbar)
             chart_vlay.addWidget(self.canvas)
             chart_lay.addWidget(chart_container, stretch=2)
         else:
-            no_chart = QLabel("Analytics engine (Matplotlib) could not be loaded.\nPlease check your installation.")
-            no_chart.setStyleSheet("color: #94A3B8; font-style: italic;")
+            no_chart = QLabel("Charts need matplotlib. Run: pip install -r requirements.txt")
+            no_chart.setStyleSheet(f"color: {p['text_muted']}; font-style: italic;")
             no_chart.setAlignment(Qt.AlignmentFlag.AlignCenter)
             chart_lay.addWidget(no_chart)
 
-        # Recent Activity section
-        act_label = QLabel("\U0001f4dd  Recent Activity")
-        act_label.setStyleSheet("font-size: 16px; font-weight: 700; font-family:'Inter', 'Segoe UI'; margin-top:8px;")
-        layout.addWidget(act_label)
+        activity_col = QVBoxLayout()
+        activity_col.setSpacing(8)
+        activity_col.addWidget(self._section_label("Recent Activity"))
 
         self.activity_frame = QFrame()
         self.activity_frame.setObjectName("Card")
         self.activity_layout = QVBoxLayout(self.activity_frame)
-        self.activity_layout.setContentsMargins(16, 16, 16, 16)
-        self.no_activity = QLabel("Refresh to load recent activity\u2026")
-        self.no_activity.setStyleSheet("color: #4D6A90; font-size: 12px;")
+        self.activity_layout.setContentsMargins(16, 12, 16, 12)
+        self.activity_layout.setSpacing(2)
+        self.no_activity = QLabel("Loading recent activity…")
+        self.no_activity.setStyleSheet(f"color: {p['text_muted']}; font-size: 12px;")
         self.activity_layout.addWidget(self.no_activity)
+        activity_col.addWidget(self.activity_frame)
+        # Rows are added top-down; without this the frame floats in the
+        # middle of the column once the chart makes the row tall.
+        activity_col.addStretch()
 
-        chart_lay.addWidget(self.activity_frame, stretch=3)
-        layout.addLayout(chart_lay)
-        layout.addStretch()
+        chart_lay.addLayout(activity_col, stretch=3)
+        return chart_lay
 
+    def _style_axes(self, ax, title):
+        p = self.p
+        ax.set_facecolor(p["chart_bg"])
+        ax.tick_params(colors=p["chart_text"], labelsize=7)
+        for side, spine in ax.spines.items():
+            # Only the axis lines the eye needs. A full box round a bar chart
+            # is chartjunk.
+            spine.set_visible(side in ("left", "bottom"))
+            spine.set_color(p["chart_grid"])
+        ax.set_title(title, color=p["chart_text"], fontsize=9, fontweight="bold")
+
+    # ------------------------------------------------------------ behaviour
     def _navigate(self, key):
         """Find the MainWindow and navigate."""
         win = self.window()
@@ -363,11 +468,12 @@ class DashboardScreen(QWidget):
                 curr = curr.parentWidget()
 
     def _run_dashboard_ai(self):
-        self.ai_msg.setText("🤖 AI Co-pilot is analyzing data...")
+        self.ai_msg.setText("Analysing…")
         win = self.window()
         if hasattr(win, 'agent'):
             stats = self.db.compute_snapshot()
-            prompt = f"Based on library stats: {stats}, give a one-sentence friendly greeting and a quick tip for the librarian today."
+            prompt = (f"Based on library stats: {stats}, give a one-sentence friendly "
+                      "greeting and a quick tip for the librarian today.")
 
             from ui.agent_overlay import AgentWorker
             self.ai_worker = AgentWorker(win.agent, prompt)
@@ -381,91 +487,63 @@ class DashboardScreen(QWidget):
         self.worker.start()
 
     def _on_stats(self, stats: dict, logs: list):
+        p = self.p
         self.refresh_btn.setEnabled(True)
         for key, card in self.cards.items():
             if key in stats:
                 val = stats[key]
                 if key == "totalFineCollected":
-                    val = f"Rs. {val:,.0f}"
+                    val = f"Rs {val:,.0f}"
                 card.update_value(val)
-        self.last_update.setText(f"Last updated: {time.strftime('%H:%M:%S')}")
+        self.last_update.setText(f"·  updated {time.strftime('%H:%M')}")
 
         if HAS_MATPLOTLIB:
-            from ui.main_window import MainWindow
-            is_dark = MainWindow.instance().is_dark if MainWindow.instance() else True
-            text_color = '#F1F5F9' if is_dark else '#1E293B'
-            face_color = '#071428' if is_dark else '#FFFFFF'
-            spine_color = '#1E3050' if is_dark else '#E2E8F0'
-
-            # Feature 2.7: Update category pie chart
             cats = stats.get("categories", {})
             if cats:
                 self.ax_cat.clear()
-                self.ax_cat.set_facecolor(face_color)
-                self.ax_cat.tick_params(colors=text_color, labelsize=7)
-                for spine in self.ax_cat.spines.values():
-                    spine.set_color(spine_color)
-                labels = list(cats.keys())[:5]
-                values = list(cats.values())[:5]
-                self.ax_cat.barh(labels, values, color='#2872F0', height=0.6)
-                self.ax_cat.set_title("Categories (Top 5)", color=text_color, fontsize=9, fontweight='bold')
+                self._style_axes(self.ax_cat, "Categories (Top 5)")
+                top = sorted(cats.items(), key=lambda kv: kv[1], reverse=True)[:5]
+                labels = [k for k, _ in top][::-1]
+                values = [v for _, v in top][::-1]
+                self.ax_cat.barh(labels, values, color=p["chart_series"], height=0.6)
 
-            # Feature 2.7: Monthly issues bar chart
             this_month = stats.get("thisMonthIssues", 0)
             last_month = stats.get("lastMonthIssues", 0)
             self.ax_month.clear()
-            self.ax_month.set_facecolor(face_color)
-            self.ax_month.tick_params(colors=text_color, labelsize=7)
-            for spine in self.ax_month.spines.values():
-                spine.set_color(spine_color)
-            bar_labels = ["Last Month", "This Month"]
+            self._style_axes(self.ax_month, "Issues: Last vs This Month")
             bar_values = [last_month, this_month]
-            bar_colors = ['#6B8CAE', '#10B981']
-            self.ax_month.bar(bar_labels, bar_values, color=bar_colors, width=0.5)
+            self.ax_month.bar(
+                ["Last Month", "This Month"], bar_values,
+                color=[p["chart_series_alt"], p["chart_series"]], width=0.5,
+            )
+            headroom = max(bar_values + [1]) * 0.03
             for i, v in enumerate(bar_values):
-                self.ax_month.text(i, v + 0.2, str(v), ha='center', color=text_color, fontsize=9, fontweight='bold')
-            self.ax_month.set_title("Issues: Last vs This Month", color=text_color, fontsize=9, fontweight='bold')
+                self.ax_month.text(i, v + headroom, str(v), ha='center',
+                                   color=p["chart_text"], fontsize=9, fontweight='bold')
 
             self.canvas.draw()
 
-        # Show audit log entries
-        while self.activity_layout.count():
-            item = self.activity_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        if not logs:
-            lbl = QLabel("No recent activity.")
-            lbl.setStyleSheet("color: #4D6A90; font-size: 12px;")
-            self.activity_layout.addWidget(lbl)
-        else:
-            for entry in logs:
-                row = QLabel(
-                    f"\U0001f539  {entry.get('timestampStr','')}  \u00b7  "
-                    f"<b>{entry.get('action','')}</b>  \u2014  "
-                    f"{entry.get('detail','')}  "
-                    f"<span style='color:gray'>({entry.get('userEmail','')})</span>"
-                )
-                row.setTextFormat(Qt.TextFormat.RichText)
-                row.setStyleSheet("font-size: 12px; padding: 4px 0;")
-                self.activity_layout.addWidget(row)
+        self._render_activity(logs)
 
-        # Show audit log entries
+    def _render_activity(self, logs):
+        p = self.p
         while self.activity_layout.count():
             item = self.activity_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         if not logs:
             lbl = QLabel("No recent activity.")
-            lbl.setStyleSheet("color: #4D6A90; font-size: 12px;")
+            lbl.setStyleSheet(f"color: {p['text_muted']}; font-size: 12px;")
             self.activity_layout.addWidget(lbl)
-        else:
-            for entry in logs:
-                row = QLabel(
-                    f"\U0001f539  {entry.get('timestampStr','')}  \u00b7  "
-                    f"<b>{entry.get('action','')}</b>  \u2014  "
-                    f"{entry.get('detail','')}  "
-                    f"<span style='color:gray'>({entry.get('userEmail','')})</span>"
-                )
-                row.setTextFormat(Qt.TextFormat.RichText)
-                row.setStyleSheet("font-size: 12px; padding: 4px 0;")
-                self.activity_layout.addWidget(row)
+            return
+        for entry in logs:
+            row = QLabel(
+                f"<span style='color:{p['text_muted']}'>{entry.get('timestampStr','')}</span>"
+                f"&nbsp;&nbsp;<b>{entry.get('action','')}</b>"
+                f"&nbsp;&nbsp;{entry.get('detail','')}"
+                f"&nbsp;&nbsp;<span style='color:{p['text_muted']}'>"
+                f"{entry.get('userEmail','')}</span>"
+            )
+            row.setTextFormat(Qt.TextFormat.RichText)
+            row.setStyleSheet(f"font-size: 12px; padding: 4px 0; color: {p['text_body']};")
+            self.activity_layout.addWidget(row)

@@ -110,9 +110,21 @@ class FirebaseService:
         except Exception:
             return False
 
-    def clear_all_cloud_data(self):
-        """Wipe all collections in Firestore for current institution (used during Reset DB)."""
+    def clear_all_cloud_data(self, progress=None):
+        """Wipe all collections in Firestore for current institution (used during Reset DB).
+
+        This makes one network round trip per collection to list it and one per
+        batch of 400 to delete, so on a real catalogue it takes tens of seconds.
+        It must never be called from the UI thread - see
+        ui.widgets.background_task.run_with_progress. `progress` is that
+        helper's report callback, or None when there is nobody to tell.
+        """
+        def report(msg, done=-1, total=-1):
+            if progress is not None:
+                progress(msg, done, total)
+
         if self.mock_mode or not self.db:
+            report("Offline - nothing in the cloud to clear.")
             return
         # Never fall back to a hardcoded tenant here: this method deletes every
         # document it can reach, so a wrong college_id would wipe another
@@ -124,7 +136,8 @@ class FirebaseService:
         inst_ref = self.db.collection("institutions").document(cid)
 
         collections = ["books", "ebooks", "members", "issued_books", "reservations", "audit_log"]
-        for col_name in collections:
+        for i, col_name in enumerate(collections):
+            report(f"Clearing {col_name}…", i, len(collections))
             try:
                 col_ref = inst_ref.collection(col_name)
                 docs = list(col_ref.stream())
@@ -139,8 +152,10 @@ class FirebaseService:
                         count = 0
                 if count > 0:
                     batch.commit()
+                report(f"Cleared {len(docs)} from {col_name}.", i + 1, len(collections))
             except Exception as e:
                 print(f"Error clearing cloud collection {col_name}: {e}")
+                report(f"Could not clear {col_name}: {e}", i + 1, len(collections))
 
 
     # ── Books ─────────────────────────────────────────────────────────────────

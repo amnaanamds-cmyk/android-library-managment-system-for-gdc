@@ -337,5 +337,34 @@ check("all 10 records arrived", len(fb.stores["books"]) == 10)
 check("the queue is empty", len(queued_ids(db)) == 0)
 
 
+# ── 6. force_reconnect() must not do network work on the caller's thread ─────
+#
+# Rule 1 at the top of sync_service.py: the UI thread never touches Firestore.
+# force_reconnect() is wired to the "Force Sync Now" button, so it is called
+# from the UI thread; it used to run test_connection() and register six
+# listeners inline and froze the window for as long as the network took.
+# It must now only raise a flag, with run() doing the work.
+
+print("\n── Manual reconnect stays off the caller's thread ──")
+db, fb, svc, path = make_env()
+
+touched = []
+# Offline from the start, so that if force_reconnect() regresses to doing the
+# work inline it still takes the no-listeners branch and this reports a clean
+# failure rather than crashing on the fake's missing listener methods.
+fb.online = False
+fb.test_connection = lambda: (touched.append("test_connection"), False)[1]
+
+svc.force_reconnect()
+check("force_reconnect() made no network call on the caller's thread",
+      touched == [], f"called {touched}")
+check("but it did record the request", svc._reconnect_requested is True)
+
+# The run loop is what performs it.
+svc._do_reconnect()
+check("_do_reconnect(), which runs on the sync thread, does reach the network",
+      "test_connection" in touched)
+
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(0 if FAIL == 0 else 1)

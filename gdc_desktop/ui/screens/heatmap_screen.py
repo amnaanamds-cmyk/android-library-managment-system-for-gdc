@@ -13,8 +13,8 @@ from PyQt6.QtGui import QColor, QPalette, QFont
 import matplotlib
 try:
     matplotlib.use('QtAgg')
-    from matplotlib.backends.backend_q6agg import FigureCanvasQTAgg as FigureCanvas
-    from matplotlib.backends.backend_q6agg import NavigationToolbar2QT as NavigationToolbar
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
     from matplotlib.figure import Figure
     from matplotlib.colors import LinearSegmentedColormap
     HAS_MATPLOTLIB = True

@@ -264,15 +264,33 @@ class SettingsScreen(QtWidgets.QWidget):
             "Data on all connected devices will be wiped.\n\nAre you sure you want to proceed?",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
         )
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            try:
-                if hasattr(self, 'fb') and self.fb:
-                    self.fb.clear_all_cloud_data()
-                self.db.clear_all_data()
-                QtWidgets.QMessageBox.information(self, "Reset Success", "Local and cloud database reset complete. The app will now close.")
-                QtWidgets.QApplication.quit()
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Reset Error", f"Could not reset database: {e}")
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
+        # Clearing the cloud walks six collections over the network and the
+        # local wipe hits disk. Run both on a worker thread: done inline this
+        # froze the window for as long as it took, which read as a crash.
+        from ui.widgets.background_task import run_with_progress
+
+        fb = getattr(self, 'fb', None)
+        db = self.db
+
+        def work(report):
+            if fb:
+                fb.clear_all_cloud_data(progress=report)
+            report("Clearing local database…")
+            db.clear_all_data()
+            report("Done.")
+
+        def done(_result):
+            QtWidgets.QMessageBox.information(
+                self, "Reset complete",
+                "Local and cloud data for this institution has been cleared.\n"
+                "The app will now close.")
+            QtWidgets.QApplication.quit()
+
+        self._reset_thread = run_with_progress(
+            self, "Resetting database", work, on_done=done)
 
         
     def _create_zip_backup(self):

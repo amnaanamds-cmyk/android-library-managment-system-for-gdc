@@ -78,10 +78,25 @@ class RealtimeSyncService(QThread):
         # Debounce state for incoming snapshots.
         self._ui_dirty_since = 0.0
 
+        # Set by force_reconnect() on the UI thread, consumed by run() here.
+        self._reconnect_requested = False
+
     # ── Lifecycle ────────────────────────────────────────────────────────────
 
     def force_reconnect(self):
+        """Ask for an immediate reconnect. Safe to call from the UI thread.
+
+        This only raises a flag. The reconnect itself is a network round trip
+        plus six listener registrations, and it used to run inline in the
+        caller - which meant the "Force Sync Now" button froze the whole window
+        for the duration, in direct violation of rule 1 at the top of this
+        file. run() picks the flag up within half a second.
+        """
+        self._reconnect_requested = True
         self.sync_status.emit("Force Syncing...")
+
+    def _do_reconnect(self):
+        """The actual reconnect. Runs on this thread only."""
         self._stop_listeners()
         if self.fb.test_connection():
             self._setup_listeners()
@@ -109,6 +124,10 @@ class RealtimeSyncService(QThread):
         time.sleep(3)  # let the UI finish starting up
         while self.running:
             try:
+                if self._reconnect_requested:
+                    self._reconnect_requested = False
+                    self._do_reconnect()
+
                 if not self._listeners and not self.fb.mock_mode:
                     if not self.fb.test_connection():
                         self.sync_status.emit("Offline (Retrying...)")
@@ -126,7 +145,9 @@ class RealtimeSyncService(QThread):
             # Sleep in small increments so stop() is responsive and the UI
             # debounce can fire promptly between cycles.
             for _ in range(20):
-                if not self.running:
+                # A reconnect request must not wait out the remaining sleep -
+                # the user just pressed a button and is watching.
+                if not self.running or self._reconnect_requested:
                     break
                 self._flush_ui_refresh()
                 time.sleep(0.5)
