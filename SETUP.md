@@ -151,6 +151,7 @@ python tools\check_kotlin_trailing_lambda.py  :: Kotlin parameter-order bugs
 cd tests\firestore && npm test                :: security rules, 67 cases
 cd ..\..\functions && npm test               :: rollup, 17 cases
 npm run test:e2e                              :: two institutions, 28 cases
+python tests\tools\test_repair_tenant.py     :: tenant consolidation, 21 cases
 ```
 
 The full Kotlin check (syntax + duplicate declarations) needs bash — run it
@@ -356,3 +357,30 @@ python ..\tools\diagnose_sync.py
 It only reads. It reports every institution, every account's effective
 `institutionId`, data stranded under ids with no institution document, and what
 the local `.env` is set to.
+
+If it reports a split — accounts on different institutionIds, or records under
+an id with no institution document — `repair_tenant.py` consolidates them:
+
+```bat
+cd gdc_desktop
+python ..\tools\repair_tenant.py --to GDCZIAM112233           :: dry run
+python ..\tools\repair_tenant.py --to GDCZIAM112233 --apply
+```
+
+It is a dry run unless you pass `--apply`. It copies stranded records into the
+canonical institution keeping each document's id (so nothing duplicates),
+repoints every account's profile **and its custom claim** — claims win at
+runtime, so leaving those behind would undo the whole exercise — and leaves the
+old tenants in place until you pass `--delete-source`. Directorate accounts are
+never touched: they are province-wide and deliberately have no institutionId.
+
+Everyone must sign out and back in afterwards. A custom claim is baked into the
+ID token and does not change until the token is refreshed.
+
+Rehearse it against a copy first if you like — with the emulators running it
+needs no service account:
+
+```bash
+firebase emulators:start --only auth,firestore
+python tests/tools/test_repair_tenant.py     # 21 cases
+```
