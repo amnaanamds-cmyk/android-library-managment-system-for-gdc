@@ -123,11 +123,11 @@ fun BookListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Books", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
+                title = { Text("Books", color = MaterialTheme.colorScheme.onSurface) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                 actions = {
                     IconButton(onClick = onNavigateToWishlist) {
-                        Icon(Icons.Default.Star, contentDescription = "Wishlist", tint = Color.White)
+                        Icon(Icons.Default.Star, contentDescription = "Wishlist", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             )

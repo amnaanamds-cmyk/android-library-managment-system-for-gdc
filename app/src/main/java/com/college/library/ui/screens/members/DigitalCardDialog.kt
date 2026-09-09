@@ -241,7 +241,7 @@ fun DigitalCardDialog(
                     ) {
                         Icon(Icons.Default.Share, contentDescription = "Share", tint = Gold)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Share", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text("Share", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
 
                     Button(

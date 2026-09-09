@@ -119,11 +119,11 @@ fun AddEditMemberScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (memberId == 0L) "Add Member" else "Edit Member", color = Color.White) },
+                title = { Text(if (memberId == 0L) "Add Member" else "Edit Member", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->

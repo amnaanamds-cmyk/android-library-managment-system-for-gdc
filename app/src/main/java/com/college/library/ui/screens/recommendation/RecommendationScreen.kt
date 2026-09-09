@@ -30,6 +30,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 data class BookRecommendation(
     val book: Book,
@@ -127,18 +128,18 @@ fun RecommendationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🤖 Smart Recommendations", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("🤖 Smart Recommendations", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadRecommendations() }) {
-                        Icon(Icons.Default.Refresh, "Refresh", tint = Color.White)
+                        Icon(Icons.Default.Refresh, "Refresh", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -236,10 +237,10 @@ fun RecommendationCard(rec: BookRecommendation) {
                 // Star rating row
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     repeat(stars.toInt()) {
-                        Icon(Icons.Default.Star, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.Star, null, tint = Warning, modifier = Modifier.size(14.dp))
                     }
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("${String.format("%.1f", stars)}", fontSize = 12.sp, color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold)
+                    Text("${String.format("%.1f", stars)}", fontSize = 12.sp, color = Warning, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))

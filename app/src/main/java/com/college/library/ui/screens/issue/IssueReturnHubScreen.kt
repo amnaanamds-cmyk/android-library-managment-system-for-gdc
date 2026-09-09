@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.college.library.ui.theme.CardGreen
+import com.college.library.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,8 +31,8 @@ fun IssueReturnHubScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Transactions", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                title = { Text("Transactions", color = MaterialTheme.colorScheme.onSurface) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -79,13 +80,13 @@ fun IssueReturnHubScreen(
             Spacer(modifier = Modifier.height(32.dp))
             Card(
                 modifier = Modifier.fillMaxWidth().height(150.dp).clickable { onNavigateToInventory() },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF6B7280).copy(alpha = 0.1f)),
-                border = androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF6B7280))
+                colors = CardDefaults.cardColors(containerColor = Muted.copy(alpha = 0.1f)),
+                border = androidx.compose.foundation.BorderStroke(2.dp, Muted)
             ) {
                 Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Inventory, contentDescription = "Inventory", tint = Color(0xFF6B7280), modifier = Modifier.size(48.dp))
+                    Icon(Icons.Default.Inventory, contentDescription = "Inventory", tint = Muted, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Inventory / Stocktaking", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6B7280))
+                    Text("Inventory / Stocktaking", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Muted)
                 }
             }
         }

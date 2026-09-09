@@ -37,6 +37,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 
 
@@ -78,13 +79,13 @@ class SpineLabelViewModel @Inject constructor(
 fun SpineLabelPreview(callNumber: String, authorCutter: String, year: String, title: String,
     modifier: Modifier = Modifier) {
     val blue = Color(0xFF1E40AF)
-    val dark = Color(0xFF0F172A)
+    val dark = Ink
     Box(
         modifier = modifier
             .width(80.dp)
             .height(130.dp)
             .background(Color.White, RoundedCornerShape(4.dp))
-            .border(1.dp, Color(0xFF334155), RoundedCornerShape(4.dp))
+            .border(1.dp, BodyText, RoundedCornerShape(4.dp))
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Blue header
@@ -104,7 +105,7 @@ fun SpineLabelPreview(callNumber: String, authorCutter: String, year: String, ti
                     Text(authorCutter.ifBlank { "" }, fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp, color = dark, textAlign = TextAlign.Center)
                     Text(year.take(4), fontFamily = FontFamily.Monospace,
-                        fontSize = 10.sp, color = Color(0xFF64748B), textAlign = TextAlign.Center)
+                        fontSize = 10.sp, color = Muted, textAlign = TextAlign.Center)
                 }
             }
             // Blue footer
@@ -219,10 +220,10 @@ fun BookLabelRow(book: Book, onEdit: () -> Unit) {
                 if (hasLabel) {
                     Text("📌 ${book.callNumber} / ${book.authorCutter}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF10B981), fontWeight = FontWeight.Medium)
+                        color = Positive, fontWeight = FontWeight.Medium)
                 } else {
                     Text("⏳ Label Missing",
-                        style = MaterialTheme.typography.labelSmall, color = Color(0xFFF59E0B))
+                        style = MaterialTheme.typography.labelSmall, color = Warning)
                 }
             }
             IconButton(onClick = onEdit) {
@@ -293,8 +294,8 @@ fun SpineLabelScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(
                     Triple("Total Books", "$total", MaterialTheme.colorScheme.primary),
-                    Triple("Labels Done", "$done", Color(0xFF10B981)),
-                    Triple("Missing", "${total - done}", Color(0xFFF59E0B))
+                    Triple("Labels Done", "$done", Positive),
+                    Triple("Missing", "${total - done}", Warning)
                 ).forEach { (label, value, color) ->
                     Card(modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
                         Column(modifier = Modifier.padding(10.dp),

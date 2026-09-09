@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 // ── ViewModel ───────────────────────────────────────────────────────────────
 @HiltViewModel
@@ -241,7 +242,7 @@ fun UnionCatalogScreen(
                                     Text(
                                         "🏛️ ${college.collegeName}", 
                                         style = MaterialTheme.typography.labelSmall, 
-                                        color = Color(0xFF10B981), fontWeight = FontWeight.Medium
+                                        color = Positive, fontWeight = FontWeight.Medium
                                     )
                                 }
                                 Spacer(Modifier.width(8.dp))

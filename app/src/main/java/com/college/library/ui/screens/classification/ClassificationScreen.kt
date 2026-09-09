@@ -32,6 +32,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 
 // ── ViewModel ───────────────────────────────────────────────────────────────
@@ -275,7 +276,7 @@ fun ClassificationScreen(
                                         Text("${book.callNumber} ${book.authorCutter}", color = MaterialTheme.colorScheme.onPrimaryContainer, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
                                 } else {
-                                    Text("⏳ Missing", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF59E0B))
+                                    Text("⏳ Missing", style = MaterialTheme.typography.labelSmall, color = Warning)
                                 }
                             }
                         }

@@ -113,11 +113,11 @@ fun DashboardScreen(
             TopAppBar(
                 title = { 
                     Column {
-                        Text("College Library", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("College Library", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         SyncStatusBadge(status = syncStatus)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                 actions = {
                     // Entry point for global search across books and members.
                     // The search screen was previously unreachable.
@@ -137,36 +137,39 @@ fun DashboardScreen(
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                // The three actions in the menu are peers, so they look like
+                // peers. They used to be purple, orange and green, which made
+                // the menu read as three unrelated things.
                 if (showFabMenu) {
                     ExtendedFloatingActionButton(
                         onClick = { showFabMenu = false; onNavigateToAddMember() },
                         icon = { Icon(Icons.Default.PersonAdd, "Add Member") },
                         text = { Text("Add Member") },
                         modifier = Modifier.padding(bottom = 8.dp),
-                        containerColor = CardPurple,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     ExtendedFloatingActionButton(
                         onClick = { showFabMenu = false; onNavigateToReturn() },
                         icon = { Icon(Icons.Default.KeyboardReturn, "Return Book") },
                         text = { Text("Return Book") },
                         modifier = Modifier.padding(bottom = 8.dp),
-                        containerColor = CardOrange,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                     ExtendedFloatingActionButton(
                         onClick = { showFabMenu = false; onNavigateToIssue() },
                         icon = { Icon(Icons.Default.MenuBook, "Issue Book") },
                         text = { Text("Issue Book") },
                         modifier = Modifier.padding(bottom = 8.dp),
-                        containerColor = CardGreen,
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 FloatingActionButton(
                     onClick = { showFabMenu = !showFabMenu },
-                    containerColor = Gold,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(if (showFabMenu) Icons.Default.Close else Icons.Default.Add, "Quick Actions")
                 }
@@ -190,7 +193,7 @@ fun DashboardScreen(
                     Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = state.collegeProfile.collegeFullName.ifBlank { "GDC Library Portal" }.uppercase(),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Black,
                             fontSize = 20.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -198,7 +201,10 @@ fun DashboardScreen(
                         if (state.collegeProfile.tagline.isNotBlank()) {
                             Text(
                                 text = state.collegeProfile.tagline,
-                                color = Gold,
+                                // Was Gold, which read on the old navy banner.
+                                // The banner is the accent now, so the tagline
+                                // has to be the colour that sits on it.
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
                                 fontSize = 12.sp,
                                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -210,14 +216,14 @@ fun DashboardScreen(
 
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(title = "Total Books", value = state.totalBooks, color = CardBlue, modifier = Modifier.weight(1f))
-                    StatCard(title = "Available", value = state.availableBooks, color = CardGreen, modifier = Modifier.weight(1f))
+                    StatCard(title = "Total Books", value = state.totalBooks, modifier = Modifier.weight(1f))
+                    StatCard(title = "Available", value = state.availableBooks, modifier = Modifier.weight(1f))
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(title = "Issued Books", value = state.issuedBooks, color = CardOrange, modifier = Modifier.weight(1f))
-                    StatCard(title = "Total Members", value = state.totalMembers, color = CardPurple, modifier = Modifier.weight(1f))
+                    StatCard(title = "Issued Books", value = state.issuedBooks, modifier = Modifier.weight(1f))
+                    StatCard(title = "Total Members", value = state.totalMembers, modifier = Modifier.weight(1f))
                 }
             }
             item {
@@ -225,7 +231,8 @@ fun DashboardScreen(
                     DoubleStatCard(
                         title = "Fine Collected",
                         value = state.totalFineCollected,
-                        color = DangerRed,
+                        // Red only when there is actually money outstanding.
+                        tone = if (state.totalFineCollected > 0) DangerRed else null,
                         modifier = Modifier.fillMaxWidth(),
                         currencySymbol = currencySymbol,
                     )
@@ -326,7 +333,17 @@ fun DashboardScreen(
 }
 
 @Composable
-fun StatCard(title: String, value: Int, color: Color, modifier: Modifier = Modifier) {
+/**
+ * One dashboard metric.
+ *
+ * `tone` is null unless the value itself means something — an overdue count
+ * above zero, a fine outstanding. The four tiles used to be four saturated
+ * fills in four different hues, which gave the overdue figure no more weight
+ * than the book count. Same rule as the desktop client's ui/theme.py and the
+ * web portal's globals.css: colour carries meaning, or it is not used.
+ */
+@Composable
+fun StatCard(title: String, value: Int, tone: Color? = null, modifier: Modifier = Modifier) {
     var animationTriggered by remember { mutableStateOf(false) }
     val animatedValue by animateIntAsState(
         targetValue = if (animationTriggered) value else 0,
@@ -336,21 +353,44 @@ fun StatCard(title: String, value: Int, color: Color, modifier: Modifier = Modif
 
     LaunchedEffect(Unit) { animationTriggered = true }
 
+    StatCardShell(title = title, tone = tone, modifier = modifier) {
+        Text(
+            animatedValue.toString(),
+            color = tone ?: MaterialTheme.colorScheme.onSurface,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+/** The shared tile: a surface card, a hairline, and a rule in the tone colour. */
+@Composable
+private fun StatCardShell(
+    title: String,
+    tone: Color?,
+    modifier: Modifier = Modifier,
+    figure: @Composable () -> Unit,
+) {
     Card(
         modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, tone ?: MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(animatedValue.toString(), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(
+                title.uppercase(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            figure()
         }
     }
 }
@@ -359,7 +399,7 @@ fun StatCard(title: String, value: Int, color: Color, modifier: Modifier = Modif
 fun DoubleStatCard(
     title: String,
     value: Double,
-    color: Color,
+    tone: Color? = null,
     modifier: Modifier = Modifier,
     /**
      * Currency label from the institution's LibrarySettings. Defaults to the
@@ -368,27 +408,13 @@ fun DoubleStatCard(
      */
     currencySymbol: String = "Rs",
 ) {
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "$currencySymbol ${String.format("%.2f", value)}",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+    StatCardShell(title = title, tone = tone, modifier = modifier) {
+        Text(
+            "$currencySymbol ${String.format("%.2f", value)}",
+            color = tone ?: MaterialTheme.colorScheme.onSurface,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 @HiltViewModel
 class InventoryViewModel @Inject constructor(
@@ -90,11 +91,11 @@ fun InventoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("📦 Stocktaking & Inventory", color = Color.White) },
+                title = { Text("📦 Stocktaking & Inventory", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
@@ -121,7 +122,7 @@ fun InventoryScreen(
                     LinearProgressIndicator(
                         progress = { progress },
                         modifier = Modifier.fillMaxWidth().height(8.dp),
-                        color = Color(0xFF10B981)
+                        color = Positive
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("$found / $total Books Found", fontSize = 14.sp)
@@ -141,7 +142,7 @@ fun InventoryScreen(
                             Icon(
                                 imageVector = if (isFound) Icons.Default.CheckCircle else Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = if (isFound) Color(0xFF10B981) else Color(0xFFEF4444),
+                                tint = if (isFound) Positive else Danger,
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))

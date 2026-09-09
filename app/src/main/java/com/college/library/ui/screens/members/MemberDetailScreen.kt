@@ -129,21 +129,21 @@ fun MemberDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Member Profile", color = Color.White) },
+                title = { Text("Member Profile", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface) }
                 },
                 actions = {
                     IconButton(onClick = { showCardDialog = true }) {
-                        Icon(Icons.Default.ContactPage, "Membership Card", tint = Color.White)
+                        Icon(Icons.Default.ContactPage, "Membership Card", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     if (canEdit) {
                         IconButton(onClick = { member?.let { onNavigateToEdit(it.id) } }) {
-                            Icon(Icons.Default.Edit, "Edit", tint = Color.White)
+                            Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->

@@ -29,6 +29,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 enum class WaiverVerdict(val emoji: String, val label: String, val color: Long) {
     FULL_WAIVE("✅", "WAIVE 100%", 0xFF10B981),
@@ -159,18 +160,18 @@ fun FineWaiverScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("⚖️ AI Fine Waiver Judge", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("⚖️ AI Fine Waiver Judge", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.analyze() }) {
-                        Icon(Icons.Default.Gavel, "Re-analyze", tint = Color.White)
+                        Icon(Icons.Default.Gavel, "Re-analyze", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -182,8 +183,8 @@ fun FineWaiverScreen(
                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    WaiverSummaryCard("💰 Total Fines", "Rs. ${String.format("%.0f", totalFines)}", Color(0xFFEF4444), Modifier.weight(1f))
-                    WaiverSummaryCard("💚 Can Waive", "Rs. ${String.format("%.0f", estimatedWaiver)}", Color(0xFF10B981), Modifier.weight(1f))
+                    WaiverSummaryCard("💰 Total Fines", "Rs. ${String.format("%.0f", totalFines)}", Danger, Modifier.weight(1f))
+                    WaiverSummaryCard("💚 Can Waive", "Rs. ${String.format("%.0f", estimatedWaiver)}", Positive, Modifier.weight(1f))
                     WaiverSummaryCard("✅ Eligible", "$waiverEligible members", Color(0xFF3B82F6), Modifier.weight(1f))
                 }
             }
@@ -198,7 +199,7 @@ fun FineWaiverScreen(
                 }
             } else if (entries.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("🎉 No pending fines found!", color = Color(0xFF10B981), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("🎉 No pending fines found!", color = Positive, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
             } else {
                 LazyColumn(

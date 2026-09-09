@@ -38,6 +38,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
 import kotlin.random.Random
+import com.college.library.ui.theme.*
 
 // ── ViewModel ───────────────────────────────────────────────────────────────
 @HiltViewModel
@@ -232,7 +233,7 @@ fun BiometricMemberCard(
                     if (enrolled) "🔐 Enrolled${if (member.biometricEnrolDate.isNotBlank()) " · ${member.biometricEnrolDate}" else ""}"
                     else "⏳ Not Enrolled",
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (enrolled) Color(0xFF10B981) else Color(0xFFF59E0B)
+                    color = if (enrolled) Positive else Warning
                 )
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -343,8 +344,8 @@ fun BiometricScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(
                     Triple("Total", "$total", MaterialTheme.colorScheme.primary),
-                    Triple("Enrolled", "$enrolled", Color(0xFF10B981)),
-                    Triple("Pending", "${total - enrolled}", Color(0xFFF59E0B)),
+                    Triple("Enrolled", "$enrolled", Positive),
+                    Triple("Pending", "${total - enrolled}", Warning),
                     Triple("Rate", if (total > 0) "${enrolled * 100 / total}%" else "0%", Color(0xFF8B5CF6))
                 ).forEach { (label, value, color) ->
                     Card(modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {

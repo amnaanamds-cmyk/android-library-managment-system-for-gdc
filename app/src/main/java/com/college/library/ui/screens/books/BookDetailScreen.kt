@@ -146,10 +146,10 @@ fun BookDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Book Details", color = Color.White) },
+                title = { Text("Book Details", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
@@ -159,20 +159,20 @@ fun BookDetailScreen(
                             val textToRead = "Book Title: ${b.title}. Author: ${b.author}. Edition: ${b.edition}. Published by ${b.publisher}. Current Status is ${b.status}."
                             tts?.speak(textToRead, TextToSpeech.QUEUE_FLUSH, null, null)
                         }) {
-                            Icon(Icons.Default.VolumeUp, contentDescription = "Read Aloud", tint = Color.White)
+                            Icon(Icons.Default.VolumeUp, contentDescription = "Read Aloud", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                     IconButton(onClick = { showMarcDialog = true }) {
-                        Icon(Icons.Default.Description, contentDescription = "MARC View", tint = Color.White)
+                        Icon(Icons.Default.Description, contentDescription = "MARC View", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = { book?.let { onNavigateToCopy(it.id) } }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy Book", tint = Color.White)
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy Book", tint = MaterialTheme.colorScheme.onSurface)
                     }
                     IconButton(onClick = { book?.let { onNavigateToEdit(it.id) } }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White)
+                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->

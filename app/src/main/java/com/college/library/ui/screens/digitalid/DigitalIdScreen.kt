@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 @HiltViewModel
 class DigitalIdViewModel @Inject constructor(
@@ -106,10 +107,10 @@ fun DigitalIdScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🪪 Digital ID Card", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("🪪 Digital ID Card", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
@@ -122,11 +123,11 @@ fun DigitalIdScreen(
                             }
                             context.startActivity(android.content.Intent.createChooser(intent, "Share ID Card"))
                         }) {
-                            Icon(Icons.Default.Share, "Share", tint = Color.White)
+                            Icon(Icons.Default.Share, "Share", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -166,20 +167,20 @@ fun DigitalIdScreen(
                                     Text(
                                         profile.libraryName.uppercase(),
                                         fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFFC8A84B), letterSpacing = 1.sp
+                                        color = Gold, letterSpacing = 1.sp
                                     )
                                     Text(
                                         profile.collegeFullName,
-                                        fontSize = 11.sp, color = Color(0xFF94A3B8)
+                                        fontSize = 11.sp, color = Muted
                                     )
                                 }
                             }
 
-                            HorizontalDivider(color = Color(0xFFC8A84B).copy(alpha = 0.4f))
+                            HorizontalDivider(color = Gold.copy(alpha = 0.4f))
 
                             // Member Info
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Badge, null, tint = Color(0xFFC8A84B), modifier = Modifier.size(48.dp))
+                                Icon(Icons.Default.Badge, null, tint = Gold, modifier = Modifier.size(48.dp))
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(m.name, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -203,10 +204,10 @@ fun DigitalIdScreen(
                                 ) {
                                     Image(bitmap = bmp.asImageBitmap(), contentDescription = "QR Code", modifier = Modifier.fillMaxSize())
                                 }
-                                Text("Scan to verify membership", fontSize = 10.sp, color = Color(0xFF64748B))
-                            } ?: CircularProgressIndicator(color = Color(0xFFC8A84B), modifier = Modifier.size(80.dp))
+                                Text("Scan to verify membership", fontSize = 10.sp, color = Muted)
+                            } ?: CircularProgressIndicator(color = Gold, modifier = Modifier.size(80.dp))
 
-                            HorizontalDivider(color = Color(0xFF334155))
+                            HorizontalDivider(color = BodyText)
 
                             // Details row
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -233,7 +234,7 @@ fun DigitalIdScreen(
 @Composable
 fun IdCardField(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 9.sp, color = Color(0xFF64748B), fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+        Text(label, fontSize = 9.sp, color = Muted, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
         Text(value.ifBlank { "—" }, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center)
     }
 }

@@ -80,9 +80,9 @@ fun OperationsScaffold(
             TopAppBar(
                 title = {
                     Column {
-                        Text(title, color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         if (subtitle != null) {
-                            Text(subtitle, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+                            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
                     }
                 },
@@ -92,7 +92,7 @@ fun OperationsScaffold(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ),
                 actions = actions,
             )
@@ -101,8 +101,8 @@ fun OperationsScaffold(
             if (onAdd != null) {
                 ExtendedFloatingActionButton(
                     onClick = onAdd,
-                    containerColor = Gold,
-                    contentColor = MaterialTheme.colorScheme.primary,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                 ) { Text(addLabel, fontWeight = FontWeight.Bold) }
             }
         },

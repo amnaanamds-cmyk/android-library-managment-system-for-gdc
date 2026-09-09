@@ -182,7 +182,7 @@ fun BarcodeScannerDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = NavyBlue),
                         enabled = manualCode.isNotBlank()
                     ) {
-                        Text("Verify", color = Gold)
+                        Text("Verify", color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
 

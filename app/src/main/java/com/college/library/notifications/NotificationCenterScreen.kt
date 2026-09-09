@@ -66,6 +66,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import com.college.library.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +93,7 @@ fun NotificationCenterScreen(
                             ) {
                                 Text(
                                     text = "${state.unreadCount}",
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -118,13 +119,13 @@ fun NotificationCenterScreen(
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Clear all",
-                                tint = Color.White.copy(alpha = 0.7f)
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NavyBlue,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -345,7 +346,7 @@ private fun EmptyNotificationsView(modifier: Modifier = Modifier) {
 private fun getNotificationIconAndColor(type: NotificationType): Pair<ImageVector, Color> {
     return when (type) {
         NotificationType.OVERDUE -> Icons.Default.Warning to DangerRed
-        NotificationType.RESERVATION -> Icons.Default.BookmarkAdded to Color(0xFF4CAF50)
+        NotificationType.RESERVATION -> Icons.Default.BookmarkAdded to Positive
         NotificationType.SYSTEM -> Icons.Default.Info to NavyBlue
         NotificationType.BACKUP -> Icons.Default.Backup to Gold
     }

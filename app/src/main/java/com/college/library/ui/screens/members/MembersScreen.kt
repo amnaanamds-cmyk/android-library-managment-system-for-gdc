@@ -66,8 +66,8 @@ fun MembersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Members", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                title = { Text("Members", color = MaterialTheme.colorScheme.onSurface) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {

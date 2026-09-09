@@ -59,16 +59,16 @@ fun SubjectBrowseScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(selectedCategory ?: "Browse Subjects", color = Color.White) },
+                title = { Text(selectedCategory ?: "Browse Subjects", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (selectedCategory != null) viewModel.selectCategory(null)
                         else onNavigateBack()
                     }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->

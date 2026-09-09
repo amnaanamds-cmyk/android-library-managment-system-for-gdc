@@ -116,7 +116,7 @@ fun BackupRestoreScreen(
                 title = {
                     Text(
                         "Backup & Restore",
-                        color = Gold,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -126,7 +126,7 @@ fun BackupRestoreScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }

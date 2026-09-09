@@ -13,14 +13,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.college.library.data.SyncStatus
+import com.college.library.ui.theme.*
 
 @Composable
 fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
     val (dotColor, label) = when (status) {
-        SyncStatus.Synced -> Color(0xFF10B981) to "Synced"
-        SyncStatus.Syncing -> Color(0xFFF59E0B) to "Syncing..."
-        SyncStatus.Offline -> Color(0xFFEF4444) to "Offline"
-        is SyncStatus.Error -> Color(0xFFEF4444) to "Sync Error"
+        SyncStatus.Synced -> Positive to "Synced"
+        SyncStatus.Syncing -> Warning to "Syncing..."
+        SyncStatus.Offline -> Danger to "Offline"
+        is SyncStatus.Error -> Danger to "Sync Error"
     }
 
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {

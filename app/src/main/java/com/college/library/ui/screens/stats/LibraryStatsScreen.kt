@@ -88,7 +88,7 @@ fun LibraryStatsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NavyBlue,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )

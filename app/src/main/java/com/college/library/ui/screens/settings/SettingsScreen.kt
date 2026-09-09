@@ -39,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
 import com.college.library.utils.AppLanguage
+import com.college.library.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,13 +121,13 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings & Maintenance", color = Gold, fontWeight = FontWeight.Bold) },
+                title = { Text("Settings & Maintenance", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -608,21 +609,21 @@ fun SettingsScreen(
                         }
                         Button(
                             onClick = onNavigateToHeatmap,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Danger),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("🔥  Library Usage Heatmap", color = Color.White)
                         }
                         Button(
                             onClick = onNavigateToFineWaiver,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Positive),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("⚖️  AI Fine Waiver Judge", color = Color.White)
                         }
                         Button(
                             onClick = onNavigateToReadingGoals,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Warning),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("🎯  Reading Goals & Streaks", color = Color.White)
@@ -643,7 +644,7 @@ fun SettingsScreen(
                         }
                         Button(
                             onClick = onNavigateToBiometric,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Positive),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("🔐  Biometric Verification", color = Color.White)
@@ -685,7 +686,7 @@ fun SettingsScreen(
                         }
                         Button(
                             onClick = onNavigateToIll,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316)),
+                            colors = ButtonDefaults.buttonColors(containerColor = Warning),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("🌍  Inter-Library Loans", color = Color.White)

@@ -42,14 +42,15 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.college.library.ui.theme.*
 
 private val DarkBg = Color(0xFF060C18)
 private val DarkBg2 = Color(0xFF071428)
 private val DarkBg3 = Color(0xFF0D1F38)
-private val BorderColor = Color(0xFF1E3050)
+private val BorderColor = Line
 private val BorderAccent = Color(0xFF1E4080)
-private val GoldPrimary = Color(0xFFC8A84B)
-private val GoldLight = Color(0xFFE6C96E)
+private val GoldPrimary = Gold
+private val GoldLight = Gold
 private val BluePrimary = Color(0xFF1E5FD4)
 private val BlueLight = Color(0xFF2872F0)
 private val GreenAccent = Color(0xFF2EC98A)
@@ -359,10 +360,10 @@ fun LicenseScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF1E3050).copy(alpha = 0.4f))
+                                .background(Line.copy(alpha = 0.4f))
                                 .border(
                                     1.dp,
-                                    Color(0xFF1E3050).copy(alpha = 0.8f),
+                                    Line.copy(alpha = 0.8f),
                                     RoundedCornerShape(10.dp)
                                 )
                                 .padding(12.dp)

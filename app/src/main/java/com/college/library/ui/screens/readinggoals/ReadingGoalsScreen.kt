@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import javax.inject.Inject
+import com.college.library.ui.theme.*
 
 data class ReadingGoalEntry(
     val member: Member,
@@ -127,18 +128,18 @@ fun ReadingGoalsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🎯 Reading Goals & Streaks", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("🎯 Reading Goals & Streaks", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadGoals() }) {
-                        Icon(Icons.Default.EmojiEvents, "Refresh", tint = Color.White)
+                        Icon(Icons.Default.EmojiEvents, "Refresh", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
@@ -167,7 +168,7 @@ fun ReadingGoalsScreen(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFF59E0B), modifier = Modifier.size(32.dp))
+                            Icon(Icons.Default.EmojiEvents, null, tint = Warning, modifier = Modifier.size(32.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text("Annual Reading Challenge ${LocalDate.now().year}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
@@ -191,7 +192,7 @@ fun ReadingGoalsScreen(
     if (showSetGoalDialog && selectedMember != null) {
         AlertDialog(
             onDismissRequest = { showSetGoalDialog = false },
-            icon = { Icon(Icons.Default.EmojiEvents, null, tint = Color(0xFFF59E0B)) },
+            icon = { Icon(Icons.Default.EmojiEvents, null, tint = Warning) },
             title = { Text("Set Reading Goal") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -222,8 +223,8 @@ fun ReadingGoalsScreen(
 fun ReadingGoalCard(rank: Int, entry: ReadingGoalEntry, onSetGoal: () -> Unit) {
     val progress = (entry.currentBooks.toFloat() / entry.targetBooks).coerceIn(0f, 1f)
     val progressColor = when {
-        progress >= 1f -> Color(0xFF10B981)
-        progress >= 0.5f -> Color(0xFFF59E0B)
+        progress >= 1f -> Positive
+        progress >= 0.5f -> Warning
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -239,7 +240,7 @@ fun ReadingGoalCard(rank: Int, entry: ReadingGoalEntry, onSetGoal: () -> Unit) {
                         .size(36.dp)
                         .background(
                             when (rank) {
-                                1 -> Color(0xFFF59E0B)
+                                1 -> Warning
                                 2 -> Color(0xFF9CA3AF)
                                 3 -> Color(0xFFCD7F32)
                                 else -> MaterialTheme.colorScheme.surfaceVariant
@@ -284,9 +285,9 @@ fun ReadingGoalCard(rank: Int, entry: ReadingGoalEntry, onSetGoal: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 // Streak
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocalFireDepartment, null, tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.LocalFireDepartment, null, tint = Danger, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("${entry.streakDays} day streak", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFEF4444))
+                    Text("${entry.streakDays} day streak", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Danger)
                 }
                 OutlinedButton(onClick = onSetGoal, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
                     Text("Set Goal", fontSize = 11.sp)

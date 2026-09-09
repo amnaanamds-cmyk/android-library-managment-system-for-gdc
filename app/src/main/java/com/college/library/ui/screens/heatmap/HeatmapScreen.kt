@@ -31,6 +31,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import kotlin.math.roundToInt
+import com.college.library.ui.theme.*
 
 data class HeatmapData(
     // [dayOfWeek 0=Mon..6=Sun][hour 0..23]
@@ -116,18 +117,18 @@ fun HeatmapScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("📊 Usage Heatmap", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("📊 Usage Heatmap", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadHeatmap() }) {
-                        Icon(Icons.Default.Thermostat, "Refresh", tint = Color.White)
+                        Icon(Icons.Default.Thermostat, "Refresh", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -165,9 +166,9 @@ fun HeatmapScreen(
                 val hd = data!!
                 // Summary cards
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeatmapSummaryCard("🔥 Peak Day", hd.peakDay, Color(0xFFEF4444), Modifier.weight(1f))
-                    HeatmapSummaryCard("⏰ Peak Hour", hd.peakHour, Color(0xFFF59E0B), Modifier.weight(1f))
-                    HeatmapSummaryCard("😴 Quietest", hd.quietDay, Color(0xFF10B981), Modifier.weight(1f))
+                    HeatmapSummaryCard("🔥 Peak Day", hd.peakDay, Danger, Modifier.weight(1f))
+                    HeatmapSummaryCard("⏰ Peak Hour", hd.peakHour, Warning, Modifier.weight(1f))
+                    HeatmapSummaryCard("😴 Quietest", hd.quietDay, Positive, Modifier.weight(1f))
                 }
 
                 // Heatmap Grid
@@ -254,8 +255,8 @@ fun HeatmapScreen(
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Summary", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text("Total Issues Analyzed: ${hd.totalIssues}", fontSize = 14.sp)
-                        Text("🔥 Busiest Day: ${hd.peakDay}", fontSize = 14.sp, color = Color(0xFFEF4444))
-                        Text("⏰ Peak Time: ${hd.peakHour}", fontSize = 14.sp, color = Color(0xFFF59E0B))
+                        Text("🔥 Busiest Day: ${hd.peakDay}", fontSize = 14.sp, color = Danger)
+                        Text("⏰ Peak Time: ${hd.peakHour}", fontSize = 14.sp, color = Warning)
                         Text("💡 Tip: Schedule staff meetings and restocking on ${hd.quietDay} when traffic is lowest.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -269,8 +270,8 @@ fun heatColor(intensity: Float): Color {
         intensity < 0.001f -> Color(0xFFEEF2FF)
         intensity < 0.25f -> Color(0xFFFEF9C3)
         intensity < 0.5f -> Color(0xFFFDE68A)
-        intensity < 0.75f -> Color(0xFFF97316)
-        else -> Color(0xFFDC2626)
+        intensity < 0.75f -> Warning
+        else -> Danger
     }
 }
 

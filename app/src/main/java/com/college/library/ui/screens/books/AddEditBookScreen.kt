@@ -169,11 +169,11 @@ fun AddEditBookScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (bookId == 0L || isCopy) "Add Book" else "Edit Book", color = Color.White) },
+                title = { Text(if (bookId == 0L || isCopy) "Add Book" else "Edit Book", color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = Color.White) }
+                    IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface) }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->

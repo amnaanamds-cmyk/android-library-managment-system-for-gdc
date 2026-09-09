@@ -137,8 +137,8 @@ fun EBooksScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Digital Library", color = Gold, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Text("E-Books & Digital Resources", color = Gold.copy(alpha = 0.7f), fontSize = 12.sp)
+                        Text("Digital Library", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text("E-Books & Digital Resources", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
                 },
                 actions = {
@@ -151,7 +151,7 @@ fun EBooksScreen(
                         Icon(Icons.Default.FolderOpen, contentDescription = "Browse Files", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         floatingActionButton = {
@@ -203,7 +203,7 @@ fun EBooksScreen(
                         ) {
                             Text(
                                 "  Tap + to import from device  ",
-                                color = Gold,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 11.sp,
                                 modifier = Modifier.padding(vertical = 3.dp)
                             )

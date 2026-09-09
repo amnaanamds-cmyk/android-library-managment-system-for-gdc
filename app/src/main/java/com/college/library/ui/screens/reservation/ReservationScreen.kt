@@ -61,6 +61,7 @@ import com.college.library.data.model.Reservation
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
 import com.college.library.ui.theme.NavyBlue
+import com.college.library.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,14 +84,14 @@ fun ReservationScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Reservations", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Reservations", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -294,7 +295,7 @@ private fun ReservationCard(
                     Text(
                         "Notified: ${reservation.notifiedDate}",
                         fontSize = 12.sp,
-                        color = Color(0xFF4CAF50)
+                        color = Positive
                     )
                 }
             }

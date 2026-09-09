@@ -163,7 +163,7 @@ fun OpacHomeScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("OPAC Portal", color = Gold, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("OPAC Portal", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         Text(state.member?.name ?: "Student", color = Gold.copy(alpha = 0.7f), fontSize = 12.sp)
                     }
                 },
@@ -172,7 +172,7 @@ fun OpacHomeScreen(
                         Icon(Icons.Default.ExitToApp, "Logout", tint = Gold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -201,7 +201,7 @@ fun OpacHomeScreen(
                             Text("Dept: ${member.department}", color = Color.White.copy(0.6f), fontSize = 11.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("${state.myIssuedBooks.size}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                            Text("${state.myIssuedBooks.size}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 22.sp)
                             Text("Active", color = Color.White.copy(0.6f), fontSize = 10.sp)
                             if (state.myFine > 0) {
                                 Text("Fine: Rs.${state.myFine.toInt()}", color = DangerRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -384,7 +384,7 @@ fun OpacBookCard(
                         ) {
                             Icon(Icons.Default.Bookmark, null, tint = Gold, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Already Reserved", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Already Reserved", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {

@@ -54,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.ui.theme.DangerRed
 import com.college.library.ui.theme.Gold
 import com.college.library.ui.theme.NavyBlue
+import com.college.library.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,14 +68,14 @@ fun ExportScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Export Reports", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Export Reports", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = NavyBlue)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -118,7 +119,7 @@ fun ExportScreen(
                     title = "Members Directory",
                     description = "All registered members with their details, department, and issued book count.",
                     icon = Icons.Default.Group,
-                    iconColor = Color(0xFF4CAF50),
+                    iconColor = Positive,
                     isLoading = state.isExporting && state.currentExport == ExportType.MEMBERS,
                     onExport = { viewModel.exportMembers() },
                     format = "PDF"
@@ -190,7 +191,7 @@ fun ExportScreen(
                             Icon(
                                 Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF4CAF50),
+                                tint = Positive,
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))

@@ -176,7 +176,7 @@ fun OpacLoginScreen(
             TextButton(onClick = onNavigateBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Gold, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Back to Admin Login", color = Gold, fontSize = 14.sp)
+                Text("Back to Admin Login", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
             }
         }
     }

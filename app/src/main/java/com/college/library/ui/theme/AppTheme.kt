@@ -34,7 +34,16 @@ fun AppTheme(
     darkModeEnabled: Boolean? = null,
     // Font scaling factor from settings (default 1.0 = normal size)
     fontScale: Float = 1f,
-    dynamicColor: Boolean = true,
+    /**
+     * Material You wallpaper colours. Off by default, deliberately.
+     *
+     * With this on, every Android 12+ phone derived the whole palette from the
+     * user's wallpaper, so the app looked different on every device and matched
+     * neither the desktop client nor the web portal. For a system deployed
+     * across ~300 government colleges, looking like one product matters more
+     * than matching someone's home screen.
+     */
+    dynamicColor: Boolean = false,
     /**
      * Reading direction for the active language. Urdu is written right-to-left,
      * and an Urdu UI laid out left-to-right is not merely untidy — labels sit on
@@ -64,7 +73,9 @@ fun AppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            // The surface, not the accent: a status bar painted in the primary
+            // colour turned pale blue the moment `primary` stopped being navy.
+            window.statusBarColor = colorScheme.surface.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
@@ -86,39 +97,62 @@ fun AppTheme(
     }
 }
 
-// --- Colour palette --------------------------------------------------------
-val DeepNavy = Color(0xFF1A237E)
-val GoldLight = Color(0xFFFFD700)
-val GoldDark = Color(0xFFD4AF37)
-val GreenAvailable = Color(0xFF4CAF50)
-val RedIssued = Color(0xFFD32F2F)
-val BackgroundLight = Color(0xFFF5F5F5)
-val BackgroundDark = Color(0xFF121212)
+// --- Colour scheme ---------------------------------------------------------
+//
+// Built from the shared palette in Color.kt. Deliberately restrained: `primary`
+// is the one accent, and `error` is the only other colour Material will reach
+// for on its own.
 
 val LightColors = lightColorScheme(
-    primary = DeepNavy,
-    onPrimary = Color.White,
-    secondary = GoldLight,
-    onSecondary = Color.Black,
-    tertiary = GreenAvailable,
-    error = RedIssued,
-    background = BackgroundLight,
-    surface = Color.White,
-    onBackground = Color.Black,
-    onSurface = Color.Black
+    primary = Accent,
+    onPrimary = AccentOn,
+    primaryContainer = AccentSoft,
+    onPrimaryContainer = Ink,
+    secondary = BodyText,
+    onSecondary = Color.White,
+    secondaryContainer = SurfaceAlt,
+    onSecondaryContainer = Ink,
+    tertiary = Positive,
+    onTertiary = Color.White,
+    error = Danger,
+    onError = Color.White,
+    errorContainer = DangerSoft,
+    onErrorContainer = Danger,
+    background = AppBackground,
+    onBackground = Ink,
+    surface = Surface,
+    onSurface = Ink,
+    surfaceVariant = SurfaceAlt,
+    onSurfaceVariant = Muted,
+    outline = LineStrong,
+    outlineVariant = Line,
 )
 
 val DarkColors = darkColorScheme(
-    primary = Color(0xFF5C6BC0), // Lighter navy for readability in dark mode
-    onPrimary = Color.White,
-    secondary = GoldDark,
-    onSecondary = Color.Black,
-    tertiary = Color(0xFF81C784),
-    error = Color(0xFFE57373),
-    background = BackgroundDark,
-    surface = Color(0xFF1E1E1E),
-    onBackground = Color.White,
-    onSurface = Color.White
+    // A step lighter than the light scheme's accent: #1D4ED8 on #1E293B fails
+    // contrast for anything smaller than a heading.
+    primary = AccentTextDark,
+    onPrimary = Ink,
+    primaryContainer = AccentSoftDark,
+    onPrimaryContainer = InkDark,
+    secondary = BodyTextDark,
+    onSecondary = Ink,
+    secondaryContainer = SurfaceAltDark,
+    onSecondaryContainer = InkDark,
+    tertiary = PositiveDark,
+    onTertiary = Ink,
+    error = DangerDark,
+    onError = Ink,
+    errorContainer = Color(0xFF3B1D1D),
+    onErrorContainer = DangerDark,
+    background = AppBackgroundDark,
+    onBackground = InkDark,
+    surface = SurfaceDark,
+    onSurface = InkDark,
+    surfaceVariant = SurfaceAltDark,
+    onSurfaceVariant = MutedDark,
+    outline = LineDark,
+    outlineVariant = LineDark,
 )
 
 // --- Font resources --------------------------------------------------------

@@ -90,18 +90,18 @@ fun CollegeProfileScreen(
                 title = {
                     Text(
                         if (isOnboarding) "Setup Your College" else "College Profile",
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
                     if (!isOnboarding) {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.Filled.ArrowBack, "Back", tint = Color.White)
+                            Icon(Icons.Filled.ArrowBack, "Back", tint = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NavyBlue
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
