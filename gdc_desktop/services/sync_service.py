@@ -5,6 +5,7 @@ Handles conflict resolution (latest serverTimestamp / lastUpdated wins).
 """
 import time
 from PyQt6.QtCore import QThread, pyqtSignal
+from firebase_admin import firestore
 
 from services.database_helper import DatabaseHelper
 from services.firebase_service import FirebaseService
@@ -13,6 +14,10 @@ from models import Book, Member, IssueRecord, Reservation
 
 # How often to republish this college's aggregate snapshot for the directorate.
 REGISTRY_PUBLISH_INTERVAL_MS = 10 * 60 * 1000  # 10 minutes
+
+# Firestore batches accept at most 500 writes; stay under that even when an
+# item also gets an audit-log write alongside it in the same batch.
+PUSH_BATCH_SIZE = 200
 
 
 class RealtimeSyncService(QThread):
@@ -87,8 +92,30 @@ class RealtimeSyncService(QThread):
                     break
                 time.sleep(1.0)
 
+    # Which local-DB lookup and Firestore collection each queue entity uses,
+    # and whether individual saves through FirebaseService also write an
+    # audit-log entry (books/members do; issued_books/reservations don't).
+    _PUSH_ENTITY_CONFIG = {
+        "books": ("get_book_by_sync_id", "_books_ref", True),
+        "members": ("get_member_by_sync_id", "_members_ref", True),
+        "issued_books": ("get_issue_by_sync_id", "_issued_ref", False),
+        "reservations": ("get_reservation_by_sync_id", "_reservations_ref", False),
+    }
+
     def _process_pending_push(self):
-        """Push local changes queued in sync_queue to Firestore."""
+        """Push local changes queued in sync_queue to Firestore.
+
+        Pushes are grouped into Firestore batch writes (up to
+        PUSH_BATCH_SIZE documents each) instead of one write — plus one
+        audit-log write for books/members — per item. The old one-write-per-
+        item loop meant a few hundred queued books cost a few hundred
+        sequential network round trips: slow on any connection, and on a slow
+        one, closing the app mid-push left Firestore holding only whatever
+        had completed so far while the rest silently stayed queued. Batching
+        cuts that to a handful of round trips, and items only leave the local
+        queue once their batch actually commits, so an interrupted push still
+        resumes correctly next run instead of silently dropping the rest.
+        """
         if self.fb.mock_mode or not self.fb.test_connection():
             return
 
@@ -100,38 +127,71 @@ class RealtimeSyncService(QThread):
         if not pending_items:
             return
 
+        grouped: dict[str, list[str]] = {}
         for item in pending_items:
             entity_type = item.get("entityType")
             sync_id = item.get("syncId")
-            if not entity_type or not sync_id:
+            if not entity_type or not sync_id or entity_type not in self._PUSH_ENTITY_CONFIG:
+                continue
+            grouped.setdefault(entity_type, []).append(sync_id)
+
+        for entity_type, sync_ids in grouped.items():
+            try:
+                self._batch_push_entity(entity_type, sync_ids)
+            except Exception as e:
+                print(f"Batch push failed for {entity_type}: {e}")
+
+    def _batch_push_entity(self, entity_type: str, sync_ids: list):
+        fetch_name, ref_name, with_audit = self._PUSH_ENTITY_CONFIG[entity_type]
+        fetch_by_id = getattr(self.db, fetch_name)
+        collection_ref = getattr(self.fb, ref_name)()
+        if not collection_ref:
+            return
+        audit_ref = self.fb._audit_ref() if with_audit else None
+        now_ms = int(time.time() * 1000)
+
+        for start in range(0, len(sync_ids), PUSH_BATCH_SIZE):
+            chunk = sync_ids[start:start + PUSH_BATCH_SIZE]
+            batch = self.fb.db.batch()
+            committed_ids = []
+            for sync_id in chunk:
+                try:
+                    entity = fetch_by_id(sync_id)
+                except Exception:
+                    entity = None
+                if not entity:
+                    continue
+                entity.lastUpdated = now_ms
+                data = entity.to_dict()
+                # Every synced document carries this server timestamp as the
+                # authoritative clock for LWW conflict resolution (see
+                # shared/.../FirestoreService.kt) — must be set on every write.
+                data["lastModified"] = firestore.SERVER_TIMESTAMP
+                batch.set(collection_ref.document(sync_id), data)
+                if audit_ref is not None:
+                    label = getattr(entity, "title", None) or getattr(entity, "name", None) or sync_id
+                    batch.set(audit_ref.document(), {
+                        "userEmail": "",
+                        "action": f"{entity_type[:-1] if entity_type.endswith('s') else entity_type}_save",
+                        "detail": f"{label} ({sync_id})",
+                        "timestamp": now_ms,
+                        "timestampStr": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    })
+                committed_ids.append(sync_id)
+
+            if not committed_ids:
                 continue
             try:
-                if entity_type == "books":
-                    book = self.db.get_book_by_sync_id(sync_id)
-                    if book:
-                        self.fb.save_book(book)
-                        self.db.remove_from_sync_queue(entity_type, sync_id)
-                elif entity_type == "members":
-                    member = self.db.get_member_by_sync_id(sync_id)
-                    if member:
-                        self.fb.save_member(member)
-                        self.db.remove_from_sync_queue(entity_type, sync_id)
-                elif entity_type == "issued_books":
-                    issue = self.db.get_issue_by_sync_id(sync_id)
-                    if issue:
-                        ref = self.fb._issued_ref()
-                        if ref:
-                            ref.document(issue.syncId).set(issue.to_dict())
-                        self.db.remove_from_sync_queue(entity_type, sync_id)
-                elif entity_type == "reservations":
-                    res = self.db.get_reservation_by_sync_id(sync_id)
-                    if res:
-                        ref = self.fb._reservations_ref()
-                        if ref:
-                            ref.document(res.syncId).set(res.to_dict())
-                        self.db.remove_from_sync_queue(entity_type, sync_id)
+                batch.commit()
             except Exception as e:
-                print(f"Error pushing pending item {entity_type} {sync_id}: {e}")
+                print(f"Batch commit failed for {entity_type} ({len(committed_ids)} items): {e}")
+                continue  # left queued — retried on the next sync cycle
+
+            for sync_id in committed_ids:
+                try:
+                    self.db.remove_from_sync_queue(entity_type, sync_id)
+                except Exception:
+                    pass
 
     def _publish_registry_snapshot(self, force: bool = False):
         """Republish the directorate snapshot, at most once per interval."""
