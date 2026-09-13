@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import { canViewDirectorate } from "./roles";
 import { useRouter, usePathname } from "next/navigation";
 
 interface UserProfile {
@@ -69,7 +70,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const prof = await fetchProfile(firebaseUser.uid, firebaseUser.email || "");
         setProfile(prof);
 
-        if (!prof || !prof.institutionId) {
+        if (canViewDirectorate(prof?.role)) {
+          // A directorate account belongs to no college, so the
+          // "no institutionId -> onboard" rule below must not apply to it:
+          // that rule used to march it into college onboarding, whose join
+          // path overwrites role with "staff" and silently demotes it.
+          if (pathname === "/login" || pathname === "/onboard" || pathname === "/") {
+            router.push("/director");
+          }
+        } else if (!prof || !prof.institutionId) {
           if (pathname !== "/onboard") {
             router.push("/onboard");
           }

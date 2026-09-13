@@ -246,21 +246,6 @@ export function useDirectorateNetwork() {
   return { colleges, totals, loading, error, usedFallback };
 }
 
-/**
- * Roles permitted to open the directorate portal — Higher Education
- * Department oversight accounts ONLY.
- *
- * "director"/"Director" and "owner"/"admin"/"college_admin" are deliberately
- * excluded: those are a single college's OWN roles (see AuthService on
- * desktop, which treats "director" as an alias for "college_admin"), used by
- * every college that signs up. Including them here previously meant any
- * library's own login could open the network-wide dashboard and see every
- * other college's aggregate counts — a cross-tenant data disclosure. This
- * list must stay in sync with isDirectorateAdmin() in firestore.rules,
- * which is the layer that actually enforces it.
- */
-export const DIRECTOR_ROLES = ["directorate_admin", "DirectorateAdmin"];
-
-export function canViewDirectorate(role: string | undefined | null): boolean {
-  return !!role && DIRECTOR_ROLES.includes(role);
-}
+// Re-exported from ./roles so auth-context can use these without importing
+// this module (which imports auth-context back).
+export { DIRECTOR_ROLES, canViewDirectorate } from "./roles";

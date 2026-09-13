@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import QRScanner from "@/components/qr-scanner";
 import { publishSnapshot } from "@/lib/directorate";
+import { canViewDirectorate } from "@/lib/roles";
 
 export default function OnboardPage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -66,6 +67,12 @@ export default function OnboardPage() {
       // rules authorise the snapshot write from this profile's institutionId,
       // so publishing first would be denied.
       if (user) {
+        if (canViewDirectorate(profile?.role)) {
+          throw new Error(
+            "This is a directorate account and cannot create a college. " +
+              "Sign in with a college account instead.",
+          );
+        }
         await updateDoc(doc(db, "users", user.uid), {
           institutionId: cid,
           role: "owner",
@@ -120,8 +127,16 @@ export default function OnboardPage() {
 
       const instId = instDoc.id;
 
-      // Update user document
+      // Update user document. Never write role for an account that already
+      // holds a directorate role: joining a college would otherwise demote a
+      // directorate_admin to "staff" and quietly destroy its access.
       if (user) {
+        if (canViewDirectorate(profile?.role)) {
+          throw new Error(
+            "This is a directorate account and cannot join a college. " +
+              "Sign in with a college account instead.",
+          );
+        }
         await updateDoc(doc(db, "users", user.uid), {
           institutionId: instId,
           role: "staff",
