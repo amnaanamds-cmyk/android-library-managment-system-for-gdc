@@ -20,6 +20,7 @@ fun SyncStatusBadge(status: SyncStatus, modifier: Modifier = Modifier) {
         SyncStatus.Synced -> Color(0xFF10B981) to "Synced"
         SyncStatus.Syncing -> Color(0xFFF59E0B) to "Syncing..."
         SyncStatus.Offline -> Color(0xFFEF4444) to "Offline"
+        SyncStatus.NotLinked -> Color(0xFFEF4444) to "Not linked — sign in again"
         is SyncStatus.Error -> Color(0xFFEF4444) to "Sync Error"
     }
 

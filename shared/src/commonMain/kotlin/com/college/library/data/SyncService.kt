@@ -54,7 +54,9 @@ class SyncServiceImpl(
     override var currentInstitutionId: String = ""
     override var currentInstitutionName: String = ""
 
-    private val _status = MutableStateFlow<SyncStatus>(SyncStatus.Offline)
+    // NotLinked, not Offline: before login there is no institution to sync
+    // with, which is not the same thing as having lost the network.
+    private val _status = MutableStateFlow<SyncStatus>(SyncStatus.NotLinked)
     override val status: StateFlow<SyncStatus> get() = _status
 
     // BUG 4 FIX: lastSyncTimestamp is now loaded from the local DB on startup
@@ -80,7 +82,10 @@ class SyncServiceImpl(
     // ─────────────────────────────────────────────────────────────
 
     override fun startRealtimeSync(scope: CoroutineScope) {
-        if (currentInstitutionId.isEmpty()) return
+        if (currentInstitutionId.isEmpty()) {
+            _status.value = SyncStatus.NotLinked
+            return
+        }
         stopRealtimeSync()
         if (!FirebaseAvailability.isInitialized) {
             _status.value = SyncStatus.Offline
@@ -321,7 +326,10 @@ class SyncServiceImpl(
     // ─────────────────────────────────────────────────────────────
 
     override suspend fun pushChanges() {
-        if (currentInstitutionId.isEmpty()) return
+        if (currentInstitutionId.isEmpty()) {
+            _status.value = SyncStatus.NotLinked
+            return
+        }
         if (!FirebaseAvailability.isInitialized) {
             _status.value = SyncStatus.Offline
             return
@@ -401,7 +409,10 @@ class SyncServiceImpl(
     // ─────────────────────────────────────────────────────────────
 
     override suspend fun pullChanges() {
-        if (currentInstitutionId.isEmpty()) return
+        if (currentInstitutionId.isEmpty()) {
+            _status.value = SyncStatus.NotLinked
+            return
+        }
         if (!FirebaseAvailability.isInitialized) {
             _status.value = SyncStatus.Offline
             return
