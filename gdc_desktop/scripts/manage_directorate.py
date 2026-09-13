@@ -10,14 +10,20 @@ Usage (from the gdc_desktop/ directory):
 
     python scripts/manage_directorate.py list-users
     python scripts/manage_directorate.py list-colleges
+    python scripts/manage_directorate.py create-directorate <email> <password>
     python scripts/manage_directorate.py promote <email>
     python scripts/manage_directorate.py demote <email>
 
-"promote" is how you create your first (and any additional) directorate-level
-account: sign the person up normally in the desktop or web app first (so
-Firebase Auth + their users/{uid} doc exist), then run this to flip their
-role to "directorate_admin". Nobody can grant themselves this role from the
-app — that's enforced by firestore.rules, by design.
+"create-directorate" is the usual way to make your first (and any additional)
+directorate-level account: it creates the Firebase Auth account and sets the
+role in one step, with no signup needed. Use "promote" instead when the person
+already has an account — sign them up normally in the desktop or web app
+first, then flip their role. Nobody can grant themselves this role from the
+app; that's enforced by firestore.rules, by design.
+
+Do NOT promote a college's own owner/admin account: a directorate_admin can
+only open the Directorate, Reports and Transfers screens, so that account
+would lose access to Books, Members and Issue/Return.
 """
 import argparse
 import sys
@@ -96,11 +102,44 @@ def set_role(db, email: str, role: str):
               "Directorate Dashboard screen in the desktop app.")
 
 
+def create_directorate(db, email: str, password: str):
+    """Create the Firebase Auth account AND grant it directorate_admin.
+
+    "promote" only works on an account that already exists, which means
+    signing up through an app first — but a directorate account belongs to no
+    college, so the normal signup flow pushes it into college onboarding it
+    should never complete. Creating it here with the Admin SDK skips that.
+    """
+    try:
+        user = auth.get_user_by_email(email)
+        print(f"Auth account already exists for {email} (uid={user.uid}); setting the role only.")
+    except auth.UserNotFoundError:
+        if len(password) < 6:
+            print("Firebase requires a password of at least 6 characters.")
+            sys.exit(1)
+        user = auth.create_user(email=email, password=password)
+        print(f"Created Firebase Auth account for {email} (uid={user.uid}).")
+
+    # merge=True so an existing account keeps whatever else is on its profile.
+    db.collection("users").document(user.uid).set(
+        {"uid": user.uid, "email": email, "role": "directorate_admin"}, merge=True
+    )
+    print(f"{email} is now role='directorate_admin'.")
+    print("Sign in with it on the web app at /director, or in the desktop app "
+          "(the Directorate Dashboard opens automatically).")
+
+
 def main():
     parser = argparse.ArgumentParser(description="NEXLIB directorate admin CLI")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list-users")
     sub.add_parser("list-colleges")
+    p_create = sub.add_parser(
+        "create-directorate",
+        help="Create a new account AND grant it directorate_admin (no signup needed)",
+    )
+    p_create.add_argument("email")
+    p_create.add_argument("password")
     p_promote = sub.add_parser("promote", help="Grant directorate_admin to an existing user")
     p_promote.add_argument("email")
     p_demote = sub.add_parser("demote", help="Revert a user to a plain college role")
@@ -114,6 +153,8 @@ def main():
         list_users(db)
     elif args.command == "list-colleges":
         list_colleges(db)
+    elif args.command == "create-directorate":
+        create_directorate(db, args.email, args.password)
     elif args.command == "promote":
         set_role(db, args.email, "directorate_admin")
     elif args.command == "demote":
