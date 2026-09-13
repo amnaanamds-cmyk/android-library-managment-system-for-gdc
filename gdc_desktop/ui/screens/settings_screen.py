@@ -166,18 +166,17 @@ class SettingsScreen(QtWidgets.QWidget):
         dev_tab = QtWidgets.QWidget()
         dev_lay = QtWidgets.QVBoxLayout(dev_tab)
 
-        reset_btn = QtWidgets.QPushButton("⚠️ Reset Database")
-        reset_btn.setStyleSheet("background: #DC2626; color: white; border: none; border-radius: 8px; padding: 10px 24px; font-weight: 700; font-size: 14px; margin-top: 20px;")
-        reset_btn.clicked.connect(self._reset_db)
-        dev_lay.addWidget(reset_btn)
-
-        # Advanced Backup & Security
+        # Backup & Restore — one dedicated dialog instead of scattered buttons.
+        # See ui/dialogs/backup_restore_dialog.py: wraps the same
+        # clear_all_data/clear_all_cloud_data/backup service calls that used
+        # to live directly on these buttons, now behind a password re-check
+        # and an automatic safety backup.
         backup_lay = QtWidgets.QHBoxLayout()
-        zip_btn = QtWidgets.QPushButton("🗄️ 1-Click Encrypted ZIP Backup")
-        zip_btn.setStyleSheet("background: #7C3AED; color: white; border-radius: 8px; padding: 10px; font-weight: bold;")
-        zip_btn.clicked.connect(self._create_zip_backup)
-        backup_lay.addWidget(zip_btn)
-        
+        backup_btn = QtWidgets.QPushButton("🛡️ Backup & Restore Data")
+        backup_btn.setStyleSheet("background: #2563EB; color: white; border-radius: 8px; padding: 10px 24px; font-weight: 700; font-size: 14px; margin-top: 20px;")
+        backup_btn.clicked.connect(self._open_backup_dialog)
+        backup_lay.addWidget(backup_btn)
+
         auto_bkp = QtWidgets.QCheckBox("Enable Automated Daily Backups")
         auto_bkp.setStyleSheet("font-weight: bold;")
         auto_bkp.setChecked(True)
@@ -255,66 +254,17 @@ class SettingsScreen(QtWidgets.QWidget):
     def _toggle_font(self, scale):
         pass
 
-    def _reset_db(self):
-        reply = QtWidgets.QMessageBox.question(
-            self, "Confirm Reset",
-            "This will delete ALL local AND cloud data for this institution and close the application.\n\n"
-            "Data on all connected devices will be wiped.\n\nAre you sure you want to proceed?",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+    def _open_backup_dialog(self):
+        from ui.dialogs.backup_restore_dialog import BackupRestoreDialog
+        from ui.theme import tokens
+        from ui.main_window import MainWindow
+        inst = MainWindow.instance()
+        dlg = BackupRestoreDialog(
+            self.db, self.fb, self.auth,
+            tokens(dark=inst.is_dark if inst else True),
+            parent=self,
         )
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            try:
-                if hasattr(self, 'fb') and self.fb:
-                    self.fb.clear_all_cloud_data()
-                self.db.clear_all_data()
-                QtWidgets.QMessageBox.information(self, "Reset Success", "Local and cloud database reset complete. The app will now close.")
-                QtWidgets.QApplication.quit()
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Reset Error", f"Could not reset database: {e}")
-
-        
-    def _create_zip_backup(self):
-        try:
-            import shutil
-            import sqlite3
-            from datetime import datetime
-
-            save_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, "Save Backup ZIP",
-                f"NEXLIB_Backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
-                "ZIP Files (*.zip)"
-            )
-            if not save_path:
-                return
-
-            db_path = self.db.db_path
-            if not os.path.exists(db_path):
-                raise FileNotFoundError("Database file not found.")
-
-            # Create a temporary directory for backup
-            temp_dir = os.path.join(os.path.dirname(db_path), "temp_backup")
-            if not os.path.exists(temp_dir):
-                os.makedirs(temp_dir)
-
-            dest_db = os.path.join(temp_dir, "gdc_library.db")
-            with sqlite3.connect(db_path) as src, sqlite3.connect(dest_db) as dst:
-                src.backup(dst)
-
-            # Also export CSVs for extra safety
-            from services.advanced_service import AdvancedService
-            adv = AdvancedService(self.db)
-            csv_dir = os.path.join(temp_dir, "csv_export")
-            adv.export_full_database_csv(csv_dir)
-
-            # Zip it all up
-            shutil.make_archive(save_path.replace(".zip", ""), 'zip', temp_dir)
-
-            # Clean up temp
-            shutil.rmtree(temp_dir)
-
-            QtWidgets.QMessageBox.information(self, "Backup Success", f"Encrypted backup created at:\n{save_path}")
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Backup Error", f"Failed to create backup: {e}")
+        dlg.exec()
 
     def _run_health_check(self):
         try:

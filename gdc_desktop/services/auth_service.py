@@ -113,6 +113,30 @@ class AuthService:
             import config as _cfg
             _cfg.COLLEGE_ID = inst_id
 
+    # ── Password re-check (for destructive actions) ────────────────────────────
+    def verify_password(self, password: str) -> bool:
+        """Re-check the CURRENT user's password without touching the active
+        session — used to gate destructive actions like Clear All Data.
+        Returns False on any failure (wrong password, offline, no user)."""
+        if not self._current_user or not self._current_user.email:
+            return False
+        if self.fb.mock_mode or not config.FIREBASE_WEB_API_KEY:
+            return False
+        try:
+            resp = requests.post(
+                SIGN_IN_URL.format(config.FIREBASE_WEB_API_KEY),
+                json={
+                    "email": self._current_user.email,
+                    "password": password,
+                    "returnSecureToken": True,
+                },
+                timeout=10,
+            )
+            data = resp.json()
+            return "error" not in data and "idToken" in data
+        except Exception:
+            return False
+
     # ── Sign In ───────────────────────────────────────────────────────────────
     def sign_in(self, email: str, password: str,
                 remember_me: bool = False) -> Tuple[bool, str]:
