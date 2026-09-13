@@ -192,7 +192,7 @@ fun ReportsScreen(
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = { Text(title, fontWeight = FontWeight.Bold, color = if(selectedTab == index) Gold else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        text = { Text(title, fontWeight = FontWeight.Bold, color = if(selectedTab == index) Gold else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f)) }
                     )
                 }
             }

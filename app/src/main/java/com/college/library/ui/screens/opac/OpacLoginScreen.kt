@@ -84,8 +84,8 @@ fun OpacLoginScreen(
             }
             Spacer(modifier = Modifier.height(20.dp))
             Text("OPAC Student Portal", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("Online Public Access Catalog", fontSize = 13.sp, color = Color.White.copy(alpha = 0.6f))
-            Text("GDC Library", fontSize = 13.sp, color = Gold.copy(alpha = 0.8f))
+            Text("Online Public Access Catalog", fontSize = 13.sp, color = Color.White.copy(alpha = 0.85f))
+            Text("GDC Library", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Gold)
 
             Spacer(modifier = Modifier.height(36.dp))
 
