@@ -355,7 +355,7 @@ fun DoubleStatCard(title: String, value: Double, color: Color, modifier: Modifie
         ) {
             Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("₹${String.format("%.2f", value)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text("Rs. ${String.format("%.2f", value)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

@@ -131,7 +131,14 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        // This card is always white regardless of system theme, so its
+                        // text must always be dark — the theme default (light text in
+                        // dark mode) was rendering invisibly against this fixed white.
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        unfocusedLabelColor = Color.DarkGray,
+                        cursorColor = MaterialTheme.colorScheme.primary,
                     )
                 )
                 Spacer(Modifier.height(12.dp))
@@ -148,14 +155,19 @@ fun LoginScreen(
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
                                 if (showPassword) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = "Toggle password visibility"
+                                contentDescription = "Toggle password visibility",
+                                tint = Color.DarkGray,
                             )
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        unfocusedLabelColor = Color.DarkGray,
+                        cursorColor = MaterialTheme.colorScheme.primary,
                     )
                 )
 
