@@ -92,10 +92,15 @@ def set_role(db, email: str, role: str):
 
     doc_ref = db.collection("users").document(user.uid)
     doc = doc_ref.get()
+    payload = {"role": role}
+    if role == "directorate_admin":
+        # A directorate account belongs to no college. Clearing this also
+        # repairs an account that college onboarding attached to one.
+        payload["institutionId"] = ""
     if doc.exists:
-        doc_ref.set({"role": role}, merge=True)
+        doc_ref.set(payload, merge=True)
     else:
-        doc_ref.set({"uid": user.uid, "email": email, "role": role})
+        doc_ref.set({"uid": user.uid, "email": email, **payload})
     print(f"{email} (uid={user.uid}) is now role='{role}'.")
     if role == "directorate_admin":
         print("They can now sign in to the web app at /director, or open the "
@@ -120,9 +125,12 @@ def create_directorate(db, email: str, password: str):
         user = auth.create_user(email=email, password=password)
         print(f"Created Firebase Auth account for {email} (uid={user.uid}).")
 
-    # merge=True so an existing account keeps whatever else is on its profile.
+    # merge=True so an existing account keeps whatever else is on its profile,
+    # but institutionId is cleared explicitly: a directorate account belongs to
+    # no college, and leaving one set would also grant it that college's data.
     db.collection("users").document(user.uid).set(
-        {"uid": user.uid, "email": email, "role": "directorate_admin"}, merge=True
+        {"uid": user.uid, "email": email, "role": "directorate_admin", "institutionId": ""},
+        merge=True,
     )
     print(f"{email} is now role='directorate_admin'.")
     print("Sign in with it on the web app at /director, or in the desktop app "
