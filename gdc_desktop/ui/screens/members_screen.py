@@ -443,6 +443,15 @@ class MembersScreen(QWidget):
         m = self._get_selected()
         if not m:
             QMessageBox.information(self, "Select", "Please select a member."); return
+        # A member holding books still has open loan records pointing at them;
+        # deleting would orphan those.
+        if (m.booksIssued or 0) > 0:
+            QMessageBox.warning(
+                self, "Cannot Delete",
+                f"'{m.name}' still has {m.booksIssued} book(s) on loan.\n"
+                "Return them first, then delete this member."
+            )
+            return
         reply = QMessageBox.question(self, "Delete",
                                      f"Delete member '{m.name}'?\nThis will update it locally and sync deletes to cloud.",
                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)

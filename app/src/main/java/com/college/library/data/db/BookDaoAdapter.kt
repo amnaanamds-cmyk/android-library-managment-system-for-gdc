@@ -86,7 +86,11 @@ class BookDaoAdapter(private val db: SQLDelightDb) : BookDao {
 
     override suspend fun deleteBook(book: Book) {
         withContext(Dispatchers.IO) {
-            queries.deleteBook(book.id)
+            // Soft delete, not DELETE: the row has to survive locally long
+            // enough to be pushed to Firestore as a tombstone, or the other
+            // devices never learn about the deletion and the next pull
+            // restores the book here.
+            queries.softDelete(lastUpdated = System.currentTimeMillis(), id = book.id)
             runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         }
     }

@@ -119,6 +119,7 @@ fun BookListScreen(
 
     var selectedBook by remember { mutableStateOf<Book?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showConfirmDelete by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -206,8 +207,8 @@ fun BookListScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedButton(
                         onClick = {
-                            viewModel.deleteBook(selectedBook!!)
                             showBottomSheet = false
+                            showConfirmDelete = true
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed)
@@ -215,6 +216,46 @@ fun BookListScreen(
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }
+        }
+
+        if (showConfirmDelete && selectedBook != null) {
+            val book = selectedBook!!
+            // An issued book still has an open loan record pointing at it;
+            // deleting would orphan that record, so require the return first.
+            val isIssued = book.status == "Issued"
+            AlertDialog(
+                onDismissRequest = { showConfirmDelete = false },
+                title = { Text(if (isIssued) "Cannot delete book" else "Delete book?") },
+                text = {
+                    Text(
+                        if (isIssued) {
+                            "\"${book.title}\" is currently issued to a member. " +
+                                "Return it first, then delete the book."
+                        } else {
+                            "\"${book.title}\" will be removed from this library on every " +
+                                "synced device. This cannot be undone from the app."
+                        }
+                    )
+                },
+                confirmButton = {
+                    if (isIssued) {
+                        TextButton(onClick = { showConfirmDelete = false }) { Text("OK") }
+                    } else {
+                        TextButton(
+                            onClick = {
+                                viewModel.deleteBook(book)
+                                showConfirmDelete = false
+                                selectedBook = null
+                            }
+                        ) { Text("DELETE", color = DangerRed, fontWeight = FontWeight.Bold) }
+                    }
+                },
+                dismissButton = {
+                    if (!isIssued) {
+                        TextButton(onClick = { showConfirmDelete = false }) { Text("CANCEL") }
+                    }
+                }
+            )
         }
     }
 }

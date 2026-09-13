@@ -1,17 +1,20 @@
 getAllBooks:
-SELECT * FROM books ORDER BY id DESC;
+SELECT * FROM books WHERE deleted = 0 ORDER BY id DESC;
 
 getAllBooksStatic:
 SELECT * FROM books;
 
+-- Deleted rows MUST be included here: a soft delete is pushed to Firestore as
+-- a tombstone (deleted = 1), and excluding them meant a delete never left the
+-- device and the book reappeared on the next pull.
 getUnsyncedBooks:
-SELECT * FROM books WHERE syncStatus = 'pending' AND deleted = 0;
+SELECT * FROM books WHERE syncStatus = 'pending';
 
 getAvailableBooks:
-SELECT * FROM books WHERE status = 'Available' ORDER BY id DESC;
+SELECT * FROM books WHERE status = 'Available' AND deleted = 0 ORDER BY id DESC;
 
 searchBooks:
-SELECT * FROM books WHERE title LIKE '%' || :query || '%' OR author LIKE '%' || :query || '%' OR isbn LIKE '%' || :query || '%' OR publisher LIKE '%' || :query || '%' ORDER BY id DESC;
+SELECT * FROM books WHERE deleted = 0 AND (title LIKE '%' || :query || '%' OR author LIKE '%' || :query || '%' OR isbn LIKE '%' || :query || '%' OR publisher LIKE '%' || :query || '%') ORDER BY id DESC;
 
 getBookById:
 SELECT * FROM books WHERE id = :id LIMIT 1;
@@ -51,8 +54,10 @@ DELETE FROM books WHERE id = :id;
 deleteAllBooks:
 DELETE FROM books;
 
+-- syncStatus must go back to 'pending' or the tombstone is never picked up by
+-- getUnsyncedBooks and the delete stays local to this device.
 softDelete:
-UPDATE books SET deleted = 1, lastUpdated = :lastUpdated WHERE id = :id;
+UPDATE books SET deleted = 1, syncStatus = 'pending', lastUpdated = :lastUpdated WHERE id = :id;
 
 updateBookStatus:
 UPDATE books SET status = :status, lastUpdated = :lastUpdated WHERE id = :id;
@@ -61,13 +66,13 @@ updateTimestamp:
 UPDATE books SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;
 
 getTotalCount:
-SELECT COUNT(*) FROM books;
+SELECT COUNT(*) FROM books WHERE deleted = 0;
 
 getAvailableCount:
-SELECT COUNT(*) FROM books WHERE status = 'Available';
+SELECT COUNT(*) FROM books WHERE status = 'Available' AND deleted = 0;
 
 getCategories:
-SELECT DISTINCT category FROM books ORDER BY category ASC;
+SELECT DISTINCT category FROM books WHERE deleted = 0 ORDER BY category ASC;
 
 getBooksByCategory:
-SELECT * FROM books WHERE category = :category ORDER BY title ASC;
+SELECT * FROM books WHERE category = :category AND deleted = 0 ORDER BY title ASC;

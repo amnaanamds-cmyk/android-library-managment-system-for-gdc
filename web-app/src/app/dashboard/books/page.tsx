@@ -361,7 +361,23 @@ export default function BooksPage() {
                           </button>
                         )}
                         <button
-                          onClick={() => deleteRecord(book.id)}
+                          onClick={() => {
+                            // An issued book still has an open loan record
+                            // pointing at it; deleting would orphan that record.
+                            if (book.status === "Issued") {
+                              alert(
+                                `"${book.title}" is currently issued to a member. Return it first, then delete the book.`,
+                              );
+                              return;
+                            }
+                            if (
+                              confirm(
+                                `Delete "${book.title}"?\n\nIt will be removed from this library on every synced device. This cannot be undone.`,
+                              )
+                            ) {
+                              deleteRecord(book.id);
+                            }
+                          }}
                           className="px-2 py-1 rounded bg-red-500/10 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
                         >
                           🗑️

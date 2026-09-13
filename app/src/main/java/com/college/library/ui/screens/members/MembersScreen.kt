@@ -1,6 +1,7 @@
 package com.college.library.ui.screens.members
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ import com.college.library.data.model.Member
 import com.college.library.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -47,6 +49,10 @@ class MembersViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) { _searchQuery.value = query }
     fun updateFilter(filter: String) { _filter.value = filter }
+
+    fun deleteMember(member: Member) {
+        viewModelScope.launch { memberDao.deleteMember(member) }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +68,9 @@ fun MembersScreen(
     val filter by viewModel.filter.collectAsState()
     val currentRole by authViewModel.currentRole.collectAsState()
     val canEdit = remember(currentRole) { authViewModel.canEditMembers() }
+
+    var selectedMember by remember { mutableStateOf<Member?>(null) }
+    var showConfirmDelete by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -104,17 +113,96 @@ fun MembersScreen(
 
             LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(members, key = { it.id }) { member ->
-                    MemberCard(member = member, onClick = { onNavigateToDetail(member.id) })
+                    MemberCard(
+                        member = member,
+                        onClick = { onNavigateToDetail(member.id) },
+                        onLongClick = { if (canEdit) selectedMember = member }
+                    )
                 }
             }
         }
     }
+
+    // Long-press action sheet, mirroring the books list.
+    if (selectedMember != null && canEdit && !showConfirmDelete) {
+        ModalBottomSheet(onDismissRequest = { selectedMember = null }) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(
+                    selectedMember!!.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "${selectedMember!!.memberId} • ${selectedMember!!.memberType}",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        onNavigateToDetail(selectedMember!!.id)
+                        selectedMember = null
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("View / Edit") }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showConfirmDelete = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = DangerRed)
+                ) { Text("Delete Member") }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+
+    if (showConfirmDelete && selectedMember != null) {
+        val member = selectedMember!!
+        // A member holding books still has open loan records pointing at them;
+        // deleting would orphan those, so return the books first.
+        val hasActiveLoans = member.booksIssued > 0
+        AlertDialog(
+            onDismissRequest = { showConfirmDelete = false },
+            title = { Text(if (hasActiveLoans) "Cannot delete member" else "Delete member?") },
+            text = {
+                Text(
+                    if (hasActiveLoans) {
+                        "${member.name} still has ${member.booksIssued} book(s) on loan. " +
+                            "Return them first, then delete this member."
+                    } else {
+                        "${member.name} (${member.memberId}) will be removed from this library " +
+                            "on every synced device. This cannot be undone from the app."
+                    }
+                )
+            },
+            confirmButton = {
+                if (hasActiveLoans) {
+                    TextButton(onClick = { showConfirmDelete = false }) { Text("OK") }
+                } else {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteMember(member)
+                            showConfirmDelete = false
+                            selectedMember = null
+                        }
+                    ) { Text("DELETE", color = DangerRed, fontWeight = FontWeight.Bold) }
+                }
+            },
+            dismissButton = {
+                if (!hasActiveLoans) {
+                    TextButton(onClick = { showConfirmDelete = false }) { Text("CANCEL") }
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MemberCard(member: Member, onClick: () -> Unit) {
+fun MemberCard(member: Member, onClick: () -> Unit, onLongClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick),
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {

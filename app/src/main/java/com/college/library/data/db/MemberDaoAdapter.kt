@@ -82,7 +82,8 @@ class MemberDaoAdapter(private val db: SQLDelightDb) : MemberDao {
     }
 
     override suspend fun deleteMember(member: Member): Unit = withContext(Dispatchers.IO) {
-        queries.deleteMember(member.id)
+        // Soft delete so the tombstone reaches Firestore — see BookDaoAdapter.
+        queries.softDeleteMember(lastUpdated = System.currentTimeMillis(), id = member.id)
         runCatching { com.college.library.data.SyncManager.getSyncService(db).pushChanges() }
         Unit
     }

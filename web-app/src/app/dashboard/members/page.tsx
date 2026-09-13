@@ -278,7 +278,24 @@ export default function MembersPage() {
                           🖨️ ID
                         </button>
                         <button
-                          onClick={() => deleteRecord(member.id)}
+                          onClick={() => {
+                            // A member holding books still has open loan records
+                            // pointing at them; deleting would orphan those.
+                            const onLoan = Number(member.booksIssued ?? 0);
+                            if (onLoan > 0) {
+                              alert(
+                                `${member.name} still has ${onLoan} book(s) on loan. Return them first, then delete this member.`,
+                              );
+                              return;
+                            }
+                            if (
+                              confirm(
+                                `Delete ${member.name}?\n\nThey will be removed from this library on every synced device. This cannot be undone.`,
+                              )
+                            ) {
+                              deleteRecord(member.id);
+                            }
+                          }}
                           className="px-3 py-1 rounded bg-red-500/10 border border-red-500/30 text-xs font-bold text-red-400 hover:bg-red-500/20 transition-colors"
                         >
                           🗑️ Delete

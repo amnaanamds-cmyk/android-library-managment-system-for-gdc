@@ -540,6 +540,15 @@ class BooksScreen(QWidget):
         if not book:
             QMessageBox.information(self, "Select", "Please select a book to delete.")
             return
+        # An issued book still has an open loan record pointing at it; deleting
+        # would orphan that record.
+        if book.status == "Issued":
+            QMessageBox.warning(
+                self, "Cannot Delete",
+                f"'{book.title}' is currently issued to a member.\n"
+                "Return it first, then delete the book."
+            )
+            return
         reply = QMessageBox.question(
             self, "Delete Book",
             f"Delete '{book.title}'?\nThis will update it locally and sync deletes to cloud.",

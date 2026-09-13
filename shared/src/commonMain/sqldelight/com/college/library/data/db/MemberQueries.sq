@@ -1,14 +1,15 @@
 getAllMembers:
-SELECT * FROM members ORDER BY id DESC;
+SELECT * FROM members WHERE deleted = 0 ORDER BY id DESC;
 
 getAllMembersStatic:
 SELECT * FROM members;
 
+-- Deleted rows MUST be included here — see the note in BookQueries.sq.
 getUnsyncedMembers:
-SELECT * FROM members WHERE syncStatus = 'pending' AND deleted = 0;
+SELECT * FROM members WHERE syncStatus = 'pending';
 
 searchMembers:
-SELECT * FROM members WHERE name LIKE '%' || :query || '%' OR memberId LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%' ORDER BY id DESC;
+SELECT * FROM members WHERE deleted = 0 AND (name LIKE '%' || :query || '%' OR memberId LIKE '%' || :query || '%' OR email LIKE '%' || :query || '%') ORDER BY id DESC;
 
 getMemberById:
 SELECT * FROM members WHERE id = :id LIMIT 1;
@@ -16,8 +17,10 @@ SELECT * FROM members WHERE id = :id LIMIT 1;
 getMemberBySyncId:
 SELECT * FROM members WHERE syncId = :syncId LIMIT 1;
 
+-- deleted = 0 matters here: without it a removed member could still sign in
+-- to the OPAC portal with their old ID and PIN.
 loginOpacStudent:
-SELECT * FROM members WHERE memberId = :memberId AND pin = :pin LIMIT 1;
+SELECT * FROM members WHERE memberId = :memberId AND pin = :pin AND deleted = 0 LIMIT 1;
 
 insertMember:
 INSERT OR REPLACE INTO members(
@@ -56,13 +59,13 @@ deleteAllMembers:
 DELETE FROM members;
 
 softDeleteMember:
-UPDATE members SET deleted = 1, lastUpdated = :lastUpdated WHERE id = :id;
+UPDATE members SET deleted = 1, syncStatus = 'pending', lastUpdated = :lastUpdated WHERE id = :id;
 
 getTopMembers:
-SELECT * FROM members ORDER BY booksIssued DESC LIMIT :limit;
+SELECT * FROM members WHERE deleted = 0 ORDER BY booksIssued DESC LIMIT :limit;
 
 getTotalCount:
-SELECT COUNT(*) FROM members;
+SELECT COUNT(*) FROM members WHERE deleted = 0;
 
 updateTimestamp:
 UPDATE members SET syncStatus = 'synced', lastUpdated = :lastUpdated WHERE syncId = :syncId;
