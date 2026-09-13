@@ -12,10 +12,16 @@ import { useRouter } from "next/navigation";
 /** Maps Firebase auth error codes to user-friendly messages. */
 function mapFirebaseError(code: string): string {
   switch (code) {
+    // Firebase returns invalid-credential for a WRONG PASSWORD as well as an
+    // unknown email (email-enumeration protection deliberately makes the two
+    // indistinguishable), so this must not claim the account doesn't exist —
+    // that sends people off creating a duplicate account that then fails as
+    // already-in-use, when all they had was a typo in the password.
     case "auth/invalid-credential":
     case "auth/wrong-password":
+      return "Incorrect email or password. If you don't have an account yet, create one below.";
     case "auth/user-not-found":
-      return "No account found with these credentials. If you are signing in for the first time on the web, please create a new account below.";
+      return "No account found with that email address. If you are signing in for the first time on the web, please create a new account below.";
     case "auth/invalid-email":
       return "The email address format is invalid. Please enter a valid email.";
     case "auth/user-disabled":

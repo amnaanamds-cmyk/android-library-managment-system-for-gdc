@@ -129,6 +129,23 @@ def create_directorate(db, email: str, password: str):
           "(the Directorate Dashboard opens automatically).")
 
 
+def set_password(email: str, password: str):
+    """Reset an account's password. Useful when a directorate account was
+    created with a password that was mistyped — Firebase reports a wrong
+    password and an unknown email identically, so a failed sign-in cannot
+    tell you which one happened."""
+    if len(password) < 6:
+        print("Firebase requires a password of at least 6 characters.")
+        sys.exit(1)
+    try:
+        user = auth.get_user_by_email(email)
+    except auth.UserNotFoundError:
+        print(f"No Firebase Auth account exists for {email}.")
+        sys.exit(1)
+    auth.update_user(user.uid, password=password)
+    print(f"Password updated for {email} (uid={user.uid}). You can sign in with it now.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="NEXLIB directorate admin CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -140,6 +157,9 @@ def main():
     )
     p_create.add_argument("email")
     p_create.add_argument("password")
+    p_pw = sub.add_parser("set-password", help="Reset an existing account's password")
+    p_pw.add_argument("email")
+    p_pw.add_argument("password")
     p_promote = sub.add_parser("promote", help="Grant directorate_admin to an existing user")
     p_promote.add_argument("email")
     p_demote = sub.add_parser("demote", help="Revert a user to a plain college role")
@@ -155,6 +175,8 @@ def main():
         list_colleges(db)
     elif args.command == "create-directorate":
         create_directorate(db, args.email, args.password)
+    elif args.command == "set-password":
+        set_password(args.email, args.password)
     elif args.command == "promote":
         set_role(db, args.email, "directorate_admin")
     elif args.command == "demote":
