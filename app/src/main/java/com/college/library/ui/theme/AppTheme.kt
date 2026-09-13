@@ -32,7 +32,13 @@ fun AppTheme(
     darkModeEnabled: Boolean? = null,
     // Font scaling factor from settings (default 1.0 = normal size)
     fontScale: Float = 1f,
-    dynamicColor: Boolean = true,
+    // Default OFF: Material You (Android 12+) derives colors from the
+    // device wallpaper, which silently replaces the app's own designed
+    // LightColors/DarkColors with per-device, per-wallpaper values —
+    // exactly the "different color per screen/device" inconsistency
+    // DESIGN_SPEC.md's "single source of truth" rule exists to prevent.
+    // The app should look the same on every phone.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current

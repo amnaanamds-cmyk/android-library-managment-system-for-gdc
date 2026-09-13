@@ -25,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.college.library.data.SyncManager
 import com.college.library.data.SyncStatus
 import com.college.library.data.model.IssuedBook
+import com.college.library.ui.components.StatCard
 import com.college.library.ui.components.SyncStatusBadge
 import com.college.library.ui.theme.*
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
@@ -200,19 +201,25 @@ fun DashboardScreen(
 
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(title = "Total Books", value = state.totalBooks, color = CardBlue, modifier = Modifier.weight(1f))
-                    StatCard(title = "Available", value = state.availableBooks, color = CardGreen, modifier = Modifier.weight(1f))
+                    StatCard(icon = "📚", label = "Total Books", value = state.totalBooks, accent = CardBlue, modifier = Modifier.weight(1f))
+                    StatCard(icon = "✅", label = "Available", value = state.availableBooks, accent = CardGreen, modifier = Modifier.weight(1f))
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatCard(title = "Issued Books", value = state.issuedBooks, color = CardOrange, modifier = Modifier.weight(1f))
-                    StatCard(title = "Total Members", value = state.totalMembers, color = CardPurple, modifier = Modifier.weight(1f))
+                    StatCard(icon = "🔄", label = "Issued Books", value = state.issuedBooks, accent = CardOrange, modifier = Modifier.weight(1f))
+                    StatCard(icon = "👥", label = "Total Members", value = state.totalMembers, accent = CardPurple, modifier = Modifier.weight(1f))
                 }
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DoubleStatCard(title = "Fine Collected", value = state.totalFineCollected, color = DangerRed, modifier = Modifier.fillMaxWidth())
+                    StatCard(
+                        icon = "💰",
+                        label = "Fine Collected",
+                        value = "Rs. ${"%,.2f".format(state.totalFineCollected)}",
+                        accent = DangerRed,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
 
@@ -305,57 +312,6 @@ fun DashboardScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun StatCard(title: String, value: Int, color: Color, modifier: Modifier = Modifier) {
-    var animationTriggered by remember { mutableStateOf(false) }
-    val animatedValue by animateIntAsState(
-        targetValue = if (animationTriggered) value else 0,
-        animationSpec = tween(1500, easing = FastOutSlowInEasing),
-        label = "countUp"
-    )
-
-    LaunchedEffect(Unit) { animationTriggered = true }
-
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(animatedValue.toString(), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-fun DoubleStatCard(title: String, value: Double, color: Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.height(100.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Rs. ${String.format("%.2f", value)}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
