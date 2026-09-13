@@ -8,15 +8,31 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
+import com.college.library.ui.components.FeatureListItem
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -589,122 +605,97 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                 )
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = onNavigateToRecommendations,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🤖  AI Smart Book Recommender", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToHeatmap,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🔥  Library Usage Heatmap", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToFineWaiver,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("⚖️  AI Fine Waiver Judge", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToReadingGoals,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🎯  Reading Goals & Streaks", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToClassification,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🗂️  Classification System", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToSpineLabels,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B5CF6)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🏷️  Spine Label Generator", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToBiometric,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🔐  Biometric Verification", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToUnionCatalog,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEC4899)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🌐  Union Catalogue", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToGateLog,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🛂  Gate Log", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToAcquisitions,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🧾  Acquisitions", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToBookTransfers,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🔄  Book Transfers", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToSerials,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFA855F7)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("📰  Serials", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToIll,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🌍  Inter-Library Loans", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToMarcCatalog,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0891B2)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("📑  MARC Catalogue", color = Color.White)
-                        }
-                        Button(
-                            onClick = onNavigateToEnterprise,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("🚀  Enterprise Features", color = Color.White)
-                        }
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FeatureListItem(
+                        icon = Icons.Default.AutoAwesome,
+                        label = "AI Smart Book Recommender",
+                        accent = Color(0xFF7C3AED),
+                        onClick = onNavigateToRecommendations,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Whatshot,
+                        label = "Library Usage Heatmap",
+                        accent = Color(0xFFEF4444),
+                        onClick = onNavigateToHeatmap,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Balance,
+                        label = "AI Fine Waiver Judge",
+                        accent = Color(0xFF10B981),
+                        onClick = onNavigateToFineWaiver,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.EmojiEvents,
+                        label = "Reading Goals & Streaks",
+                        accent = Color(0xFFF59E0B),
+                        onClick = onNavigateToReadingGoals,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Folder,
+                        label = "Classification System",
+                        accent = Color(0xFF3B82F6),
+                        onClick = onNavigateToClassification,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Sell,
+                        label = "Spine Label Generator",
+                        accent = Color(0xFF8B5CF6),
+                        onClick = onNavigateToSpineLabels,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Fingerprint,
+                        label = "Biometric Verification",
+                        accent = Color(0xFF10B981),
+                        onClick = onNavigateToBiometric,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Public,
+                        label = "Union Catalogue",
+                        accent = Color(0xFFEC4899),
+                        onClick = onNavigateToUnionCatalog,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Shield,
+                        label = "Gate Log",
+                        accent = Color(0xFF0EA5E9),
+                        onClick = onNavigateToGateLog,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Assignment,
+                        label = "Acquisitions",
+                        accent = Color(0xFF14B8A6),
+                        onClick = onNavigateToAcquisitions,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.SwapHoriz,
+                        label = "Book Transfers",
+                        accent = Color(0xFF6366F1),
+                        onClick = onNavigateToBookTransfers,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Article,
+                        label = "Serials",
+                        accent = Color(0xFFA855F7),
+                        onClick = onNavigateToSerials,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.AccountBalance,
+                        label = "Inter-Library Loans",
+                        accent = Color(0xFFF97316),
+                        onClick = onNavigateToIll,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Description,
+                        label = "MARC Catalogue",
+                        accent = Color(0xFF0891B2),
+                        onClick = onNavigateToMarcCatalog,
+                    )
+                    FeatureListItem(
+                        icon = Icons.Default.Star,
+                        label = "Enterprise Features",
+                        accent = Color(0xFF7C3AED),
+                        onClick = onNavigateToEnterprise,
+                    )
                 }
             }
 
