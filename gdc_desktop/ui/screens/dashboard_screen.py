@@ -11,6 +11,8 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtGui import QFont
 
 import config
+from ui.theme import tokens
+from ui.widgets.stat_card import StatCard
 import matplotlib
 try:
     matplotlib.use('QtAgg')
@@ -22,40 +24,12 @@ except Exception:
 from matplotlib.figure import Figure
 
 
-class StatCard(QFrame):
-    STYLE = """
-    QFrame {{
-        background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-            stop:0 {c1}, stop:1 {c2});
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,0.08);
-    }}
-    QLabel#cardIcon {{ font-size: 32px; }}
-    QLabel#cardVal  {{ color: white; font-size: 32px; font-weight: 900; font-family: 'Segoe UI'; }}
-    QLabel#cardLbl  {{ color: rgba(255,255,255,0.75); font-size: 12px; font-family: 'Segoe UI'; }}
-    """
-
-    def __init__(self, icon, label, value="\u2014", c1="#1E5FD4", c2="#2872F0"):
-        super().__init__()
-        self.setStyleSheet(self.STYLE.format(c1=c1, c2=c2))
-        self.setMinimumSize(180, 120)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-
-        icon_lbl = QLabel(icon)
-        icon_lbl.setObjectName("cardIcon")
-        layout.addWidget(icon_lbl)
-
-        self.val_lbl = QLabel(str(value))
-        self.val_lbl.setObjectName("cardVal")
-        layout.addWidget(self.val_lbl)
-
-        txt_lbl = QLabel(label)
-        txt_lbl.setObjectName("cardLbl")
-        layout.addWidget(txt_lbl)
-
-    def update_value(self, val):
-        self.val_lbl.setText(str(val))
+def _current_theme():
+    """Read the app's live dark/light state the same way the chart code does,
+    defaulting to dark if MainWindow isn't up yet."""
+    from ui.main_window import MainWindow
+    inst = MainWindow.instance()
+    return tokens(dark=inst.is_dark if inst else True)
 
 
 class StatsWorker(QThread):
@@ -247,14 +221,15 @@ class DashboardScreen(QWidget):
         grid = QGridLayout()
         grid.setSpacing(16)
 
+        t = _current_theme()
         self.cards = {
-            "totalBooks":        StatCard("\U0001f4da", "Total Books",    c1="#1E5FD4", c2="#2872F0"),
-            "availableBooks":    StatCard("\u2705", "Available",      c1="#059669", c2="#10B981"),
-            "issuedBooks":       StatCard("\U0001f4d6", "Issued",         c1="#D97706", c2="#F59E0B"),
-            "totalMembers":      StatCard("\U0001f465", "Total Members",  c1="#7C3AED", c2="#8B5CF6"),
-            "overdueCount":      StatCard("\u23f0", "Overdue",        c1="#DC2626", c2="#EF4444"),
-            "pendingReservations": StatCard("\U0001f514", "Reservations", c1="#0891B2", c2="#06B6D4"),
-            "totalFineCollected": StatCard("\U0001f4b0", "Fine Collected", c1="#059669", c2="#34D399"),
+            "totalBooks":        StatCard("\U0001f4da", "Total Books", t, accent_fg=t.accent_600, accent_bg=t.accent_100),
+            "availableBooks":    StatCard("\u2705", "Available", t, accent_fg=t.success_fg, accent_bg=t.success_bg),
+            "issuedBooks":       StatCard("\U0001f4d6", "Issued", t, accent_fg=t.warning_fg, accent_bg=t.warning_bg),
+            "totalMembers":      StatCard("\U0001f465", "Total Members", t, accent_fg=t.info_fg, accent_bg=t.info_bg),
+            "overdueCount":      StatCard("\u23f0", "Overdue", t, accent_fg=t.danger_fg, accent_bg=t.danger_bg),
+            "pendingReservations": StatCard("\U0001f514", "Reservations", t, accent_fg=t.info_fg, accent_bg=t.info_bg),
+            "totalFineCollected": StatCard("\U0001f4b0", "Fine Collected", t, accent_fg=t.success_fg, accent_bg=t.success_bg),
         }
         positions = [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2),(2,0)]
         for (r,c), card in zip(positions, self.cards.values()):
@@ -387,7 +362,20 @@ class DashboardScreen(QWidget):
                 val = stats[key]
                 if key == "totalFineCollected":
                     val = f"Rs. {val:,.0f}"
-                card.update_value(val)
+                card.set_value(val)
+
+        issued = stats.get("issuedBooks") or 0
+        overdue = stats.get("overdueCount") or 0
+        overdue_card = self.cards.get("overdueCount")
+        if overdue_card:
+            if issued:
+                pct = (overdue / issued) * 100
+                overdue_card.set_sub(f"{pct:.0f}% of active loans")
+                overdue_card.set_progress(pct)
+            else:
+                overdue_card.set_sub("")
+                overdue_card.set_progress(None)
+
         self.last_update.setText(f"Last updated: {time.strftime('%H:%M:%S')}")
 
         if HAS_MATPLOTLIB:

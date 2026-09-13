@@ -181,11 +181,18 @@ one individually. Pay specific attention to the `text-on-accent` dark-mode
 finding above — check every filled-accent button's label contrast in dark
 mode specifically, don't assume white text is always safe.
 
-**Desktop (PyQt/QSS)** — extend `main_window.py`'s dark/light QSS blocks
-(already the fix point for the recent alternating-row-color bug) with
-these tokens. Build one reusable stat-card widget class instead of the
-current `StatCard`/`DoubleStatCard` functions duplicated with different
-inline styles per screen.
+**Desktop (PyQt/QSS)** — implemented as `ui/theme.py` (token constants —
+QSS has no `var()` mechanism, so these are plain Python, not CSS) and
+`ui/widgets/stat_card.py` (the shared widget), applied first to
+`dashboard_screen.py`. **Note:** the surface/text/accent values there are
+NOT the raw hex from §2 above — `main_window.py`'s QSS already establishes
+a cool navy-blue palette everywhere (`#0F172A`/`#1E293B`/`#334155`, accent
+`#2563EB`), so `ui/theme.py` matches *that* instead of introducing
+Hostyllo's warmer tones, which would clash sitting next to the app's
+existing chrome. The semantic status colors (success/warning/danger/info)
+are a pure addition harmonized with this same navy palette. If desktop
+ever gets a full rebrand to the warmer palette, that's a deliberate,
+all-at-once decision — not something to half-apply via one new widget.
 
 **All platforms** — audit for hardcoded `$`/`₹`/`Rs.` string-building at
 call sites (the exact bug pattern already found and fixed twice this
