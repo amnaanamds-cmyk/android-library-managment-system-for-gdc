@@ -537,7 +537,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QLineEdit:focus { border: 1.5px solid #3B82F6; }
 
             /* Tables */
-            QTableWidget, QTableView { background: #1E293B; color: #F1F5F9; gridline-color: #334155; border: 1px solid #334155; selection-background-color: #2563EB; }
+            QTableWidget, QTableView { background: #1E293B; alternate-background-color: #0F172A; color: #F1F5F9; gridline-color: #334155; border: 1px solid #334155; selection-background-color: #2563EB; }
             QHeaderView::section { background: #0F172A; color: #94A3B8; border-bottom: 1px solid #334155; }
 
             /* Tabs */
@@ -582,7 +582,7 @@ class MainWindow(QtWidgets.QMainWindow):
             }
 
             /* Tables */
-            QTableWidget, QTableView { background: #FFFFFF; color: #1E293B; gridline-color: #F1F5F9; border: 1px solid #E2E8F0; selection-background-color: #EFF6FF; selection-color: #2563EB; outline: none; border-radius: 8px; }
+            QTableWidget, QTableView { background: #FFFFFF; alternate-background-color: #F8FAFC; color: #1E293B; gridline-color: #F1F5F9; border: 1px solid #E2E8F0; selection-background-color: #EFF6FF; selection-color: #2563EB; outline: none; border-radius: 8px; }
             QHeaderView::section { background: #F8FAFC; color: #64748B; border: none; border-bottom: 2px solid #F1F5F9; font-weight: 700; font-size: 12px; padding: 10px; }
             QTableWidget::item { padding: 8px; border-bottom: 1px solid #F1F5F9; }
 

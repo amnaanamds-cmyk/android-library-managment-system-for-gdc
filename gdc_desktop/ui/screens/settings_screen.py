@@ -122,7 +122,7 @@ class SettingsScreen(QtWidgets.QWidget):
         ui_form = QtWidgets.QFormLayout()
         
         self.lang_cb = QtWidgets.QComboBox()
-        self.lang_cb.addItems(["English", "Hindi"])
+        self.lang_cb.addItems(["English", "Urdu"])
         self.lang_cb.currentTextChanged.connect(self._toggle_lang)
         ui_form.addRow("Language", self.lang_cb)
 

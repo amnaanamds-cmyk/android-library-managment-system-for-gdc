@@ -35,7 +35,7 @@ getIssuedCount:
 SELECT COUNT(*) FROM issued_books WHERE status = 'Issued';
 
 getTotalFineCollected:
-SELECT COALESCE(SUM(fine), 0.0) FROM issued_books;
+SELECT COALESCE(SUM(fine), 0.0) FROM issued_books WHERE status = 'Returned';
 
 getCurrentlyIssuedBooksByMember:
 SELECT * FROM issued_books WHERE memberId = :memberId AND status = 'Issued' ORDER BY issueDate DESC;
