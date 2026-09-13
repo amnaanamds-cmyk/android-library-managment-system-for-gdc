@@ -129,7 +129,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._idle_timer.start(30000)
 
         self.setWindowTitle(f"{config.APP_NAME} — {config.APP_VERSION}")
-        self.setMinimumSize(1280, 800)
+        # 800 was taller than the usable area of a 1366x768 laptop screen, so
+        # the bottom of every screen (Edit/Delete rows included) was clipped.
+        self.setMinimumSize(1024, 600)
         self._build_ui()
         self._apply_theme()
         

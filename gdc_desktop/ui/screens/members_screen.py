@@ -328,7 +328,10 @@ class MembersScreen(QWidget):
             for b in (self.edit_btn, self.del_btn, self.pin_btn, self.copy_pin_btn, self.hist_btn,
                       self.rec_btn, self.idcard_btn, self.overdue_btn, self.ledger_btn):
                 action_row.addWidget(b)
-            layout.addLayout(action_row)
+            # Directly under the table, above the AI panel and pagination:
+            # these are the primary actions and must never be the first thing
+            # clipped on a short screen.
+            layout.insertLayout(layout.indexOf(self.table) + 1, action_row)
 
     def _on_selection_changed(self):
         member = self._get_selected()

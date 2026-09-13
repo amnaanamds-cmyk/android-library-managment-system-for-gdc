@@ -437,7 +437,9 @@ class BooksScreen(QWidget):
             action_row.addWidget(self.edit_btn)
             action_row.addWidget(self.del_btn)
             
-        layout.addLayout(action_row)
+        # Directly under the table, above the AI panel: primary actions must
+        # never be the first thing clipped on a short screen.
+        layout.insertLayout(layout.indexOf(self.table) + 1, action_row)
 
     def _on_selection_changed(self):
         book = self._get_selected_book()

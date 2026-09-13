@@ -108,7 +108,10 @@ class LibraryApp(QApplication):
         # Setup main router (QStackedWidget)
         self.router = QStackedWidget()
         self.router.setWindowTitle(f"{config.APP_NAME} — {config.APP_ORG}")
-        self.router.setMinimumSize(1024, 768)
+        # Keep the floor below 768 — a 1366x768 laptop only has ~730px of
+        # usable height once the taskbar and title bar are taken out, and a
+        # taller minimum pushes the bottom of every screen off the display.
+        self.router.setMinimumSize(1024, 600)
 
         # 1. Login Screen
         self.login_screen = LoginScreen(self.auth_service)
@@ -132,7 +135,11 @@ class LibraryApp(QApplication):
             
             self.router.addWidget(self.main_window)
             self.router.setCurrentWidget(self.main_window)
-            self.router.resize(1366, 800)
+            # Never size past the screen's usable area (which already excludes
+            # the taskbar), or the bottom action rows land off-screen.
+            avail = QApplication.primaryScreen().availableGeometry()
+            self.router.resize(min(1366, avail.width()), min(800, avail.height()))
+            self.router.move(avail.left(), avail.top())
         except Exception as e:
             logger.error("Login transition error", exc_info=True)
             QMessageBox.critical(
