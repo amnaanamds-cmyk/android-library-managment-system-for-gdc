@@ -298,7 +298,7 @@ private fun LostFoundTab(viewModel: LostFoundViewModel = hiltViewModel()) {
                     DialogField("Item", name, { name = it })
                     DialogField("Description (optional)", desc, { desc = it })
                     DialogField("Location", where, { where = it })
-                    DialogDropdown("Status", LostFoundItem.STATUSES, status) { status = it }
+                    DialogDropdown("Status", LostFoundItem.STATUSES, status, onSelect = { status = it })
                 }
             },
             confirmButton = {

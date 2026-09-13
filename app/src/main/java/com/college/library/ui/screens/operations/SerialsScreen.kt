@@ -215,7 +215,7 @@ private fun NewSerialDialog(
             Column {
                 DialogField("Title", title, { title = it })
                 DialogField("ISSN (optional)", issn, { issn = it })
-                DialogDropdown("Frequency", Serial.FREQUENCIES, frequency) { frequency = it }
+                DialogDropdown("Frequency", Serial.FREQUENCIES, frequency, onSelect = { frequency = it })
                 DialogField("Publisher (optional)", publisher, { publisher = it })
                 DialogField("Subscription ends (YYYY-MM-DD, optional)", subEnd, { subEnd = it })
             }

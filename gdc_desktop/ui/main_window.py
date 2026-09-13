@@ -202,10 +202,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Dynamic Institutional Branding
         reg = self.db.get_college_registration()
         c_name = reg.get("name", getattr(config, 'COLLEGE_NAME', 'GDC LIBRARY50')).upper()
-        brand = QtWidgets.QLabel(c_name)
-        brand.setObjectName("appBrand")
-        brand.setWordWrap(True)
-        sb_layout.addWidget(brand)
+        self.brand_label = QtWidgets.QLabel(c_name)
+        self.brand_label.setObjectName("appBrand")
+        self.brand_label.setWordWrap(True)
+        sb_layout.addWidget(self.brand_label)
 
         self.agent_btn = QtWidgets.QPushButton("🤖  AI ASSISTANT")
         self.agent_btn.setObjectName("agentBtn")
@@ -385,7 +385,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = EnterpriseFeaturesScreen(self.db, self.fb)
             elif key == "college_profile":
                 from ui.screens.college_profile_screen import CollegeProfileScreen
-                screen = CollegeProfileScreen(self.db, self.fb)
+                screen = CollegeProfileScreen(self.db, self.fb, main_window=self)
             elif key == "reports":
                 from ui.screens.reports_screen import ReportsScreen
                 screen = ReportsScreen(self.fb, self.db, self.auth)
@@ -453,6 +453,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.status_lbl.setStyleSheet("color: #F59E0B;")
         else:
             self.status_lbl.setStyleSheet("color: #2EC98A;")
+
+    def refresh_branding(self):
+        """Re-read the college name from local storage and update the sidebar.
+
+        The brand label is built once in __init__, so without this a saved
+        change on the College Profile screen never appeared until the whole
+        app was restarted, even though it was persisted correctly.
+        """
+        reg = self.db.get_college_registration()
+        c_name = reg.get("name", getattr(config, 'COLLEGE_NAME', 'GDC LIBRARY50')).upper()
+        self.brand_label.setText(c_name)
 
     def _toggle_agent(self):
         if not self.agent_overlay:

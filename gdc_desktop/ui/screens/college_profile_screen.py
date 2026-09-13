@@ -12,10 +12,11 @@ from PyQt6.QtGui import QPixmap, QIcon
 import config
 
 class CollegeProfileScreen(QWidget):
-    def __init__(self, db_helper, firebase_service):
+    def __init__(self, db_helper, firebase_service, main_window=None):
         super().__init__()
         self.db = db_helper
         self.fb = firebase_service
+        self.main_window = main_window
         self._build_ui()
         self.load_data()
 
@@ -181,6 +182,14 @@ class CollegeProfileScreen(QWidget):
                 print(f"Cloud profile updated for {self.fb.college_id}")
             except Exception as e:
                 print(f"Firestore update failed: {e}")
+
+        # Refresh the sidebar branding immediately — it's built once at
+        # startup and otherwise wouldn't show this change until app restart.
+        if self.main_window:
+            try:
+                self.main_window.refresh_branding()
+            except Exception as e:
+                print(f"Failed to refresh sidebar branding: {e}")
 
         QMessageBox.information(self, "Success", "College Profile updated successfully!\n\nThis profile is now registered with the Directorate and synced to your mobile apps.")
 

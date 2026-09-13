@@ -203,7 +203,8 @@ private fun SignInVisitorDialog(
                     "Visitor type",
                     listOf("Student", "Staff", "Faculty", "Guest"),
                     type,
-                ) { type = it }
+                    onSelect = { type = it },
+                )
                 DialogField("Member ID (optional)", memberId, { memberId = it })
                 DialogField("Purpose (optional)", purpose, { purpose = it })
             }
