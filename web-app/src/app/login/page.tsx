@@ -8,6 +8,7 @@ import {
 import { auth, db } from "@/lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 /** Maps Firebase auth error codes to user-friendly messages. */
 function mapFirebaseError(code: string): string {
@@ -49,6 +50,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const router = useRouter();
+  const { wrongPortal } = useAuth();
 
   const handleAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,6 +190,15 @@ export default function LoginPage() {
               />
             </div>
           </div>
+
+          {/* A directorate account signed in here — it belongs in the
+              separate Directorate portal, so say so instead of failing. */}
+          {wrongPortal && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-200">
+              <span className="mr-1 text-base leading-none">🏛️</span>
+              {wrongPortal}
+            </div>
+          )}
 
           {/* Error */}
           {errorMsg && (

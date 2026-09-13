@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useSyncHealth } from "@/lib/firestore-hooks";
-import { canViewDirectorate } from "@/lib/directorate";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -86,10 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { name: "Enterprise Feat.", path: "/dashboard/enterprise", icon: "🚀" },
         { name: "Fine Waiver AI", path: "/dashboard/fine-waiver-ai", icon: "⚖️" },
         { name: "Settings", path: "/dashboard/settings", icon: "⚙️" },
-        // Shown only to director-level accounts; the portal itself re-checks.
-        ...(canViewDirectorate(profile?.role)
-          ? [{ name: "Directorate Portal", path: "/director", icon: "🏛️" }]
-          : []),
+        // No directorate link: that portal is a separate application
+        // (directorate-app/), and a directorate account cannot sign in here
+        // at all — see auth-context's wrongPortal handling.
       ]
     }
   ];

@@ -18,6 +18,8 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  /** Set when a directorate account tried to sign in to the college portal. */
+  wrongPortal: string | null;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -26,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  wrongPortal: null,
   logout: async () => {},
   refreshProfile: async () => {},
 });
@@ -34,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wrongPortal, setWrongPortal] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -71,13 +75,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(prof);
 
         if (canViewDirectorate(prof?.role)) {
-          // A directorate account belongs to no college, so the
-          // "no institutionId -> onboard" rule below must not apply to it:
-          // that rule used to march it into college onboarding, whose join
-          // path overwrites role with "staff" and silently demotes it.
-          if (pathname === "/login" || pathname === "/onboard" || pathname === "/") {
-            router.push("/director");
-          }
+          // The directorate portal is a separate application now. Sign the
+          // account out rather than letting it sit in a college workspace it
+          // has no institution for — and never fall through to the
+          // "no institutionId -> onboard" rule below, whose join path
+          // overwrites role with "staff" and silently demotes it.
+          setWrongPortal(
+            "This is a directorate account. Sign in to the NEXLIB Directorate portal instead — it runs as a separate application.",
+          );
+          await signOut(auth);
+          setProfile(null);
+          setLoading(false);
+          if (pathname !== "/login") router.push("/login");
+          return;
         } else if (!prof || !prof.institutionId) {
           if (pathname !== "/onboard") {
             router.push("/onboard");
@@ -108,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, logout, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, wrongPortal, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

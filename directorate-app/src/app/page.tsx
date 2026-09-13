@@ -301,7 +301,7 @@ function CollegeRow({ college }: { college: DirectorateSnapshot }) {
   return (
     <tr className="group transition-colors hover:bg-blue-950/20">
       <td className="px-5 py-4">
-        <Link href={`/director/${encodeURIComponent(college.institutionId)}`} className="flex items-center gap-3">
+        <Link href={`/${encodeURIComponent(college.institutionId)}`} className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/10 text-xs font-black text-blue-500">
             {college.name?.[0]?.toUpperCase() || "C"}
           </div>
@@ -411,7 +411,7 @@ function Leaderboard({
             return (
               <Link
                 key={c.institutionId}
-                href={`/director/${encodeURIComponent(c.institutionId)}`}
+                href={`/${encodeURIComponent(c.institutionId)}`}
                 className="block"
               >
                 <div className="mb-1 flex justify-between gap-2 text-xs">

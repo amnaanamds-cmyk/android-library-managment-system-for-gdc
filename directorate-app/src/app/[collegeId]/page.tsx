@@ -128,7 +128,7 @@ export default function CollegeDetail() {
   return (
     <div className="space-y-8">
       <div>
-        <Link href="/director" className="text-xs font-bold text-blue-400 hover:text-blue-300">
+        <Link href="/" className="text-xs font-bold text-blue-400 hover:text-blue-300">
           ← Back to network overview
         </Link>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
