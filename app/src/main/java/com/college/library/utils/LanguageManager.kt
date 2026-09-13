@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 enum class AppLanguage(val code: String, val displayName: String, val nativeName: String) {
     ENGLISH("en", "English", "English"),
-    HINDI("hi", "Hindi", "हिन्दी")
+    URDU("ur", "Urdu", "اردو")
 }
 
 @Singleton
@@ -17,7 +17,7 @@ class LanguageManager @Inject constructor(application: Application) {
     private val prefs = application.getSharedPreferences("library_settings", Context.MODE_PRIVATE)
 
     private val _currentLanguage = MutableStateFlow(
-        if (prefs.getString("app_language", "en") == "hi") AppLanguage.HINDI else AppLanguage.ENGLISH
+        if (prefs.getString("app_language", "en") == "ur") AppLanguage.URDU else AppLanguage.ENGLISH
     )
     val currentLanguage = _currentLanguage.asStateFlow()
 
@@ -26,5 +26,5 @@ class LanguageManager @Inject constructor(application: Application) {
         _currentLanguage.value = language
     }
 
-    fun isHindi(): Boolean = _currentLanguage.value == AppLanguage.HINDI
+    fun isUrdu(): Boolean = _currentLanguage.value == AppLanguage.URDU
 }

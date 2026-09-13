@@ -159,20 +159,20 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = if (state.currentLanguage == AppLanguage.HINDI) "हिन्दी" else "English",
+                                text = if (state.currentLanguage == AppLanguage.URDU) "اردو" else "English",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             )
                             Text(
-                                text = if (state.currentLanguage == AppLanguage.HINDI) "Switch to English" else "हिन्दी में बदलें",
+                                text = if (state.currentLanguage == AppLanguage.URDU) "Switch to English" else "اردو میں تبدیل کریں",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Switch(
-                            checked = state.currentLanguage == AppLanguage.HINDI,
-                            onCheckedChange = { isHindi ->
-                                viewModel.setLanguage(if (isHindi) AppLanguage.HINDI else AppLanguage.ENGLISH)
+                            checked = state.currentLanguage == AppLanguage.URDU,
+                            onCheckedChange = { isUrdu ->
+                                viewModel.setLanguage(if (isUrdu) AppLanguage.URDU else AppLanguage.ENGLISH)
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
                         )
