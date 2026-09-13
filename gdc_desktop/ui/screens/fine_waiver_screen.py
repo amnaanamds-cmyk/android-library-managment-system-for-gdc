@@ -263,7 +263,7 @@ class FineWaiverScreen(QWidget):
             
             self.table.setItem(row, 0, QTableWidgetItem(str(member.get('name', ''))))
             self.table.setItem(row, 1, QTableWidgetItem(str(member.get('id', ''))))
-            self.table.setItem(row, 2, QTableWidgetItem(f"${member.get('fine', 0):.2f}"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"Rs. {member.get('fine', 0):.2f}"))
             self.table.setItem(row, 3, QTableWidgetItem(str(member.get('total_books', 0))))
             self.table.setItem(row, 4, QTableWidgetItem(f"{member.get('return_rate', 0)}%"))
             self.table.setItem(row, 5, QTableWidgetItem(str(member.get('days_since_overdue', 0))))
@@ -281,7 +281,7 @@ class FineWaiverScreen(QWidget):
 
     def update_summary(self):
         total_fines = sum(m.get('fine', 0) for m in self.members_data)
-        self.lbl_total_fines.setText(f"${total_fines:.2f}")
+        self.lbl_total_fines.setText(f"Rs. {total_fines:.2f}")
 
         # If analysis is done, calculate estimations
         if self.analysis_results:
@@ -349,16 +349,16 @@ class FineWaiverScreen(QWidget):
                 self.db_helper.execute("UPDATE members SET total_fine = ? WHERE member_id = ?", (new_fine, member_id))
                 self.db_helper.execute(
                     "INSERT INTO audit_logs (action, member_id, details) VALUES (?, ?, ?)",
-                    ("FINE_WAIVER", member_id, f"Waived ${waiver_amount:.2f} due to AI decision")
+                    ("FINE_WAIVER", member_id, f"Waived Rs. {waiver_amount:.2f} due to AI decision")
                 )
             else:
                 print(f"[DB MOCK] Updated {member_id} fine to {new_fine}. Audit logged.")
-            
-            QMessageBox.information(self, "Success", f"Waiver applied successfully for Member ID: {member_id}\nNew Fine: ${new_fine:.2f}")
-            
+
+            QMessageBox.information(self, "Success", f"Waiver applied successfully for Member ID: {member_id}\nNew Fine: Rs. {new_fine:.2f}")
+
             # Update local UI state
             self.members_data[row]['fine'] = new_fine
-            self.table.setItem(row, 2, QTableWidgetItem(f"${new_fine:.2f}"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"Rs. {new_fine:.2f}"))
             
             btn = self.table.cellWidget(row, 7)
             if btn: btn.setEnabled(False)
