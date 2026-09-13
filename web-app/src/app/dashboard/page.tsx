@@ -5,6 +5,7 @@ import { useTenantCollection } from "@/lib/firestore-hooks";
 import { useAuth } from "@/lib/auth-context";
 import { publishSnapshot } from "@/lib/directorate";
 import { COLLECTIONS, isActiveIssue, isOverdue } from "@/lib/schema";
+import { StatCard } from "@/components/stat-card";
 
 /** Republish the directorate snapshot at most this often per session. */
 const PUBLISH_THROTTLE_MS = 5 * 60 * 1000;
@@ -66,18 +67,34 @@ export default function DashboardOverview() {
     activeIssues,
   ]);
 
-  const stats = [
-    { name: "Total Books Cataloged", value: totalBooks, icon: "📚", color: "from-blue-600 to-indigo-600" },
-    { name: "Registered Members", value: totalMembers, icon: "👥", color: "from-emerald-600 to-teal-600" },
-    { name: "Active Book Issues", value: activeLoans, icon: "🔄", color: "from-[#C8A84B] to-amber-600" },
-    { name: "Overdue Loans", value: overdueIssues.length, icon: "⏰", color: "from-red-600 to-rose-600" },
+  const overdueRate = activeLoans > 0 ? (overdueIssues.length / activeLoans) * 100 : 0;
+
+  const stats: Array<{
+    name: string;
+    value: number;
+    icon: string;
+    accent: "blue" | "green" | "amber" | "red";
+    sub?: string;
+    progress?: number;
+  }> = [
+    { name: "Total Books Cataloged", value: totalBooks, icon: "📚", accent: "blue" },
+    { name: "Registered Members", value: totalMembers, icon: "👥", accent: "green" },
+    { name: "Active Book Issues", value: activeLoans, icon: "🔄", accent: "amber" },
+    {
+      name: "Overdue Loans",
+      value: overdueIssues.length,
+      icon: "⏰",
+      accent: "red",
+      sub: activeLoans > 0 ? `${overdueRate.toFixed(0)}% of active loans` : undefined,
+      progress: activeLoans > 0 ? overdueRate : undefined,
+    },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-extrabold text-[#E8EEF8]">Dashboard Overview</h1>
-        <p className="text-sm text-slate-400">Real-time statistics for your active institution</p>
+        <h1 className="text-3xl font-extrabold text-[var(--text-primary)]">Dashboard Overview</h1>
+        <p className="text-sm text-[var(--text-secondary)]">Real-time statistics for your active institution</p>
       </div>
 
       {booksError && (
@@ -94,23 +111,23 @@ export default function DashboardOverview() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={i} className="flex items-center justify-between rounded-xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{stat.name}</p>
-              <h2 className="mt-2 text-4xl font-extrabold text-white">
-                {loading ? (
-                  <span className="inline-block h-6 w-12 animate-pulse rounded bg-slate-800" />
-                ) : (
-                  stat.value
-                )}
-              </h2>
-            </div>
-            <span className={`rounded-lg bg-gradient-to-br p-3 text-4xl text-white ${stat.color}`}>
-              {stat.icon}
-            </span>
-          </div>
+          <StatCard
+            key={i}
+            icon={stat.icon}
+            label={stat.name}
+            accent={stat.accent}
+            sub={stat.sub}
+            progress={stat.progress}
+            value={
+              loading ? (
+                <span className="inline-block h-6 w-12 animate-pulse rounded bg-[var(--surface-sunken)]" />
+              ) : (
+                stat.value
+              )
+            }
+          />
         ))}
       </div>
 

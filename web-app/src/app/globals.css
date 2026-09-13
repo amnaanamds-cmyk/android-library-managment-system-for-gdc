@@ -1,8 +1,41 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   NEXLIB design tokens — see DESIGN_SPEC.md at the repo root.
+
+   Single source of truth for color: every component should read these
+   variables (via Tailwind arbitrary values like `bg-[var(--surface)]`, or
+   the @theme mapping below) instead of hardcoding hex values per-screen.
+   Light values are the :root defaults; dark values override under
+   prefers-color-scheme so both themes stay in one place.
+   ───────────────────────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --surface: #ffffff;
+  --surface-muted: #fafbfd;
+  --surface-sunken: #f5f6f9;
+  --surface-border: #e4e7ee;
+  --surface-divider: #d3d8e2;
+
+  --text-primary: #152238;
+  --text-secondary: #5b647a;
+  --text-tertiary: #677187;
+  --text-on-accent: #ffffff;
+
+  --accent-600: #2451d6;
+  --accent-700: #1b3fae;
+  --accent-100: #d6e2fd;
+
+  --success-fg: #1d8054;
+  --success-bg: #e8f5ee;
+  --warning-fg: #95691a;
+  --warning-bg: #fbf2e2;
+  --danger-fg: #c0402f;
+  --danger-bg: #fbebe8;
+  --info-fg: #1b3fae;
+  --info-bg: #eaf0fe;
 }
 
 @theme inline {
@@ -16,6 +49,37 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    /* Dark is desaturated and warmed, not a straight inversion of light —
+       pure-gray dark surfaces read as muddy against a colored accent. */
+    --surface: #1f1e1b;
+    --surface-muted: #252320;
+    --surface-sunken: #181715;
+    --surface-border: #35322d;
+    --surface-divider: #2a2724;
+
+    --text-primary: #faf9f5;
+    --text-secondary: #d8d5cd;
+    --text-tertiary: #a09d96;
+    /* Near-black, NOT white: the lifted dark-mode accent below is bright
+       enough to read as text, but white-on-it fails contrast as a button
+       fill. Near-black on the lifted accent passes; keep it that way. */
+    --text-on-accent: #181715;
+
+    /* The accent must shift between themes, not just lift opacity — the
+       light accent is too dark to read on a near-black card. */
+    --accent-600: #4e7dff;
+    --accent-700: #7ba0ff;
+    --accent-100: rgba(78, 125, 255, 0.16);
+
+    --success-fg: #3fbf83;
+    --success-bg: rgba(63, 191, 131, 0.14);
+    --warning-fg: #d9a441;
+    --warning-bg: rgba(217, 164, 65, 0.14);
+    --danger-fg: #f0796a;
+    --danger-bg: rgba(240, 121, 106, 0.14);
+    --info-fg: #7ba0ff;
+    --info-bg: rgba(123, 160, 255, 0.14);
   }
 }
 
