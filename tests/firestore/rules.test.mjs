@@ -33,7 +33,10 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
   // `x in profile.collegeIds` raise.
   await setDoc(doc(db, "users/staff1"), { email: "s@x.edu", role: "staff", institutionId: "GDC-ZIAM" });
   await setDoc(doc(db, "users/owner1"), { email: "o@x.edu", role: "owner", institutionId: "GDC-ZIAM" });
+  // "director" is a per-college role (see isDirector()), NOT the network-wide
+  // directorate oversight role — it must never see another college's data.
   await setDoc(doc(db, "users/dir1"), { email: "d@x.edu", role: "director", institutionId: "" });
+  await setDoc(doc(db, "users/diradmin1"), { email: "da@x.edu", role: "directorate_admin", institutionId: "" });
   await setDoc(doc(db, "users/outsider"), { email: "z@x.edu", role: "staff", institutionId: "GDC-OTHER" });
   await setDoc(doc(db, "institutions/GDC-ZIAM/books/b1"), { title: "Seed", deleted: false });
   await setDoc(doc(db, "directorate_index/GDC-ZIAM"), { institutionId: "GDC-ZIAM", booksCount: 1 });
@@ -42,6 +45,7 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
 const staff = testEnv.authenticatedContext("staff1").firestore();
 const owner = testEnv.authenticatedContext("owner1").firestore();
 const director = testEnv.authenticatedContext("dir1").firestore();
+const directorateAdmin = testEnv.authenticatedContext("diradmin1").firestore();
 const outsider = testEnv.authenticatedContext("outsider").firestore();
 const anon = testEnv.unauthenticatedContext().firestore();
 
@@ -98,14 +102,23 @@ await check("staff CANNOT amend an audit entry", () =>
   assertFails(updateDoc(doc(staff, "institutions/GDC-ZIAM/audit_log/a2"), { action: "tampered" })));
 
 console.log("\n── Directorate registry ──");
-await check("director CAN read the whole registry", () =>
-  assertSucceeds(getDocs(collection(director, "directorate_index"))));
+await check("directorate_admin CAN read the whole registry", () =>
+  assertSucceeds(getDocs(collection(directorateAdmin, "directorate_index"))));
+await check("staff CAN read their own college's published snapshot", () =>
+  assertSucceeds(getDoc(doc(staff, "directorate_index/GDC-ZIAM"))));
 await check("staff CAN publish their own college's snapshot", () =>
   assertSucceeds(setDoc(doc(staff, "directorate_index/GDC-ZIAM"), { booksCount: 42 }, { merge: true })));
 await check("staff CANNOT publish another college's snapshot", () =>
   assertFails(setDoc(doc(staff, "directorate_index/GDC-OTHER"), { booksCount: 999 }, { merge: true })));
 await check("anonymous CANNOT read the registry", () =>
   assertFails(getDocs(collection(anon, "directorate_index"))));
+// Regression coverage for the cross-tenant disclosure this fix closes: a
+// per-college "director" account (== college_admin, per isDirector()) must
+// not be able to see another college's data via the registry.
+await check("plain college director CANNOT read another college's snapshot", () =>
+  assertFails(getDoc(doc(director, "directorate_index/GDC-ZIAM"))));
+await check("plain college director CANNOT list the whole registry", () =>
+  assertFails(getDocs(collection(director, "directorate_index"))));
 
 console.log("\n── Onboarding ──");
 await check("signed-in user CAN create a new institution", () =>

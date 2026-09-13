@@ -35,12 +35,15 @@ export default function DirectorLayout({ children }: { children: React.ReactNode
           <p className="mt-2 text-sm text-slate-400">
             Your account is signed in as{" "}
             <span className="font-mono text-slate-300">{profile?.role || "unknown"}</span>. The
-            directorate portal is limited to director and directorate administrator accounts.
+            directorate portal is limited to Higher Education Department directorate
+            administrator accounts — a college&apos;s own owner, admin, or director login cannot
+            open it.
           </p>
           <p className="mt-4 text-xs text-slate-500">
             To grant access, set <span className="font-mono">role</span> to{" "}
-            <span className="font-mono text-slate-400">director</span> on this user&apos;s{" "}
-            <span className="font-mono">users/&#123;uid&#125;</span> document in Firestore.
+            <span className="font-mono text-slate-400">directorate_admin</span> on this
+            user&apos;s <span className="font-mono">users/&#123;uid&#125;</span> document in
+            Firestore.
           </p>
           <div className="mt-6 flex justify-center gap-3">
             <Link

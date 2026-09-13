@@ -67,9 +67,13 @@ service cloud.firestore {
     }
 
     // Directorate-level oversight: may read aggregates for every college but
-    // never writes tenant data. Kept separate from a college's own director.
+    // never writes tenant data. Kept separate from a college's own director —
+    // 'director'/'Director' is a PER-COLLEGE role (isDirector() above treats
+    // it the same as owner/admin/college_admin), so it must never appear
+    // here: including it previously let every ordinary college account read
+    // every other college's aggregate counts network-wide.
     function isDirectorateAdmin() {
-      return userRole() in ['DirectorateAdmin', 'directorate_admin', 'Director', 'director'];
+      return userRole() in ['DirectorateAdmin', 'directorate_admin'];
     }
 
     function isLibrarian() {
@@ -159,9 +163,12 @@ service cloud.firestore {
     // -------------------------------------------------------------
 
     match /directorate_index/{collegeId} {
-      // Any signed-in user may read the registry: colleges use it for the
-      // union catalogue, directorate staff for oversight.
-      allow read: if signedIn();
+      // A college may read its own published snapshot; directorate staff may
+      // read every college's. Nothing else lives here (no patron or book
+      // records — see the header comment), but a college's OWN counts are
+      // still not another college's business, so this is not left open to
+      // "any signed-in user" the way /colleges and /institutions are.
+      allow read: if isDirectorateAdmin() || belongsToCollege(collegeId);
       // Only the college itself publishes its own snapshot.
       allow create, update: if canManageCollege(collegeId);
       allow delete: if isCollegeDirector(collegeId) || isInstitutionOwner(collegeId);

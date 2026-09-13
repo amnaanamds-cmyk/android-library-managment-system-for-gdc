@@ -6,6 +6,7 @@ import {
   useDirectorateNetwork,
   isStale,
   DirectorateSnapshot,
+  NetworkTotals,
   STALE_AFTER_MS,
 } from "@/lib/directorate";
 
@@ -186,6 +187,27 @@ export default function DirectorateOverview() {
         </div>
       )}
 
+      {/* Network insights */}
+      {colleges.length > 0 && (
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Leaderboard
+            title="Top Colleges by Books"
+            icon="📚"
+            colleges={colleges}
+            valueKey="booksCount"
+            formatValue={(v) => numberFmt.format(v)}
+          />
+          <Leaderboard
+            title="Top Colleges by Active Loans"
+            icon="🔄"
+            colleges={colleges}
+            valueKey="activeLoans"
+            formatValue={(v) => numberFmt.format(v)}
+          />
+          <SyncHealthCard totals={totals} />
+        </div>
+      )}
+
       {/* Registry table */}
       <div className="overflow-hidden rounded-2xl border border-blue-950 bg-[#070F1E] shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-950/60 p-5">
@@ -353,6 +375,103 @@ function Th({
         {active && <span className="ml-1">{asc ? "▲" : "▼"}</span>}
       </button>
     </th>
+  );
+}
+
+function Leaderboard({
+  title,
+  icon,
+  colleges,
+  valueKey,
+  formatValue,
+}: {
+  title: string;
+  icon: string;
+  colleges: DirectorateSnapshot[];
+  valueKey: "booksCount" | "activeLoans";
+  formatValue: (v: number) => string;
+}) {
+  const top = [...colleges]
+    .sort((a, b) => Number(b[valueKey]) - Number(a[valueKey]))
+    .slice(0, 5);
+  const max = Math.max(1, ...top.map((c) => Number(c[valueKey])));
+
+  return (
+    <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-400">
+        <span>{icon}</span> {title}
+      </h3>
+      {top.length === 0 || max === 0 ? (
+        <p className="text-xs text-slate-600">No data yet.</p>
+      ) : (
+        <div className="space-y-3">
+          {top.map((c) => {
+            const value = Number(c[valueKey]);
+            const pct = Math.round((value / max) * 100);
+            return (
+              <Link
+                key={c.institutionId}
+                href={`/director/${encodeURIComponent(c.institutionId)}`}
+                className="block"
+              >
+                <div className="mb-1 flex justify-between gap-2 text-xs">
+                  <span className="truncate font-semibold text-slate-300">{c.name}</span>
+                  <span className="shrink-0 text-slate-500">{formatValue(value)}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-blue-950">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-600 to-[#C8A84B]"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SyncHealthCard({ totals }: { totals: NetworkTotals }) {
+  const fresh = totals.reporting - totals.stale;
+  const notReporting = totals.colleges - totals.reporting;
+  const segments = [
+    { label: "Fresh", value: fresh, color: "bg-emerald-500" },
+    { label: "Stale", value: totals.stale, color: "bg-amber-500" },
+    { label: "Not Reporting", value: notReporting, color: "bg-slate-700" },
+  ];
+  const total = Math.max(1, totals.colleges);
+
+  return (
+    <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-400">
+        <span>📡</span> Network Sync Health
+      </h3>
+      <div className="flex h-3 overflow-hidden rounded-full bg-blue-950">
+        {segments.map((s) =>
+          s.value > 0 ? (
+            <div
+              key={s.label}
+              className={s.color}
+              style={{ width: `${(s.value / total) * 100}%` }}
+              title={`${s.label}: ${s.value}`}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-4 space-y-2">
+        {segments.map((s) => (
+          <div key={s.label} className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-2 text-slate-400">
+              <span className={`h-2 w-2 rounded-full ${s.color}`} />
+              {s.label}
+            </span>
+            <span className="font-bold text-white">{s.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
