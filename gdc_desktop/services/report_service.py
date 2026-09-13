@@ -226,6 +226,7 @@ class ReportService:
         styles = getSampleStyleSheet()
         story = []
         date_str = time.strftime("%B %d, %Y \u2014 %I:%M %p")
+        gold = colors.HexColor("#C8A84B")
 
         self._letterhead(story, styles, "COMPLETE LIBRARY ANALYTICS REPORT", date_str)
 

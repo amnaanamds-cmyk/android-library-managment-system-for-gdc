@@ -250,8 +250,12 @@ class DigitalIdScreen(QWidget):
         else:
             self.status_badge.setStyleSheet("background-color: #DC2626; color: white; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px;")
             self.status_badge.setText("INACTIVE")
-            
-        self.generate_qr(member)
+
+        try:
+            self.generate_qr(member)
+        except Exception as e:
+            print(f"Error generating QR code in Digital ID Screen: {e}")
+            self.qr_label.clear()
 
     def generate_qr(self, member):
         if not QRCODE_AVAILABLE:
@@ -274,7 +278,9 @@ class DigitalIdScreen(QWidget):
         qr.add_data(qr_payload)
         qr.make(fit=True)
         
-        img = qr.make_image(fill_color="black", back_color="white")
+        # qrcode returns a 1-bit ("1" mode) image, which PIL's ImageQt does not
+        # support on all Pillow/Qt combinations — convert to RGB first.
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         qimage = ImageQt.ImageQt(img)
         pixmap = QPixmap.fromImage(qimage).scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         self.qr_label.setPixmap(pixmap)
