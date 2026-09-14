@@ -191,7 +191,7 @@ def _delete_collection(db, col_ref, batch_size: int = 300) -> int:
         deleted += len(docs)
 
 
-def wipe_all(db, include_auth: bool):
+def wipe_all(db, include_auth: bool, confirm: str = ""):
     """Delete every Firestore document this project owns, after confirmation."""
     project_id = firebase_admin.get_app().project_id
 
@@ -219,10 +219,23 @@ def wipe_all(db, include_auth: bool):
         print("\nNothing to delete.")
         return
 
+    print("\nBEFORE WIPING: close every running app (desktop, Android, web).")
+    print("An app left running with old local data republishes it within")
+    print("seconds — the desktop app especially, which uses the Admin SDK and")
+    print("bypasses the security rules entirely.")
     print("\nThere is no undo. Export a backup first if you have not.")
-    typed = input(f"\nType the project id '{project_id}' to confirm: ").strip()
+
+    # --confirm works where the interactive prompt does not (some shells hand
+    # the script a non-interactive stdin, which silently reads as empty).
+    typed = confirm.strip() if confirm else ""
+    if not typed:
+        try:
+            typed = input(f"\nType the project id '{project_id}' to confirm: ").strip()
+        except EOFError:
+            typed = ""
     if typed != project_id:
         print("Confirmation did not match — nothing was deleted.")
+        print(f"Re-run with: --confirm {project_id}")
         sys.exit(1)
 
     print()
@@ -406,6 +419,8 @@ def main():
     p_wipe = sub.add_parser("wipe-all", help="DELETE all Firestore data for this project")
     p_wipe.add_argument("--include-auth", action="store_true",
                         help="Also delete every Firebase Auth account")
+    p_wipe.add_argument("--confirm", default="",
+                        help="Project id, to confirm without the interactive prompt")
     p_ci = sub.add_parser("create-institution", help="Create a fresh college and attach an owner")
     p_ci.add_argument("college_id")
     p_ci.add_argument("name")
@@ -448,7 +463,7 @@ def main():
     elif args.command == "create-institution":
         create_institution(db, args.college_id, args.name, args.owner_email)
     elif args.command == "wipe-all":
-        wipe_all(db, args.include_auth)
+        wipe_all(db, args.include_auth, args.confirm)
     elif args.command == "list-auth":
         list_auth(db)
     elif args.command == "repair-user":
