@@ -82,7 +82,23 @@ def list_colleges(db):
     print(f"\n{len(colleges)} college(s) registered.")
 
 
-def set_role(db, email: str, role: str):
+def set_institution(db, email: str, college_id: str):
+    """Re-attach an account to a college. Repairs an account whose
+    institutionId was cleared — without it every app signed in as that
+    account loses its college and stops syncing entirely."""
+    try:
+        user = auth.get_user_by_email(email)
+    except auth.UserNotFoundError:
+        print(f"No Firebase Auth account exists for {email}.")
+        sys.exit(1)
+    db.collection("users").document(user.uid).set(
+        {"institutionId": college_id}, merge=True
+    )
+    print(f"{email} is now attached to institution '{college_id}'.")
+    print("Sign out and sign in again on each app so it picks up the change.")
+
+
+def set_role(db, email: str, role: str, force: bool = False):
     try:
         user = auth.get_user_by_email(email)
     except auth.UserNotFoundError:
@@ -92,6 +108,20 @@ def set_role(db, email: str, role: str):
 
     doc_ref = db.collection("users").document(user.uid)
     doc = doc_ref.get()
+
+    # Promoting a college's own account detaches it from that college, which
+    # stops every app signed in as it from syncing. Never do that silently.
+    if role == "directorate_admin" and doc.exists and not force:
+        existing = doc.to_dict().get("institutionId", "")
+        if existing:
+            print(f"REFUSED: {email} currently belongs to college '{existing}'.")
+            print("Promoting it would clear that and every app signed in as this")
+            print("account would stop syncing. Create a separate directorate")
+            print("account instead:")
+            print(f"    python scripts/manage_directorate.py create-directorate <new-email> <password>")
+            print("If you really mean to detach this account, re-run with --force.")
+            sys.exit(1)
+
     payload = {"role": role}
     if role == "directorate_admin":
         # A directorate account belongs to no college. Clearing this also
@@ -168,8 +198,13 @@ def main():
     p_pw = sub.add_parser("set-password", help="Reset an existing account's password")
     p_pw.add_argument("email")
     p_pw.add_argument("password")
+    p_inst = sub.add_parser("set-institution", help="Attach an account to a college (repairs a cleared institutionId)")
+    p_inst.add_argument("email")
+    p_inst.add_argument("college_id")
     p_promote = sub.add_parser("promote", help="Grant directorate_admin to an existing user")
     p_promote.add_argument("email")
+    p_promote.add_argument("--force", action="store_true",
+                           help="Promote even if it detaches the account from its college")
     p_demote = sub.add_parser("demote", help="Revert a user to a plain college role")
     p_demote.add_argument("email")
     p_demote.add_argument("--role", default="staff", help="Role to set instead (default: staff)")
@@ -185,8 +220,10 @@ def main():
         create_directorate(db, args.email, args.password)
     elif args.command == "set-password":
         set_password(args.email, args.password)
+    elif args.command == "set-institution":
+        set_institution(db, args.email, args.college_id)
     elif args.command == "promote":
-        set_role(db, args.email, "directorate_admin")
+        set_role(db, args.email, "directorate_admin", force=args.force)
     elif args.command == "demote":
         set_role(db, args.email, args.role)
 
