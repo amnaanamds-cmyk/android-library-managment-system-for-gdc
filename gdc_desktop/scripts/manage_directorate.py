@@ -26,6 +26,7 @@ only open the Directorate, Reports and Transfers screens, so that account
 would lose access to Books, Members and Issue/Return.
 """
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -80,6 +81,79 @@ def list_colleges(db):
         print(f"{doc.id:<22} {d.get('name', ''):<32} {d.get('booksCount', 0):>6} "
               f"{d.get('membersCount', 0):>8} {d.get('lastSyncAt', '')}")
     print(f"\n{len(colleges)} college(s) registered.")
+
+
+def create_institution(db, college_id: str, name: str, owner_email: str):
+    """Create a fresh institution and attach an owner, in one step.
+
+    The app UIs do the same thing across three different onboarding screens,
+    each of which has had its own bug (Android omitted ownerUid; Android and
+    web overwrote an existing role with "staff"). Doing it here writes all four
+    documents consistently, from one place, with the Admin SDK.
+    """
+    import time
+
+    college_id = college_id.strip().upper()
+    if not re.match(r"^[A-Z0-9\-]+$", college_id):
+        print("College ID may contain only letters, numbers and hyphens.")
+        sys.exit(1)
+
+    if db.collection("institutions").document(college_id).get().exists:
+        print(f"REFUSED: institution '{college_id}' already exists.")
+        print("Pick a different id — creating over an existing college would")
+        print("mix two colleges' data together.")
+        sys.exit(1)
+
+    try:
+        owner = auth.get_user_by_email(owner_email)
+    except auth.UserNotFoundError:
+        print(f"No Firebase Auth account exists for {owner_email}.")
+        sys.exit(1)
+
+    now = int(time.time() * 1000)
+
+    # 1. The tenant root. ownerUid is what isInstitutionOwner() matches on.
+    db.collection("institutions").document(college_id).set({
+        "name": name,
+        "inviteCode": college_id,
+        "ownerUid": owner.uid,
+        "createdAt": now,
+    })
+
+    # 2. The owner's profile — role and institutionId are what every app and
+    #    every security rule reads to decide access.
+    db.collection("users").document(owner.uid).set({
+        "uid": owner.uid,
+        "email": owner_email,
+        "role": "owner",
+        "institutionId": college_id,
+    }, merge=True)
+
+    # 3. Directorate registry, zeroed until the first real sync publishes counts.
+    db.collection("directorate_index").document(college_id).set({
+        "institutionId": college_id,
+        "name": name,
+        "booksCount": 0, "ebooksCount": 0, "membersCount": 0,
+        "activeLoans": 0, "overdueCount": 0, "reservationsCount": 0,
+        "finesOutstanding": 0.0,
+        "lastSyncAt": now,
+        "lastSyncPlatform": "admin-cli",
+        "schemaVersion": 2,
+    }, merge=True)
+
+    # 4. Legacy mirror, for older builds that still resolve invite codes here.
+    db.collection("colleges").document(college_id).set({
+        "collegeId": college_id, "collegeName": name, "name": name,
+        "ownerUid": owner.uid, "created_at": now,
+        "booksCount": 0, "membersCount": 0, "circulationCount": 0,
+    }, merge=True)
+
+    print(f"Created institution '{college_id}' ({name}).")
+    print(f"Owner: {owner_email} (uid={owner.uid})")
+    print()
+    print("Next: sign in on each app with that account. It should go straight")
+    print("to the dashboard — no Create/Join screen — with 0 books and 0 members.")
+    print("Clear each device's local data FIRST or it will push old records up.")
 
 
 def list_auth(db):
@@ -237,6 +311,10 @@ def main():
     sub.add_parser("list-users")
     sub.add_parser("list-colleges")
     sub.add_parser("list-auth")
+    p_ci = sub.add_parser("create-institution", help="Create a fresh college and attach an owner")
+    p_ci.add_argument("college_id")
+    p_ci.add_argument("name")
+    p_ci.add_argument("owner_email")
     p_rep = sub.add_parser("repair-user", help="Rebuild a Firestore profile for an existing Auth account")
     p_rep.add_argument("email")
     p_rep.add_argument("role", help="owner | college_admin | librarian | staff | directorate_admin")
@@ -272,6 +350,8 @@ def main():
         create_directorate(db, args.email, args.password)
     elif args.command == "set-password":
         set_password(args.email, args.password)
+    elif args.command == "create-institution":
+        create_institution(db, args.college_id, args.name, args.owner_email)
     elif args.command == "list-auth":
         list_auth(db)
     elif args.command == "repair-user":
