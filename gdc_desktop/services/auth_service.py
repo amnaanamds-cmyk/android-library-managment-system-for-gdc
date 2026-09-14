@@ -22,7 +22,40 @@ KEYRING_SERVICE = config.KEYRING_SERVICE_NAME
 KEYRING_USER = "refresh_token"
 KEYRING_INST_USER = "institution_id"  # persists institutionId across restarts
 SIGN_IN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={}"
+SIGN_UP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={}"
 REFRESH_URL = "https://securetoken.googleapis.com/v1/token?key={}"
+
+# Firebase returns machine codes like INVALID_LOGIN_CREDENTIALS. Showing those
+# raw leaves a librarian with nothing to act on — and the most common cause on
+# a fresh install is simply that no account exists yet, which the code does not
+# say. Note that Firebase deliberately collapses "wrong password" and "no such
+# account" into one code so an attacker cannot enumerate addresses, so the
+# message for it has to cover both.
+AUTH_ERRORS = {
+    "INVALID_LOGIN_CREDENTIALS": "Incorrect email or password — or no account exists yet. "
+                                 "If this is a new installation, use Create Account below.",
+    "INVALID_PASSWORD": "Incorrect password.",
+    "EMAIL_NOT_FOUND": "No account exists for this email. Use Create Account below.",
+    "USER_DISABLED": "This account has been disabled by the directorate.",
+    "EMAIL_EXISTS": "An account already exists for this email. Sign in instead.",
+    "WEAK_PASSWORD": "Password is too weak — it must be at least 6 characters.",
+    "INVALID_EMAIL": "That is not a valid email address.",
+    "MISSING_PASSWORD": "Enter a password.",
+    "OPERATION_NOT_ALLOWED": "Email/password sign-in is switched off for this Firebase "
+                             "project. Enable it in Firebase Console -> Authentication -> "
+                             "Sign-in method.",
+    "TOO_MANY_ATTEMPTS_TRY_LATER": "Too many attempts. Wait a few minutes and try again.",
+}
+
+
+def _friendly_auth_error(raw: str) -> str:
+    """Turn a Firebase error code into something a librarian can act on."""
+    code = (raw or "").split(":")[0].strip()
+    if code in AUTH_ERRORS:
+        return AUTH_ERRORS[code]
+    if code.startswith("WEAK_PASSWORD"):
+        return AUTH_ERRORS["WEAK_PASSWORD"]
+    return raw or "Sign-in failed."
 
 
 class AuthService:
@@ -112,6 +145,19 @@ class AuthService:
             self.fb.college_id = inst_id
             import config as _cfg
             _cfg.COLLEGE_ID = inst_id
+            # Resolve the college's real name too. Reports and the login
+            # footer print it, and with no value they printed whichever
+            # college's name happened to be compiled in as the default —
+            # every college's reports were headed the same wrong college.
+            try:
+                if self.fb.db:
+                    doc = self.fb.db.collection("institutions").document(inst_id).get()
+                    if doc.exists:
+                        name = (doc.to_dict() or {}).get("name", "")
+                        if name:
+                            _cfg.COLLEGE_NAME = name
+            except Exception as e:
+                logger.warning("Could not resolve institution name: %s", e)
 
     # ── Password re-check (for destructive actions) ────────────────────────────
     def verify_password(self, password: str) -> bool:
@@ -138,6 +184,51 @@ class AuthService:
             return False
 
     # ── Sign In ───────────────────────────────────────────────────────────────
+    def sign_up(self, email: str, password: str,
+                remember_me: bool = True) -> Tuple[bool, str]:
+        """Create a Firebase account, then sign straight in to it.
+
+        Without this there is no way to get into a freshly installed desktop
+        app at all: the app only ever signed in, so every account had to be
+        created elsewhere (the web app, or the admin CLI on a machine holding
+        the service account key). A college receiving the .exe has neither.
+
+        No Firestore profile is written here on purpose. The onboarding screen
+        creates it, together with the institution, and it is what decides the
+        role — writing a profile here would have to guess at both, and a guess
+        of "admin" is how an account ends up with rights nobody granted it.
+        """
+        if self.fb.mock_mode or not config.FIREBASE_WEB_API_KEY or \
+                config.FIREBASE_WEB_API_KEY == "your-firebase-web-api-key":
+            return False, "Firebase not configured. Check your .env file and serviceAccountKey.json."
+
+        email = (email or "").strip()
+        if not email or "@" not in email:
+            return False, "Enter a valid email address."
+        if len(password or "") < 6:
+            return False, "Password must be at least 6 characters."
+
+        try:
+            resp = requests.post(
+                SIGN_UP_URL.format(config.FIREBASE_WEB_API_KEY),
+                json={"email": email, "password": password, "returnSecureToken": True},
+                timeout=10,
+            )
+            data = resp.json()
+            if "error" in data:
+                return False, _friendly_auth_error(data["error"].get("message", ""))
+        except requests.exceptions.ConnectionError:
+            return False, "No internet connection. An account can only be created online."
+        except Exception as e:
+            return False, str(e)
+
+        # Sign in through the normal path rather than reusing the tokens this
+        # response already carries: that path is what caches the session,
+        # stores the refresh token and seeds the sync engine, and duplicating
+        # it here would leave a new account in a subtly different state from
+        # every other signed-in one.
+        return self.sign_in(email, password, remember_me=remember_me)
+
     def sign_in(self, email: str, password: str,
                 remember_me: bool = False) -> Tuple[bool, str]:
         """Sign in with email/password. Returns (success, error_msg)."""
@@ -154,7 +245,7 @@ class AuthService:
             )
             data = resp.json()
             if "error" in data:
-                return False, data["error"].get("message", "Login failed")
+                return False, _friendly_auth_error(data["error"].get("message", ""))
 
             self._id_token = data["idToken"]
             self._token_expiry = time.time() + int(data.get("expiresIn", 3600))

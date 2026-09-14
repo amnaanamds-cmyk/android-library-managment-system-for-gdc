@@ -18,15 +18,21 @@ import time
 class LoginWorker(QThread):
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, auth_service, email, password, remember):
+    def __init__(self, auth_service, email, password, remember, mode: str = "signin"):
         super().__init__()
         self.auth = auth_service
         self.email = email
         self.password = password
         self.remember = remember
+        self.mode = mode
 
     def run(self):
-        ok, err = self.auth.sign_in(self.email, self.password, self.remember)
+        # sign_up signs in on success, so both modes finish in the same state
+        # and _on_login_result can treat them identically.
+        if self.mode == "signup":
+            ok, err = self.auth.sign_up(self.email, self.password, self.remember)
+        else:
+            ok, err = self.auth.sign_in(self.email, self.password, self.remember)
         self.finished.emit(ok, err)
 
 
@@ -287,7 +293,18 @@ class LoginScreen(QWidget):
         self.login_btn.clicked.connect(self._do_action)
         card_layout.addWidget(self.login_btn)
 
-        # Onboarding flow (Task 1) - removed from init, called on login result instead
+        # Create Account. A college opening a fresh install has no account
+        # anywhere yet, and until this existed the only ways to make one were
+        # the web app or the admin CLI — neither of which a college has.
+        self.create_btn = QPushButton("Create Account")
+        self.create_btn.setObjectName("pinBtn")
+        self.create_btn.setMinimumHeight(44)
+        self.create_btn.setToolTip(
+            "First time here? Create an account, then set up your college "
+            "on the next screen."
+        )
+        self.create_btn.clicked.connect(self._do_signup)
+        card_layout.addWidget(self.create_btn)
 
         # Biometric button (Simulated for 1.1 & 1.2)
         self.bio_btn = QPushButton("\U0001f4b0  Biometric / Windows Hello Unlock")
@@ -303,7 +320,10 @@ class LoginScreen(QWidget):
 
         root_layout.addWidget(card)
 
-        note = QLabel("Government Degree College Ziam Sherpao  \u00b7  Library System v1.0")
+        # No college name here: at the login screen nobody has signed in, so
+        # there is no college to name — and naming one made every install look
+        # like it belonged to whichever college the build came from.
+        note = QLabel("NEXLIB  \u00b7  Library Management System v1.0")
         note.setStyleSheet("color: #2A3A50; font-size: 10px; font-family: 'Segoe UI';")
         note.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root_layout.addWidget(note)
@@ -322,6 +342,9 @@ class LoginScreen(QWidget):
             btn.style().polish(btn)
 
         # Explicitly set text to avoid any stale UI states
+        # Account creation is email/password only — there is nothing to create
+        # from a PIN, which unlocks an account that already exists.
+        self.create_btn.setVisible(not is_pin)
         if is_pin:
             self.login_btn.setText("Login with PIN")
             self.pin_input.setFocus()
@@ -341,6 +364,36 @@ class LoginScreen(QWidget):
         else:
             self._do_login()
 
+    def _do_signup(self):
+        email = self.email_input.text().strip()
+        password = self.pw_input.text()
+        if not email or not password:
+            self._show_error("Enter the email and password you want to use, "
+                             "then press Create Account.")
+            return
+        if len(password) < 6:
+            self._show_error("Password must be at least 6 characters.")
+            return
+
+        self._busy(True, "Creating account\u2026")
+        self.worker = LoginWorker(
+            self.auth, email, password, self.remember_cb.isChecked(), mode="signup"
+        )
+        self.worker.finished.connect(self._on_login_result)
+        self.worker.start()
+
+    def _busy(self, busy: bool, label: str = ""):
+        """Disable both buttons together while a request is in flight, so a
+        second click cannot start a competing sign-in during a sign-up."""
+        self.login_btn.setEnabled(not busy)
+        self.create_btn.setEnabled(not busy)
+        if busy:
+            self.error_lbl.hide()
+            self.login_btn.setText(label)
+        else:
+            is_pin = self._login_stack.currentIndex() == 1
+            self.login_btn.setText("Login with PIN" if is_pin else "Sign In")
+
     def _do_login(self):
         email = self.email_input.text().strip()
         password = self.pw_input.text()
@@ -348,9 +401,7 @@ class LoginScreen(QWidget):
             self._show_error("Please enter your email and password.")
             return
 
-        self.login_btn.setEnabled(False)
-        self.login_btn.setText("Signing in\u2026")
-        self.error_lbl.hide()
+        self._busy(True, "Signing in\u2026")
 
         self.worker = LoginWorker(
             self.auth, email, password, self.remember_cb.isChecked()
@@ -407,8 +458,7 @@ class LoginScreen(QWidget):
         self.login_success.emit("admin")
 
     def _on_login_result(self, success: bool, error: str):
-        self.login_btn.setEnabled(True)
-        self.login_btn.setText("Sign In")
+        self._busy(False)
         if success:
             user = self.auth.current_user
             if user and not getattr(user, 'collegeId', None):
@@ -439,6 +489,7 @@ class LoginScreen(QWidget):
         self.layout().itemAt(0).widget().layout().insertWidget(6, self.onboard_widget)
         self._login_stack.hide()
         self.login_btn.hide()
+        self.create_btn.hide()
         self._email_mode_btn.hide()
         self._pin_mode_btn.hide()
         self.bio_btn.hide()

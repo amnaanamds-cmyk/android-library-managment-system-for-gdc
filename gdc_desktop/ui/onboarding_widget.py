@@ -139,15 +139,31 @@ class OnboardingWidget(QWidget):
 
                 # Write canonical users/{uid} document
                 uid = self.auth.current_user.uid
+
+                # A directorate account belongs to no college; joining one
+                # would both demote it and hand it that college's data.
+                existing_role = (self.auth.current_user.role or "").strip()
+                if existing_role in ("directorate_admin", "DirectorateAdmin"):
+                    QMessageBox.warning(
+                        self, "Directorate account",
+                        "This is a directorate account and cannot join a college. "
+                        "Sign in with a college account instead.")
+                    return
+
+                # Keep whatever role the account already holds. Writing "staff"
+                # unconditionally demoted an owner who joined from a second
+                # device, silently costing them settings and delete access.
+                kept_role = existing_role if existing_role and existing_role != "admin" else "staff"
+
                 self.auth.fb.db.collection("users").document(uid).set({
                     "email": self.auth.current_user.email,
                     "institutionId": cid,   # canonical field
-                    "role": "staff"
+                    "role": kept_role
                 }, merge=True)
 
                 # Update local session objects
                 self.auth.current_user.institutionId = cid
-                self.auth.current_user.role = "staff"
+                self.auth.current_user.role = kept_role
                 self.auth.fb.college_id = cid
                 config.COLLEGE_ID = cid
                 config.COLLEGE_NAME = cname
