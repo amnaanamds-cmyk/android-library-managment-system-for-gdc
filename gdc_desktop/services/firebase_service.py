@@ -28,7 +28,10 @@ def _init_firebase() -> bool:
     if not firebase_admin._apps:
         cred_path = Path(config.FIREBASE_CRED_PATH)
         if not cred_path.is_absolute():
-            cred_path = Path(__file__).parent.parent / cred_path
+            # config.APP_DIR, not __file__: in a PyInstaller build __file__ is
+            # inside the temp extraction directory, where the operator's key
+            # is not (and must not be — see SECURITY.md, it is an admin key).
+            cred_path = config.APP_DIR / cred_path
         if not cred_path.exists():
             print(f"Warning: Firebase credentials key not found at {cred_path}. Starting in Offline Demo mode.")
             return False

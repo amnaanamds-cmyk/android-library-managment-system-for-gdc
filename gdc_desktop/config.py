@@ -3,11 +3,30 @@ config.py — Central configuration loader for GDC Library50 Desktop.
 Loads all settings from the .env file. Never hardcodes secrets.
 """
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from the same directory as this script
-_ENV_PATH = Path(__file__).parent / ".env"
+
+def _app_dir() -> Path:
+    """Where to look for operator-supplied files (.env, serviceAccountKey.json).
+
+    PyInstaller unpacks the bundle into a temporary directory and points
+    __file__ there, so a frozen build resolving against __file__ would look for
+    the operator's .env inside a temp folder that only contains what was
+    compiled in — and silently fall back to defaults. Next to the executable is
+    both where the operator actually puts those files and where they can be
+    changed without rebuilding.
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).parent
+
+
+APP_DIR: Path = _app_dir()
+
+# Load .env from beside the app (or beside this script when running from source)
+_ENV_PATH = APP_DIR / ".env"
 load_dotenv(dotenv_path=_ENV_PATH)
 
 # ─── Firebase ────────────────────────────────────────────────────────────────
