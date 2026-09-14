@@ -38,7 +38,12 @@ FIREBASE_WEB_API_KEY: str = os.getenv("FIREBASE_WEB_API_KEY", "")
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
 # ─── Institution ─────────────────────────────────────────────────────────────
-COLLEGE_ID: str = os.getenv("COLLEGE_ID", "gdc11")
+# Deliberately EMPTY by default. A college's identity is established by the
+# person who signs in — auth_service sets this from users/{uid}.institutionId,
+# and onboarding sets it when a college is created. A non-empty default would
+# ship every copy of the app pre-branded as whichever college built it, and
+# any code path that ran before login would read and write that college's data.
+COLLEGE_ID: str = os.getenv("COLLEGE_ID", "")
 
 # ─── Security ────────────────────────────────────────────────────────────────
 INACTIVITY_TIMEOUT: int = int(os.getenv("INACTIVITY_TIMEOUT", "900"))  # seconds

@@ -261,6 +261,154 @@ def wipe_all(db, include_auth: bool, confirm: str = ""):
     print("  3. Colleges then install the apps and register themselves.")
 
 
+def _local_db_files():
+    """Every file SQLite keeps for the desktop database.
+
+    The -wal and -shm companions hold committed data that is not yet folded
+    into the .db file, so moving the .db alone both loses records and leaves a
+    journal that can corrupt the next database created in its place. They move
+    together or not at all.
+    """
+    base = Path(config.LOCAL_DB_PATH)
+    return [base.parent / f"{base.name}{suffix}"
+            for suffix in ("", "-shm", "-wal", "-journal")]
+
+
+def clear_local_database() -> bool:
+    """Archive this machine's desktop database so the app starts empty.
+
+    This is the step that actually makes a wipe stick. Firestore holding no
+    data changes nothing if the desktop app still has the old catalogue
+    locally: it syncs through the Admin SDK, so on the next launch it
+    republishes every book and recreates the institution document, bypassing
+    the security rules on the way. Clearing the cloud without clearing this is
+    why a deleted college keeps coming back.
+
+    Archived rather than deleted — the files are the only copy of a college's
+    catalogue, and an operator who meant "reset my test data" should not lose
+    real records to a typo.
+    """
+    import time
+
+    present = [f for f in _local_db_files() if f.exists()]
+    if not present:
+        print("  no local desktop database on this machine — already clean")
+        return True
+
+    archive = Path(config.LOCAL_DB_PATH).parent / f"old_data_{time.strftime('%Y%m%d_%H%M%S')}"
+    try:
+        archive.mkdir(parents=True, exist_ok=True)
+        for f in present:
+            f.rename(archive / f.name)
+    except PermissionError:
+        # Windows holds an exclusive lock on an open SQLite file, so this is
+        # the reliable "the app is still running" signal — and continuing past
+        # it would wipe the cloud only for that running app to refill it.
+        print("  CANNOT clear the local database — the desktop app is still running.")
+        print(f"  Close NEXLIB (every window) and run this again. File: {config.LOCAL_DB_PATH}")
+        return False
+
+    print(f"  archived {len(present)} local database file(s) to {archive}")
+    return True
+
+
+def fresh_start(db, director_email: str, director_password: str,
+                confirm: str = "", keep_logins: bool = False,
+                keep_local: bool = False):
+    """Take the whole deployment back to an empty state, in one command.
+
+    A clean slate is four separate things — this machine's local database,
+    Firestore, the Auth accounts, and the directorate login — and doing them
+    by hand in the wrong order leaves data behind or lets a running app put it
+    straight back. The order here is the part that matters: local first (which
+    also proves no app is running), then the cloud, then the logins, then the
+    one account that has to exist for anything to be approved.
+
+    Android is the only step left manual: its data lives on the device, and
+    "adb uninstall com.college.library" is the only thing that clears it.
+    """
+    project_id = firebase_admin.get_app().project_id
+
+    print("FRESH START — this returns the whole deployment to empty.\n")
+    print(f"  Firestore project     {project_id}")
+    for name in ROOT_COLLECTIONS:
+        n = len(list(db.collection(name).list_documents()))
+        print(f"    {name:<22} {n} document(s)"
+              + ("  (plus all books/members/loans beneath them)"
+                 if name == "institutions" else ""))
+
+    auth_accounts = [] if keep_logins else list(auth.list_users().iterate_all())
+    if keep_logins:
+        print("\n  Firebase Auth logins   KEPT (--keep-logins)")
+    else:
+        print(f"\n  Firebase Auth logins   {len(auth_accounts)} account(s) — ALL will be deleted")
+
+    local = [f for f in _local_db_files() if f.exists()]
+    if keep_local:
+        print("  Local desktop database KEPT (--keep-local)")
+    else:
+        print(f"  Local desktop database {len(local)} file(s) will be archived")
+
+    print("\nThere is no undo for the cloud side. Close every app first —")
+    print("desktop, Android and any browser tab — or a running app refills it.")
+
+    typed = confirm.strip() if confirm else ""
+    if not typed:
+        try:
+            typed = input(f"\nType the project id '{project_id}' to confirm: ").strip()
+        except EOFError:
+            typed = ""
+    if typed != project_id:
+        print("Confirmation did not match — nothing was changed.")
+        print(f"Re-run with: --confirm {project_id}")
+        sys.exit(1)
+
+    # 1. Local first: it is the only step that can detect a running app, and
+    #    clearing the cloud while one is running accomplishes nothing.
+    print("\n[1/4] Clearing this machine's local database")
+    if not keep_local:
+        if not clear_local_database():
+            print("\nStopped before touching Firestore — nothing was deleted.")
+            sys.exit(1)
+    else:
+        print("  skipped (--keep-local)")
+
+    print("\n[2/4] Clearing Firestore")
+    for name in ROOT_COLLECTIONS:
+        n = _delete_collection(db, db.collection(name))
+        print(f"  deleted {n} document(s) from {name}")
+
+    print("\n[3/4] Clearing Firebase Auth logins")
+    if keep_logins:
+        print("  skipped (--keep-logins)")
+    else:
+        failed = 0
+        for u in auth_accounts:
+            try:
+                auth.delete_user(u.uid)
+            except Exception as e:
+                failed += 1
+                print(f"  could not delete {u.email}: {e}")
+        print(f"  deleted {len(auth_accounts) - failed} login(s)")
+
+    print("\n[4/4] Recreating the directorate account")
+    create_directorate(db, director_email, director_password)
+
+    print("\n" + "=" * 70)
+    print("EMPTY. Everything below is now a fresh install.")
+    print("=" * 70)
+    print("\nOne step is left, and only on a phone that has run the app before:")
+    print("    adb uninstall com.college.library")
+    print("Android keeps its catalogue on the device; reinstalling over the top")
+    print("keeps it, so it must be uninstalled, not updated.\n")
+    print("Then, to create the first college the way a real college will:")
+    print("  1. Start the desktop app:  python main.py")
+    print("  2. Sign up a NEW college account (not the directorate one)")
+    print("  3. Onboarding appears -> Create Institution -> name + your own ID")
+    print(f"  4. Open the directorate portal, sign in as {director_email},")
+    print("     and Approve it. Until then it is invisible to the directorate.")
+
+
 def list_auth(db):
     """List Firebase AUTH accounts, which are separate from the Firestore
     `users` profiles. If /users is wiped, the sign-in accounts usually survive
@@ -416,6 +564,20 @@ def main():
     sub.add_parser("list-users")
     sub.add_parser("list-colleges")
     sub.add_parser("list-auth")
+    p_fresh = sub.add_parser(
+        "fresh-start",
+        help="One command: clear local DB + Firestore + logins, then recreate the directorate account",
+    )
+    p_fresh.add_argument("director_email")
+    p_fresh.add_argument("director_password")
+    p_fresh.add_argument("--confirm", default="",
+                         help="Project id, to confirm without the interactive prompt")
+    p_fresh.add_argument("--keep-logins", action="store_true",
+                         help="Keep existing Firebase Auth accounts (profiles are still wiped)")
+    p_fresh.add_argument("--keep-local", action="store_true",
+                         help="Leave this machine's desktop database alone")
+    sub.add_parser("clear-local",
+                   help="Archive only this machine's desktop database (touches nothing in the cloud)")
     p_wipe = sub.add_parser("wipe-all", help="DELETE all Firestore data for this project")
     p_wipe.add_argument("--include-auth", action="store_true",
                         help="Also delete every Firebase Auth account")
@@ -450,9 +612,19 @@ def main():
     p_demote.add_argument("--role", default="staff", help="Role to set instead (default: staff)")
 
     args = parser.parse_args()
+
+    # Clearing local files needs no cloud credential — handle it before
+    # init_admin(), which exits when serviceAccountKey.json is absent.
+    if args.command == "clear-local":
+        clear_local_database()
+        return
+
     db = init_admin()
 
-    if args.command == "list-users":
+    if args.command == "fresh-start":
+        fresh_start(db, args.director_email, args.director_password,
+                    args.confirm, args.keep_logins, args.keep_local)
+    elif args.command == "list-users":
         list_users(db)
     elif args.command == "list-colleges":
         list_colleges(db)

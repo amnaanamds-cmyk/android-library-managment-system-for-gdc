@@ -196,21 +196,49 @@ register a college as if you were one, confirm it shows as pending in the
 directorate portal, approve it, then add a book on one device and watch the
 count change on the others.
 
-## Starting over
+## Starting over — one command
 
 ```bash
-python scripts/manage_directorate.py wipe-all                 # Firestore only
-python scripts/manage_directorate.py wipe-all --include-auth  # also delete every login
+cd gdc_desktop
+python scripts/manage_directorate.py fresh-start director@nexlib.com YourPassword123 --confirm nexlib-e7970
 ```
 
-Prints a per-collection count, then requires the project id typed back. It
-recurses into subcollections — Firestore does not delete a document's children
-with it, so a console deletion leaves every college's books orphaned and
-invisible.
+Does the whole reset in the order that makes it stick:
 
-**After a wipe:** recreate the directorate account (step 3), and clear each
-device's **local** data (step 4 for Android, step 5 for desktop) — otherwise
-they push the old records straight back into the empty project.
+1. Archives this machine's desktop database to `GDCLibrary50/old_data_<timestamp>/`
+2. Deletes every Firestore document, recursing into subcollections
+3. Deletes every Firebase Auth login (`--keep-logins` to keep them)
+4. Recreates the directorate account
+
+Local goes first on purpose. Windows locks an open SQLite file, so a failure
+at step 1 *is* the "an app is still running" check — and the script stops
+before touching Firestore rather than wiping a cloud that a running desktop
+app would refill seconds later. That app syncs through the Admin SDK, so it
+bypasses the security rules and can recreate an institution that was deleted
+from the console.
+
+Flags: `--keep-logins` keeps Auth accounts (their profiles are still wiped, so
+they land on onboarding next sign-in); `--keep-local` leaves the desktop
+database alone.
+
+Android is the only manual step — its data is on the device:
+
+```bash
+adb uninstall com.college.library
+```
+
+Uninstall, not reinstall: installing over the top keeps the cached institution
+id, and sync then targets a college that no longer exists.
+
+To archive just the local database without touching the cloud (no service
+account key needed):
+
+```bash
+python scripts/manage_directorate.py clear-local
+```
+
+The older, narrower commands still exist: `wipe-all` (Firestore only) and
+`wipe-all --include-auth`.
 
 ## Troubleshooting
 
