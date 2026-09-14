@@ -1,193 +1,224 @@
-# NEXLIB — Go-Live Runbook
+# NEXLIB — Install & Go-Live Runbook
 
-This is the exact sequence to get real-time sync working across Android,
-`gdc_desktop`, and the web app, and to switch on the directorate dashboard for
-10+ colleges. The code for all of this already exists and is wired correctly
-— what's been missing is deployment/configuration, not features. Follow this
-in order; each step says how to verify it before moving on.
+How to build, install and start all four apps, and how a college joins the
+network. Follow in order; each step says how to verify before moving on.
 
-Background on *why* things looked broken, and the full architecture, is in
-`SYNC_ARCHITECTURE.md`. Two dead, half-built app copies (`desktopApp/` Kotlin
-and `web/` Next.js — neither could ever reach Firebase) have been removed
-from this repo so there's only one real app per platform now:
+Architecture background is in `SYNC_ARCHITECTURE.md`. Known security issues
+are in `SECURITY.md` — **read that before distributing anything.**
 
-- **Desktop**: `gdc_desktop/` (Python/PyQt6)
-- **Web**: `web-app/` (Next.js)
-- **Mobile**: `app/` (Android/Kotlin, using the `shared/` KMP module)
+## The four apps
 
-There is also a `gdc_desktop/directorate_server/` + `gdc_desktop/directorate_dashboard/`
-folder — a separate, older prototype with its own FastAPI server and SQLite
-DB, unrelated to Firestore. **Ignore it and don't run `start_directorate_server.bat`.**
-It is not part of the sync system described below and will only cause
-confusion if started. (Worth deleting later — ask before removing since it
-wasn't in today's cleanup scope.)
+| App | Folder | Who runs it | How it ships |
+|---|---|---|---|
+| **Android** | `app/` (+ `shared/`) | College librarians | `.apk` |
+| **Desktop** | `gdc_desktop/` | College library office | `.exe` (Windows) |
+| **College web portal** | `web-app/` | College staff, in a browser | Web host, port 3000 |
+| **Directorate portal** | `directorate-app/` | Higher Education Dept only | Web host, port 3001 |
+
+The directorate portal is a **separate application** from the college portal.
+It has its own login and admits only `directorate_admin` accounts. Keeping
+them separate is deliberate: when they shared one app, a college's own login
+could reach the network-wide dashboard.
+
+Ignore `gdc_desktop/directorate_server/` and `start_directorate_server.bat` —
+an older FastAPI prototype, unrelated to Firestore. Don't run it.
 
 ---
 
-## 1. Get your Firebase credentials
+## 1. One-time Firebase setup
 
-You need two things from the [Firebase Console](https://console.firebase.google.com/u/0/project/nexlib-e7970):
+From the [Firebase Console](https://console.firebase.google.com/u/0/project/nexlib-e7970):
 
-1. **Service account key** (for `gdc_desktop`, which uses the Admin SDK):
-   Project Settings → Service Accounts → *Generate new private key*. Save the
-   downloaded JSON as `gdc_desktop/serviceAccountKey.json` (already gitignored
-   — never commit it).
-2. **Web API key** (for `gdc_desktop`'s login, which uses the Auth REST API —
-   this is different from the service account): Project Settings → General →
-   *Web API Key*. It's also visible at the URL you already had open
-   (`.../settings/general`).
+1. **Service account key** — Project Settings → Service Accounts → *Generate
+   new private key*. Save as `gdc_desktop/serviceAccountKey.json` (gitignored;
+   never commit it). This is a full-admin credential — see `SECURITY.md`.
+2. **Web API key** — Project Settings → General → *Web API Key*.
 
-Copy `gdc_desktop/.env.example` to `gdc_desktop/.env` and fill in:
+Copy `gdc_desktop/.env.example` to `gdc_desktop/.env`:
 
 ```
 FIREBASE_CRED_PATH=serviceAccountKey.json
-FIREBASE_WEB_API_KEY=<the web API key from step 2>
+FIREBASE_WEB_API_KEY=<the web API key>
 FIREBASE_STORAGE_BUCKET=nexlib-e7970.firebasestorage.app
-COLLEGE_ID=<leave as-is — set automatically on first login, see step 6>
 ```
 
-**Verify:** launch `gdc_desktop` (`python main.py` from the repo root, or your
-packaged `.exe`) and try to log in. If you get "Firebase not configured..."
-the `.env` or key file path is still wrong — double check `FIREBASE_CRED_PATH`
-matches where you actually saved the JSON file.
+Android (`app/google-services.json`) and both web apps already carry matching
+config in the repo — nothing to do there.
 
-The Android app (`app/google-services.json`) and web app
-(`web-app/src/lib/firebase.ts`) already have real, matching config for this
-same project committed in the repo — nothing to do there.
+## 2. Deploy the security rules
 
-## 2. Deploy Firestore security rules
-
-This project has no Cloud Functions (Spark/free plan), so `firestore.rules`
-is the only thing standing between "Android/web can sync" and "permission
-denied on every read." It is **not deployed automatically** — you must push
-it explicitly. A `.firebaserc` has been added so this now just works:
+Nothing is enforced until these are deployed, and they are **not** deployed
+automatically. Android and web are rule-constrained; desktop uses the Admin
+SDK and bypasses rules entirely, which is why a rules problem can look like
+"only desktop works".
 
 ```bash
-npm install -g firebase-tools   # if you don't have it
-firebase login
-firebase deploy --only firestore:rules,firestore:indexes
+cd tests/firestore && npm install --legacy-peer-deps && npm test   # optional but advised
+cd ../.. && firebase deploy --only firestore:rules
 ```
 
-**Verify:** in the Firebase Console → Firestore → Rules tab, confirm the
-"last deployed" timestamp is recent (today).
+**Verify:** Firebase Console → Firestore → Rules — the timestamp should be
+today, and `isDirectorateAdmin` should list only `DirectorateAdmin` and
+`directorate_admin`.
 
-Optional but recommended before deploying, if you have Node + Java available:
-run the existing rules test suite against the emulator:
+## 3. Create the directorate account
+
+Nothing can be approved without one. From `gdc_desktop/`:
 
 ```bash
-cd tests/firestore && npm install && npm test
+python scripts/manage_directorate.py create-directorate director@nexlib.com YourPassword123
 ```
 
-## 3. Rebuild everything from current source
+Creates the Auth account and sets the role in one step — no signup needed.
+A directorate account belongs to **no college** by design.
 
-Whatever APK is on the test phone and whatever web build is live almost
-certainly predates the sync fixes already in this repo. Stale builds are the
-single most likely reason things "don't sync" even though the code is
-correct.
+**Verify:** `python scripts/manage_directorate.py list-users` shows it as
+`directorate_admin` with a blank institution.
 
-- **Android**: `./gradlew :app:assembleRelease` (or `assembleDebug` for
-  testing), then reinstall on the device — don't reuse the old APK.
-- **Web**: `cd web-app && npm install && npm run build`, then deploy the
-  output to wherever you're hosting it (Vercel is the path of least
-  resistance for Next.js — `vercel --prod` from `web-app/` after `vercel
-  login`; any other Node host works too since there's no special config
-  required). For a quick local/LAN check first: `npm run start` and open
-  `http://localhost:3000`.
-- **Desktop**: already covered in step 1 — just make sure you're running
-  `gdc_desktop`, not the deleted `desktopApp`.
+Do **not** promote a college's own owner account: a `directorate_admin` can
+only open the Directorate, Reports and Transfers screens, so that account
+would lose Books, Members and Issue/Return.
 
-## 4. Prove sync actually works, end to end
+## 4. Build the Android APK
 
-Before onboarding real colleges, do one manual round-trip:
+```bash
+gradlew clean
+gradlew assembleRelease
+```
 
-1. Log into `gdc_desktop` as a college user, add one test book.
-2. Open the web app (`web-app`, logged in as the same college), go to
-   Dashboard → Books. The test book should appear within a couple of
-   seconds without refreshing.
-3. Open the Android app on the phone, logged into the same college. The
-   green "sync active" indicator should show (not the red "Offline" dot from
-   your screenshot), and the test book should be there too.
+Output: `app/build/outputs/apk/release/app-release.apk`
 
-If Android still shows Offline after a fresh install + rules deploy, check
-that the phone actually has network access and that you're logged in with an
-account that has a `users/{uid}` document with `institutionId` set (see
-step 6 — a brand-new sign-up with no institution yet is a different,
-expected state, not a bug).
+Signing is configured in `app/build.gradle.kts`. To install as an *update*
+over an existing install rather than a reinstall, bump `versionCode` first.
 
-## 5. Create your directorate admin account
+**Install:** uninstall any previous build first — reinstalling over the top
+keeps app data, including a cached institution id that will stop sync working.
 
-Nobody can self-promote to directorate level (enforced by `firestore.rules`
-on purpose). Sign up normally first (in `gdc_desktop` or the web app) with
-whatever account should have directorate-wide access, then run:
+```bash
+adb uninstall com.college.library
+adb install app/build/outputs/apk/release/app-release.apk
+```
+
+## 5. Build the Windows .exe
 
 ```bash
 cd gdc_desktop
-python scripts/manage_directorate.py promote director@yourdomain.com
+build_exe.bat
 ```
 
-This flips that account's Firestore role to `directorate_admin`. Sign out
-and back in (or restart the app) so it picks up the new role.
+Output: `gdc_desktop/dist/NEXLIB/NEXLIB.exe`
 
-**Verify:** in the web app, visit `/director` — you should land on the
-directorate dashboard instead of the "Directorate access required" screen.
-In `gdc_desktop`, the Directorate Dashboard screen becomes available in the
-sidebar for that account.
+Then **copy two files next to the .exe**, into `dist/NEXLIB/`:
 
-## 6. Onboard your 10+ colleges
+- `serviceAccountKey.json`
+- `.env`
 
-You don't need to hand-create Firestore documents per college — `gdc_desktop`
-already has a self-serve onboarding flow for this. For each college:
+They are deliberately not bundled — see `SECURITY.md`. `config.APP_DIR`
+resolves them beside the executable when frozen.
 
-1. Install `gdc_desktop` on that college's machine, with the *same*
-   `serviceAccountKey.json` / `.env` (all colleges share the one Firebase
-   project — they're separated by `institutionId`, not by separate Firebase
-   projects).
-2. Have their librarian/admin sign up (Firebase Auth) and log in.
-3. On first login with no institution yet, the app shows **"Create New
-   Institution"** — they enter a college name and a unique ID (e.g.
-   `GDC-MARDAN-01`). This automatically:
-   - Creates `institutions/{collegeId}`
-   - Sets that user's role to `owner` for their college
-   - Registers the college in `directorate_index`, so it shows up in the
-     directorate dashboard immediately (with zeroed stats until their first
-     real sync)
-4. Additional staff at that same college use **"Join Existing Institution"**
-   with the same College Unique ID.
+**Local database:** lives at `%USERPROFILE%\GDCLibrary50\gdc_library.db` and
+survives every rebuild. For a genuinely fresh start, close the app and move
+all three files aside (SQLite keeps `-shm` and `-wal` alongside the `.db`; a
+stale journal beside a new database can corrupt it):
 
-Repeat for all 10+ colleges — no code changes or manual Firestore edits are
-needed per college, just repeating this signup flow.
+```powershell
+mkdir "$env:USERPROFILE\GDCLibrary50\old_data"
+move "$env:USERPROFILE\GDCLibrary50\gdc_library.db*" "$env:USERPROFILE\GDCLibrary50\old_data\"
+```
 
-**Verify:** run `python scripts/manage_directorate.py list-colleges` from
-`gdc_desktop/` — every onboarded college should be listed with a name and
-(after their first real sync) non-zero book/member counts. The same list
-appears live in the web app's `/director` dashboard and in `gdc_desktop`'s
-own Directorate Dashboard screen.
+## 6. Run the college web portal
 
-## 7. What "directorate sees other colleges" actually looks like
+```bash
+cd web-app
+npm install
+npm run dev      # http://localhost:3000
+```
 
-Once steps 5–6 are done:
+For production: `npm run build && npm run start`, or deploy to any Node host
+(`vercel --prod` from `web-app/` is the least friction).
 
-- **Web**: directorate admin signs in → `/director` shows every college's
-  live book/member/loan/overdue counts and a staleness warning if a college
-  hasn't synced recently, with drill-down per college
-  (`/director/[collegeId]`) and CSV export.
-- **Desktop**: same data, in `gdc_desktop`'s Directorate Dashboard screen,
-  for anyone logged in with `directorate_admin` (or the legacy `director`
-  role).
-- Directorate accounts only ever see the aggregate counts published to
-  `directorate_index` — never a college's actual book/patron records. That
-  isolation is intentional (see `SYNC_ARCHITECTURE.md`), not a limitation to
-  work around.
+## 7. Run the directorate portal
+
+```bash
+cd directorate-app
+npm install
+npm run dev      # http://localhost:3001
+```
+
+Port 3001 so it runs alongside the college portal. Sign in with the
+`directorate_admin` account from step 3. Any other account is signed straight
+back out — enforced again by `isDirectorateAdmin()` in the rules, so it
+cannot be bypassed by editing client code.
 
 ---
 
-## Quick troubleshooting reference
+## 8. How a college joins
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Desktop: "Firebase not configured..." | Missing/misnamed `serviceAccountKey.json` or `.env` | Step 1 |
-| Android: red "Offline" dot | Stale APK, or rules not deployed, or account has no `institutionId` yet | Steps 2–3, or complete onboarding |
-| Web: sync badge looks fake/stuck | Old deployed build predating the real `useSyncHealth` fix | Step 3 |
-| `/director` shows "access required" | Account isn't `directorate_admin`/`director` yet | Step 5 |
-| Directorate dashboard is empty | No colleges onboarded yet, or they haven't synced once | Step 6 |
-| A college's counts look stuck/old | That college's app hasn't run/synced recently — check their machine's network | n/a (expected, not a bug) |
+This is the flow every college follows. No directorate action is needed to
+*start*; approval only controls what the directorate sees.
+
+1. The college installs the Android app or the `.exe`.
+2. A librarian creates an account and, on the onboarding screen, chooses
+   **Create Institution** with a College Unique ID of their own (e.g.
+   `GDC-MARDAN-01`). That account becomes `owner`.
+3. Additional staff and devices use **Join Institution** with the same ID.
+   Joining preserves whatever role the account already has.
+4. The college can catalogue books, register members and issue loans
+   immediately. It does not wait for anyone.
+5. In the directorate portal the college appears under **Awaiting approval**,
+   contributing **nothing** to network totals.
+6. The directorate presses **Approve**. Only then does the college's data
+   appear in the network view and count toward the totals.
+
+### Removing a college
+
+**Remove** on the directorate dashboard hides a college and stops it counting.
+It does **not** delete anything: the college's books, members and loans stay
+intact and its own apps keep working. Reversible via **Restore** in the
+"Removed from dashboard" section.
+
+Approval state lives in `/directorate_approvals`, writable only by
+`directorate_admin`. It is not a field on the registry document a college
+publishes for itself — otherwise a college could approve itself.
+
+---
+
+## 9. Verify the whole chain
+
+```bash
+cd gdc_desktop
+python scripts/manage_directorate.py list-users      # who exists, what role, which college
+python scripts/manage_directorate.py list-colleges   # registry counts per college
+```
+
+End-to-end test worth doing before delivering anything, on your own machine:
+register a college as if you were one, confirm it shows as pending in the
+directorate portal, approve it, then add a book on one device and watch the
+count change on the others.
+
+## Starting over
+
+```bash
+python scripts/manage_directorate.py wipe-all                 # Firestore only
+python scripts/manage_directorate.py wipe-all --include-auth  # also delete every login
+```
+
+Prints a per-collection count, then requires the project id typed back. It
+recurses into subcollections — Firestore does not delete a document's children
+with it, so a console deletion leaves every college's books orphaned and
+invisible.
+
+**After a wipe:** recreate the directorate account (step 3), and clear each
+device's **local** data (step 4 for Android, step 5 for desktop) — otherwise
+they push the old records straight back into the empty project.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| Android badge reads **"Not linked — sign in again"** | No institution cached. Sign out and back in; the id is written only at login. |
+| Android badge reads **"Offline"** | Firebase itself did not initialise — a build problem (`google-services.json`), not a network one. |
+| **PERMISSION_DENIED** on any app | Usually a missing `/users/{uid}` profile: rules read the caller's role from it. Check `list-users`. |
+| Sync works on desktop, not Android/web | Desktop uses the Admin SDK and bypasses rules. A rules or profile problem shows up everywhere else first. |
+| Books reappear after deleting | An old local database pushed them back. Clear local data before connecting to a new institution. |
+| College missing from directorate portal | Not approved yet — check **Awaiting approval**. |
