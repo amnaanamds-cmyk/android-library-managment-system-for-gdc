@@ -73,8 +73,13 @@ fun OnboardingScreen(
                     throw Exception("This College Unique ID is already in use. Please choose another or join it.")
                 }
 
+                // ownerUid is what isInstitutionOwner() in firestore.rules
+                // matches on. Desktop and web both write it; Android did not,
+                // so an institution created from a phone had no recorded owner
+                // and nobody could ever delete it or its registry entry.
                 firestoreDb.collection("institutions").document(cid).set(
                     mapOf("name" to name, "inviteCode" to cid,
+                          "ownerUid" to uid,
                           "createdAt" to System.currentTimeMillis())
                 ).await()
 
