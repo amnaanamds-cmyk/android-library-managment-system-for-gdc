@@ -80,7 +80,7 @@ class ReportsViewModel @Inject constructor(
 
     private val generativeModel by lazy {
         GenerativeModel(
-            modelName = "gemini-1.5-flash",
+            modelName = BuildConfig.GEMINI_MODEL,
             apiKey = BuildConfig.GEMINI_API_KEY
         )
     }
@@ -211,12 +211,6 @@ fun ReportsScreen(
 @Composable
 fun OverviewTab(state: ReportsState) {
     Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = CardBlue)) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Total Collection Value", color = Color.White)
-                Text("Rs. ${state.totalCollectionValue}", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            }
-        }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Card(modifier = Modifier.weight(1f), colors = CardDefaults.cardColors(containerColor = DangerLight)) {
                 Column(modifier = Modifier.padding(16.dp)) {

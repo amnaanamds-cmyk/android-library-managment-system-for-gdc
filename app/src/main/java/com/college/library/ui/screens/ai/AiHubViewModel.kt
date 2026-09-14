@@ -68,7 +68,7 @@ class AiHubViewModel @Inject constructor(
 
     private val generativeModel by lazy {
         GenerativeModel(
-            modelName = "gemini-1.5-flash",
+            modelName = BuildConfig.GEMINI_MODEL,
             apiKey = BuildConfig.GEMINI_API_KEY,
             systemInstruction = content { text("You are Libby, the AI assistant for GDC Library. Use the provided tools to fetch real-time data from the database. Summarize results concisely.") },
             tools = listOf(Tool(listOf(
@@ -130,14 +130,27 @@ class AiHubViewModel @Inject constructor(
             
             val replyText = try {
                 if (BuildConfig.GEMINI_API_KEY.isBlank()) {
-                    "It seems my Gemini API key is missing. Please configure it in local.properties."
+                    "I need a Gemini API key before I can answer.\n\n" +
+                        "1. Get a free key at aistudio.google.com/apikey\n" +
+                        "2. Open local.properties in the project root\n" +
+                        "3. Add this line:\n" +
+                        "     GEMINI_API_KEY=your_key_here\n" +
+                        "4. Rebuild the app\n\n" +
+                        "Everything else in the library works without this — only I do."
                 } else {
                     val context = buildLibraryContext()
                     val response = chat.sendMessage("Library Context:\n$context\n\nUser Query: $text")
                     response.text ?: "I'm sorry, I couldn't generate a response."
                 }
             } catch (e: Exception) {
-                "An error occurred while connecting to my AI brain: ${e.message}"
+                val hint = if (e.message?.contains("not found", ignoreCase = true) == true ||
+                    e.message?.contains("404") == true
+                ) {
+                    "\n\nThat usually means Google no longer serves the model " +
+                        "\"${BuildConfig.GEMINI_MODEL}\". Set GEMINI_MODEL in local.properties " +
+                        "to a current one and rebuild."
+                } else ""
+                "I couldn't reach my AI service: ${e.message}$hint"
             }
             
             val aiMsgId = (System.currentTimeMillis() + 1).toString()

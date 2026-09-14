@@ -36,6 +36,14 @@ android {
         val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY") ?: "\"\""
         val formattedApiKey = if (geminiApiKey.startsWith("\"")) geminiApiKey else "\"$geminiApiKey\""
         buildConfigField("String", "GEMINI_API_KEY", formattedApiKey)
+
+        // Model id is configurable because Google retires them on its own
+        // schedule: the previously hardcoded gemini-1.5-flash now 404s for
+        // newly issued keys, which looked like "the AI is broken". Override
+        // with GEMINI_MODEL in local.properties if this one stops being served.
+        val geminiModel: String = localProperties.getProperty("GEMINI_MODEL") ?: "gemini-2.0-flash"
+        val formattedModel = if (geminiModel.startsWith("\"")) geminiModel else "\"$geminiModel\""
+        buildConfigField("String", "GEMINI_MODEL", formattedModel)
     }
 
     signingConfigs {

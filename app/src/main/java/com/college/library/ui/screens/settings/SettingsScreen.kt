@@ -156,7 +156,7 @@ fun SettingsScreen(
             // ── Language Toggle ────────────────────────────────────────────────
             item {
                 Text(
-                    text = "Language / भाषा",
+                    text = "Language / زبان",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
