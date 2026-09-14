@@ -175,6 +175,26 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------
+    // Directorate approvals — which colleges the directorate has admitted to
+    // the network, and which it has removed from its dashboard.
+    //
+    // Deliberately a SEPARATE collection rather than a field on
+    // /directorate_index: a college writes its own registry document there
+    // (that is how counts get published at all), so an approval flag stored
+    // alongside those counts could be set by the college itself. Here, only
+    // directorate staff can write, and a college can read nothing but its own
+    // status.
+    //
+    // Absence of a document means "pending" — a newly self-registered college
+    // is invisible to the directorate until someone admits it.
+    // -------------------------------------------------------------
+
+    match /directorate_approvals/{collegeId} {
+      allow read: if isDirectorateAdmin() || belongsToCollege(collegeId);
+      allow write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
     // Legacy college registry. Retained read-only for older builds that still
     // resolve invite codes here; new writes go to directorate_index.
     // -------------------------------------------------------------

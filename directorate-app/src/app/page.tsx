@@ -5,10 +5,12 @@ import Link from "next/link";
 import {
   useDirectorateNetwork,
   isStale,
+  setApproval,
   DirectorateSnapshot,
   NetworkTotals,
   STALE_AFTER_MS,
 } from "@/lib/directorate";
+import { useAuth } from "@/lib/auth-context";
 
 type SortKey = "name" | "booksCount" | "membersCount" | "activeLoans" | "overdueCount" | "lastSyncAt";
 
@@ -27,7 +29,22 @@ function relativeTime(ts: number): string {
 }
 
 export default function DirectorateOverview() {
-  const { colleges, totals, loading, error, usedFallback } = useDirectorateNetwork();
+  const { colleges, pending, hidden, totals, loading, error, usedFallback } =
+    useDirectorateNetwork();
+  const { profile } = useAuth();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const decide = async (
+    id: string,
+    status: "approved" | "hidden" | "pending",
+  ) => {
+    setBusyId(id);
+    try {
+      await setApproval(id, status, profile?.email || "");
+    } finally {
+      setBusyId(null);
+    }
+  };
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("booksCount");
   const [ascending, setAscending] = useState(false);
@@ -138,6 +155,89 @@ export default function DirectorateOverview() {
           ⬇ Export CSV
         </button>
       </div>
+
+      {/* Colleges awaiting admission. A self-registered college lands here and
+          contributes nothing to the figures above until it is approved. */}
+      {pending.length > 0 && (
+        <div className="rounded-2xl border border-[#C8A84B]/40 bg-[#C8A84B]/5 p-6">
+          <h2 className="text-lg font-bold text-[#E6C96E]">
+            Awaiting approval ({pending.length})
+          </h2>
+          <p className="mt-1 text-xs text-slate-400">
+            These colleges registered themselves. They are running their own
+            libraries normally, but stay out of the dashboard and the totals
+            above until you admit them.
+          </p>
+          <div className="mt-4 space-y-2">
+            {pending.map((c) => (
+              <div
+                key={c.institutionId}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-950 bg-[#070F1E] px-4 py-3"
+              >
+                <div>
+                  <p className="font-bold text-white">{c.name}</p>
+                  <p className="font-mono text-[11px] uppercase text-slate-500">
+                    {c.institutionId}
+                    {c.location ? ` · ${c.location}` : ""}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={busyId === c.institutionId}
+                    onClick={() => decide(c.institutionId, "approved")}
+                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 disabled:opacity-40"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    disabled={busyId === c.institutionId}
+                    onClick={() => decide(c.institutionId, "hidden")}
+                    className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Removed colleges. Their data is untouched — this is a dashboard
+          decision, not a deletion — so restoring is one click. */}
+      {hidden.length > 0 && (
+        <details className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6">
+          <summary className="cursor-pointer text-sm font-bold text-slate-400">
+            Removed from dashboard ({hidden.length})
+          </summary>
+          <p className="mt-2 text-xs text-slate-500">
+            Hidden from the network view and excluded from all totals. Their
+            library data is intact and their own apps keep working.
+          </p>
+          <div className="mt-4 space-y-2">
+            {hidden.map((c) => (
+              <div
+                key={c.institutionId}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-950/60 px-4 py-3"
+              >
+                <div>
+                  <p className="font-semibold text-slate-300">{c.name}</p>
+                  <p className="font-mono text-[11px] uppercase text-slate-600">
+                    {c.institutionId}
+                  </p>
+                </div>
+                <button
+                  disabled={busyId === c.institutionId}
+                  onClick={() => decide(c.institutionId, "approved")}
+                  className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
@@ -268,15 +368,21 @@ export default function DirectorateOverview() {
                 >
                   Last Sync
                 </Th>
+                <th className="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-blue-950/40">
               {rows.map((c) => (
-                <CollegeRow key={c.institutionId} college={c} />
+                <CollegeRow
+                  key={c.institutionId}
+                  college={c}
+                  busy={busyId === c.institutionId}
+                  onRemove={() => decide(c.institutionId, "hidden")}
+                />
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={8} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2 opacity-40">
                       <span className="text-4xl">🏢</span>
                       <p className="text-sm font-bold uppercase tracking-wider text-slate-400">
@@ -294,7 +400,15 @@ export default function DirectorateOverview() {
   );
 }
 
-function CollegeRow({ college }: { college: DirectorateSnapshot }) {
+function CollegeRow({
+  college,
+  onRemove,
+  busy,
+}: {
+  college: DirectorateSnapshot;
+  onRemove: () => void;
+  busy: boolean;
+}) {
   const stale = isStale(college);
   const neverReported = !college.lastSyncAt;
 
@@ -345,6 +459,16 @@ function CollegeRow({ college }: { college: DirectorateSnapshot }) {
             {college.lastSyncPlatform}
           </p>
         )}
+      </td>
+      <td className="px-5 py-4 text-right">
+        <button
+          disabled={busy}
+          onClick={onRemove}
+          title="Remove from the directorate dashboard. Does not delete the college's data."
+          className="rounded-lg border border-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-400 transition-colors hover:border-red-500/40 hover:text-red-400 disabled:opacity-40"
+        >
+          Remove
+        </button>
       </td>
     </tr>
   );

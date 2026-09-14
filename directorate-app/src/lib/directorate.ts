@@ -26,8 +26,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  doc,
   onSnapshot,
   getDocs,
+  setDoc,
+  deleteDoc,
   DocumentData,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -99,6 +102,41 @@ function normalise(id: string, data: DocumentData): DirectorateSnapshot {
   };
 }
 
+/**
+ * Whether the directorate has admitted a college to the network.
+ *
+ * Stored in its own collection, NOT as a field on the registry document a
+ * college publishes for itself — otherwise a college could approve itself.
+ * No document means "pending": a college that self-registers is invisible to
+ * the directorate until someone admits it.
+ */
+export type ApprovalStatus = "pending" | "approved" | "hidden";
+
+export const APPROVALS_COLLECTION = "directorate_approvals";
+
+/** Admit a college, or remove it from the dashboard.
+ *
+ *  "hidden" deliberately does not touch the college's data: its books,
+ *  members and loans stay intact and its own apps keep working. Removing a
+ *  college from the directorate's view is an administrative act, not a
+ *  destructive one, and it is reversible by approving again. */
+export async function setApproval(
+  collegeId: string,
+  status: ApprovalStatus,
+  byEmail: string,
+): Promise<void> {
+  const ref = doc(db, APPROVALS_COLLECTION, collegeId);
+  if (status === "pending") {
+    await deleteDoc(ref);
+    return;
+  }
+  await setDoc(
+    ref,
+    { collegeId, status, updatedAt: Date.now(), updatedBy: byEmail },
+    { merge: true },
+  );
+}
+
 export interface NetworkTotals {
   colleges: number;
   reporting: number;
@@ -127,6 +165,7 @@ export function useDirectorateNetwork() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usedFallback, setUsedFallback] = useState(false);
+  const [approvals, setApprovals] = useState<Record<string, ApprovalStatus>>({});
 
   useEffect(() => {
     if (!user) {
@@ -175,13 +214,58 @@ export function useDirectorateNetwork() {
       },
     );
 
+    // Approvals live in their own collection and are directorate-writable
+    // only, so they stream separately from the registry.
+    const unsubApprovals = onSnapshot(
+      collection(db, APPROVALS_COLLECTION),
+      (snap) => {
+        if (cancelled) return;
+        const next: Record<string, ApprovalStatus> = {};
+        snap.docs.forEach((d) => {
+          next[d.id] = (d.data().status as ApprovalStatus) || "pending";
+        });
+        setApprovals(next);
+      },
+      () => {
+        // A denied or failed read leaves everything pending, which is the
+        // safe direction: nothing is shown as admitted that was not.
+      },
+    );
+
     return () => {
       cancelled = true;
       unsubscribe();
+      unsubApprovals();
     };
   }, [user]);
 
+  /** Colleges with their approval status attached. */
+  const withStatus = useMemo(
+    () =>
+      colleges.map((c) => ({
+        ...c,
+        approvalStatus: (approvals[c.institutionId] || "pending") as ApprovalStatus,
+      })),
+    [colleges, approvals],
+  );
+
+  const approved = useMemo(
+    () => withStatus.filter((c) => c.approvalStatus === "approved"),
+    [withStatus],
+  );
+  const pending = useMemo(
+    () => withStatus.filter((c) => c.approvalStatus === "pending"),
+    [withStatus],
+  );
+  const hidden = useMemo(
+    () => withStatus.filter((c) => c.approvalStatus === "hidden"),
+    [withStatus],
+  );
+
+  // Totals cover APPROVED colleges only: a college the directorate has not
+  // admitted (or has removed) must not silently contribute to network figures.
   const totals = useMemo<NetworkTotals>(() => {
+    const colleges = approved;
     const reporting = colleges.filter((c) => c.lastSyncAt > 0);
     return {
       colleges: colleges.length,
@@ -195,9 +279,9 @@ export function useDirectorateNetwork() {
       reservations: colleges.reduce((n, c) => n + c.reservationsCount, 0),
       finesOutstanding: colleges.reduce((n, c) => n + c.finesOutstanding, 0),
     };
-  }, [colleges]);
+  }, [approved]);
 
-  return { colleges, totals, loading, error, usedFallback };
+  return { colleges: approved, pending, hidden, all: withStatus, totals, loading, error, usedFallback };
 }
 
 // Re-exported from ./roles so auth-context can use these without importing

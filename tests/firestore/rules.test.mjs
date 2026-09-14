@@ -120,6 +120,26 @@ await check("plain college director CANNOT read another college's snapshot", () 
 await check("plain college director CANNOT list the whole registry", () =>
   assertFails(getDocs(collection(director, "directorate_index"))));
 
+console.log("\n── Directorate approvals ──");
+// The whole point of a separate collection: a college publishes its own
+// /directorate_index document, so it must not be able to admit itself.
+await check("staff CANNOT approve their own college", () =>
+  assertFails(setDoc(doc(staff, "directorate_approvals/GDC-ZIAM"), { status: "approved" })));
+await check("owner CANNOT approve their own college", () =>
+  assertFails(setDoc(doc(owner, "directorate_approvals/GDC-ZIAM"), { status: "approved" })));
+await check("plain college director CANNOT approve a college", () =>
+  assertFails(setDoc(doc(director, "directorate_approvals/GDC-ZIAM"), { status: "approved" })));
+await check("directorate_admin CAN approve a college", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_approvals/GDC-ZIAM"), { status: "approved" })));
+await check("directorate_admin CAN hide a college", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_approvals/GDC-ZIAM"), { status: "hidden" })));
+await check("staff CAN read their own college's approval status", () =>
+  assertSucceeds(getDoc(doc(staff, "directorate_approvals/GDC-ZIAM"))));
+await check("outsider CANNOT read another college's approval status", () =>
+  assertFails(getDoc(doc(outsider, "directorate_approvals/GDC-ZIAM"))));
+await check("anonymous CANNOT read approvals", () =>
+  assertFails(getDoc(doc(anon, "directorate_approvals/GDC-ZIAM"))));
+
 console.log("\n── Onboarding ──");
 await check("signed-in user CAN create a new institution", () =>
   assertSucceeds(setDoc(doc(staff, "institutions/BRAND-NEW"), { name: "New", ownerUid: "staff1" })));
