@@ -17,6 +17,18 @@ enum class UserRole {
     DIRECTORATE_ADMIN, COLLEGE_ADMIN, LIBRARIAN, DIRECTOR, OWNER, STAFF, GUEST
 }
 
+/** Single mapping from the stored role string to [UserRole]. Top-level so
+ *  onboarding resolves roles identically to sign-in rather than keeping a
+ *  second copy that can drift. */
+fun roleToEnum(roleStr: String): UserRole = when (roleStr.lowercase()) {
+    "owner"                  -> UserRole.OWNER
+    "college_admin", "admin" -> UserRole.COLLEGE_ADMIN
+    "librarian"              -> UserRole.LIBRARIAN
+    "director"               -> UserRole.DIRECTOR
+    "directorate_admin"      -> UserRole.DIRECTORATE_ADMIN
+    else                     -> UserRole.STAFF
+}
+
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
@@ -150,14 +162,7 @@ class AuthViewModel @Inject constructor(
             .apply()
     }
 
-    private fun mapRoleString(roleStr: String): UserRole = when (roleStr.lowercase()) {
-        "owner"              -> UserRole.OWNER
-        "college_admin", "admin" -> UserRole.COLLEGE_ADMIN
-        "librarian"          -> UserRole.LIBRARIAN
-        "director"           -> UserRole.DIRECTOR
-        "directorate_admin"  -> UserRole.DIRECTORATE_ADMIN
-        else                 -> UserRole.STAFF
-    }
+    private fun mapRoleString(roleStr: String): UserRole = roleToEnum(roleStr)
 
     // ── Authorization helpers (unchanged API) ──────────────────────────────
     fun canEditBooks()     = currentRole.value in listOf(UserRole.COLLEGE_ADMIN, UserRole.DIRECTOR, UserRole.LIBRARIAN, UserRole.OWNER)

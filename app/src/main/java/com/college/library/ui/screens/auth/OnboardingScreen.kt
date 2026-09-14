@@ -120,13 +120,28 @@ fun OnboardingScreen(
                 if (!instDoc.exists()) throw Exception("Invalid College Unique ID. Institution not found.")
                 val instId = instDoc.id
 
+                // Never downgrade a role that already exists. Writing "staff"
+                // unconditionally meant an owner who re-joined their own
+                // college — after a reinstall, say — lost owner rights and
+                // could no longer change settings. A directorate account has
+                // no college at all and must not be attached to one.
+                val existingRole = firestoreDb.collection("users").document(uid)
+                    .get().await().getString("role").orEmpty()
+                if (existingRole == "directorate_admin" || existingRole == "DirectorateAdmin") {
+                    throw Exception(
+                        "This is a directorate account and cannot join a college. " +
+                            "Sign in with a college account instead."
+                    )
+                }
+                val keptRole = if (existingRole.isNotBlank()) existingRole else "staff"
+
                 firestoreDb.collection("users").document(uid).set(
-                    mapOf("institutionId" to instId, "role" to "staff",
+                    mapOf("institutionId" to instId, "role" to keptRole,
                           "email" to (currentAuth.currentUser?.email ?: "")),
                     com.google.firebase.firestore.SetOptions.merge()
                 ).await()
 
-                viewModel.onOnboardingComplete(instId, UserRole.STAFF)
+                viewModel.onOnboardingComplete(instId, roleToEnum(keptRole))
             } catch (e: Exception) {
                 errorMsg = e.message ?: "Failed to join institution"
                 isLoading = false
