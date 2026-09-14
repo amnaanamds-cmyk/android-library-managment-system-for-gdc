@@ -156,6 +156,98 @@ def create_institution(db, college_id: str, name: str, owner_email: str):
     print("Clear each device's local data FIRST or it will push old records up.")
 
 
+# Root collections this project owns. Anything not listed here is left alone.
+ROOT_COLLECTIONS = [
+    "users",
+    "institutions",
+    "directorate_index",
+    "directorate_approvals",
+    "colleges",
+    "directors",
+]
+
+
+def _delete_collection(db, col_ref, batch_size: int = 300) -> int:
+    """Delete every document in a collection, recursing into subcollections.
+
+    Firestore does NOT delete subcollections when a parent document is
+    deleted — the children become orphans that still exist and still count
+    against reads. Every college's books/members/loans live in subcollections
+    under /institutions/{id}, so a wipe that skipped recursion would leave the
+    bulk of the data behind while appearing to succeed.
+    """
+    deleted = 0
+    while True:
+        docs = list(col_ref.limit(batch_size).stream())
+        if not docs:
+            return deleted
+        for d in docs:
+            for sub in d.reference.collections():
+                deleted += _delete_collection(db, sub, batch_size)
+        batch = db.batch()
+        for d in docs:
+            batch.delete(d.reference)
+        batch.commit()
+        deleted += len(docs)
+
+
+def wipe_all(db, include_auth: bool):
+    """Delete every Firestore document this project owns, after confirmation."""
+    project_id = firebase_admin.get_app().project_id
+
+    print("This will PERMANENTLY delete, from Firestore project "
+          f"'{project_id}':")
+    total = 0
+    for name in ROOT_COLLECTIONS:
+        n = len(list(db.collection(name).list_documents()))
+        total += n
+        print(f"    {name:<24} {n} document(s)"
+              + ("  (plus all books/members/loans beneath them)"
+                 if name == "institutions" else ""))
+
+    auth_accounts = []
+    if include_auth:
+        auth_accounts = list(auth.list_users().iterate_all())
+        print(f"    {'Firebase Auth accounts':<24} {len(auth_accounts)} account(s)")
+        print("\n  Every college and directorate login will be destroyed —")
+        print("  they will have to sign up again from scratch.")
+    else:
+        print("\n  Firebase Auth accounts will be KEPT (pass --include-auth to")
+        print("  delete those too). Sign-ins survive; their profiles do not.")
+
+    if total == 0 and not auth_accounts:
+        print("\nNothing to delete.")
+        return
+
+    print("\nThere is no undo. Export a backup first if you have not.")
+    typed = input(f"\nType the project id '{project_id}' to confirm: ").strip()
+    if typed != project_id:
+        print("Confirmation did not match — nothing was deleted.")
+        sys.exit(1)
+
+    print()
+    for name in ROOT_COLLECTIONS:
+        n = _delete_collection(db, db.collection(name))
+        print(f"  deleted {n} document(s) from {name}")
+
+    if include_auth:
+        for u in auth_accounts:
+            try:
+                auth.delete_user(u.uid)
+            except Exception as e:
+                print(f"  could not delete auth account {u.email}: {e}")
+        print(f"  deleted {len(auth_accounts)} Firebase Auth account(s)")
+
+    print("\nFirestore is empty.")
+    print("\nNext:")
+    print("  1. Recreate the directorate account:")
+    print("       python scripts/manage_directorate.py create-directorate <email> <password>")
+    print("  2. Clear each device's LOCAL data, or it will push old records back up:")
+    print("       desktop  — move %USERPROFILE%\\GDCLibrary50\\gdc_library.db* aside")
+    print("       android  — uninstall the app (not just reinstall)")
+    print("  3. Colleges then install the apps and register themselves.")
+
+
 def list_auth(db):
     """List Firebase AUTH accounts, which are separate from the Firestore
     `users` profiles. If /users is wiped, the sign-in accounts usually survive
@@ -311,6 +403,9 @@ def main():
     sub.add_parser("list-users")
     sub.add_parser("list-colleges")
     sub.add_parser("list-auth")
+    p_wipe = sub.add_parser("wipe-all", help="DELETE all Firestore data for this project")
+    p_wipe.add_argument("--include-auth", action="store_true",
+                        help="Also delete every Firebase Auth account")
     p_ci = sub.add_parser("create-institution", help="Create a fresh college and attach an owner")
     p_ci.add_argument("college_id")
     p_ci.add_argument("name")
@@ -352,6 +447,8 @@ def main():
         set_password(args.email, args.password)
     elif args.command == "create-institution":
         create_institution(db, args.college_id, args.name, args.owner_email)
+    elif args.command == "wipe-all":
+        wipe_all(db, args.include_auth)
     elif args.command == "list-auth":
         list_auth(db)
     elif args.command == "repair-user":
