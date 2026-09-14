@@ -82,6 +82,53 @@ def list_colleges(db):
     print(f"\n{len(colleges)} college(s) registered.")
 
 
+def list_auth(db):
+    """List Firebase AUTH accounts, which are separate from the Firestore
+    `users` profiles. If /users is wiped, the sign-in accounts usually survive
+    here — this shows what is left to rebuild profiles for."""
+    accounts = list(auth.list_users().iterate_all())
+    if not accounts:
+        print("No Firebase Auth accounts exist.")
+        return
+    print(f"{'EMAIL':<40} {'DISABLED':<10} UID")
+    print("-" * 100)
+    for u in accounts:
+        print(f"{(u.email or '(no email)'):<40} {str(u.disabled):<10} {u.uid}")
+    print(f"\n{len(accounts)} auth account(s). Profiles live separately in /users.")
+
+
+def repair_user(db, email: str, role: str, college_id: str):
+    """Rebuild a Firestore profile for an existing Auth account.
+
+    Deleting the /users collection does not delete the Auth account, but it
+    does strip the role and institutionId every app reads — which presents as
+    'sync silently does nothing' and PERMISSION_DENIED, because the rules
+    resolve both from this document.
+    """
+    try:
+        user = auth.get_user_by_email(email)
+    except auth.UserNotFoundError:
+        print(f"No Firebase Auth account exists for {email}.")
+        print("Nothing to repair — create it with create-directorate, or sign up in the app.")
+        sys.exit(1)
+
+    if role == "directorate_admin" and college_id:
+        print("A directorate account belongs to no college; ignoring the college id.")
+        college_id = ""
+
+    db.collection("users").document(user.uid).set(
+        {
+            "uid": user.uid,
+            "email": email,
+            "role": role,
+            "institutionId": college_id,
+        },
+        merge=True,
+    )
+    print(f"Restored profile for {email}: role='{role}', institutionId='{college_id}'.")
+    print("Sign out and sign in again on every app so each one re-reads it.")
+
+
 def set_institution(db, email: str, college_id: str):
     """Re-attach an account to a college. Repairs an account whose
     institutionId was cleared — without it every app signed in as that
@@ -189,6 +236,11 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("list-users")
     sub.add_parser("list-colleges")
+    sub.add_parser("list-auth")
+    p_rep = sub.add_parser("repair-user", help="Rebuild a Firestore profile for an existing Auth account")
+    p_rep.add_argument("email")
+    p_rep.add_argument("role", help="owner | college_admin | librarian | staff | directorate_admin")
+    p_rep.add_argument("college_id", nargs="?", default="", help="Institution id (omit for directorate accounts)")
     p_create = sub.add_parser(
         "create-directorate",
         help="Create a new account AND grant it directorate_admin (no signup needed)",
@@ -220,6 +272,10 @@ def main():
         create_directorate(db, args.email, args.password)
     elif args.command == "set-password":
         set_password(args.email, args.password)
+    elif args.command == "list-auth":
+        list_auth(db)
+    elif args.command == "repair-user":
+        repair_user(db, args.email, args.role, args.college_id)
     elif args.command == "set-institution":
         set_institution(db, args.email, args.college_id)
     elif args.command == "promote":
