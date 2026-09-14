@@ -137,9 +137,12 @@ export default function OnboardPage() {
               "Sign in with a college account instead.",
           );
         }
+        // Keep an existing role rather than writing "staff" over it: the
+        // owner of a college re-joining from another device would otherwise
+        // demote themselves and lose settings access.
         await updateDoc(doc(db, "users", user.uid), {
           institutionId: instId,
-          role: "staff",
+          role: profile?.role || "staff",
         });
       }
 
