@@ -117,6 +117,7 @@ fun BookListScreen(
         if (isRefreshing) pullRefreshState.startRefresh() else pullRefreshState.endRefresh()
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     var selectedBook by remember { mutableStateOf<Book?>(null) }
     var showBottomSheet by remember { mutableStateOf(false) }
     var showConfirmDelete by remember { mutableStateOf(false) }
@@ -244,6 +245,11 @@ fun BookListScreen(
                         TextButton(
                             onClick = {
                                 viewModel.deleteBook(book)
+                                com.college.library.data.AuditLogger.log(
+                                    context,
+                                    "book_delete",
+                                    "\"${book.title}\" (acc ${book.accNo}, syncId ${book.syncId})",
+                                )
                                 showConfirmDelete = false
                                 selectedBook = null
                             }

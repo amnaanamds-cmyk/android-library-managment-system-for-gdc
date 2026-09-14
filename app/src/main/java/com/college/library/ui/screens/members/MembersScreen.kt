@@ -69,6 +69,7 @@ fun MembersScreen(
     val currentRole by authViewModel.currentRole.collectAsState()
     val canEdit = remember(currentRole) { authViewModel.canEditMembers() }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
     var selectedMember by remember { mutableStateOf<Member?>(null) }
     var showConfirmDelete by remember { mutableStateOf(false) }
 
@@ -183,6 +184,11 @@ fun MembersScreen(
                     TextButton(
                         onClick = {
                             viewModel.deleteMember(member)
+                            com.college.library.data.AuditLogger.log(
+                                context,
+                                "member_delete",
+                                "${member.name} (${member.memberId}, syncId ${member.syncId})",
+                            )
                             showConfirmDelete = false
                             selectedMember = null
                         }

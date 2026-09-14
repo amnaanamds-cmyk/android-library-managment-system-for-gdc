@@ -3,6 +3,11 @@ app/build/
 build/
 local.properties
 *.apk
+
+# Environment files — may hold API keys and connection strings.
+.env
+.env.local
+.env.*.local
 hs_err_pid*.log
 replay_pid*.log
 .kotlin/

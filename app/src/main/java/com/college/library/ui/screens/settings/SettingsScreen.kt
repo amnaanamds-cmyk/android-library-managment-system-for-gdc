@@ -756,26 +756,26 @@ fun SettingsScreen(
         }
     }
 
+    // Resetting the database destroys every book, member and loan record on
+    // this device, so a second tap is not enough of a gate — an unattended,
+    // already-signed-in phone at a circulation desk is the normal case here.
     if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset Database?") },
-            text = { Text("This will permanently delete all books, members, issues, and transactions. This action cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.resetDatabase()
-                        showResetDialog = false
-                    }
-                ) {
-                    Text("RESET", color = DangerRed, fontWeight = FontWeight.Bold)
-                }
+        com.college.library.ui.components.ReauthDialog(
+            title = "Reset Database?",
+            message = "This permanently deletes all books, members, issues and " +
+                "transactions. This cannot be undone.\n\n" +
+                "Enter your password to confirm.",
+            confirmLabel = "RESET",
+            onDismiss = { showResetDialog = false },
+            onVerified = {
+                com.college.library.data.AuditLogger.log(
+                    context,
+                    "database_reset",
+                    "Local database reset from Android settings",
+                )
+                viewModel.resetDatabase()
+                showResetDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("CANCEL")
-                }
-            }
         )
     }
 }
