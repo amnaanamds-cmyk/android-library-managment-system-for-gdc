@@ -207,7 +207,7 @@
     <li class="written"><span class="n">14</span><span>One rule, every college's data</span><span class="st">written</span></li>
     <li class="written"><span class="n">15</span><span>The button that made everyone an administrator</span><span class="st">written</span></li>
     <li class="written"><span class="n">16</span><span>Shipping a key that unlocks everything</span><span class="st">written</span></li>
-    <li><span class="n">17</span><span>Testing rules instead of trusting them</span><span class="st">outlined</span></li>
+    <li class="written"><span class="n">17</span><span>Testing rules instead of trusting them</span><span class="st">written</span></li>
   </ol>
 
   <h3>Part V · Scale, Cost and Memory</h3>
@@ -1493,9 +1493,180 @@ def _on_bio_success(self):
   probably not a single lapse.</p>
 </article>
 
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 17</p>
+  <h2>Testing rules instead of trusting them</h2>
+
+  <p class="lede">Chapter 14 showed a test suite that passed while certifying a
+  disclosure, because it had been written from the implementation rather than the
+  requirement. This chapter closes Part IV with the earlier failure that suite was
+  originally built to catch — a defect that was not a security hole at all, but
+  looked enough like one, for long enough, to be worth understanding on its own
+  terms.</p>
+
+  <h3>The symptom that pointed the wrong way</h3>
+
+  <p>Books, members and loan records created on the desktop application
+  synchronised to Android and the web portal without issue. Records created on
+  Android or the web did not reach the desktop, and worse, most of them did not
+  reach Firestore at all — every write from those two platforms was silently
+  refused.</p>
+
+  <p>The natural reading of "desktop works, nothing else does" is a rules problem
+  specific to non-desktop clients, and that reading is not wrong, exactly — it is
+  just incomplete in a way that sent the early investigation toward the wrong layer.
+  Time went into reviewing role assignments and authentication tokens, on the
+  assumption that Android and web sessions were somehow carrying the wrong identity.
+  They were not. The identity was fine. The rule evaluating it was raising an error
+  before it ever got to check identity at all.</p>
+
+  <h3>Mechanism</h3>
+
+  <p>The rules needed to know whether the signed-in user was a college's director,
+  and the function written to answer that question looked entirely reasonable:</p>
+
+<pre><code>function isCollegeDirector(collegeId) {
+  return get(/databases/$(database)/documents/colleges/$(collegeId))
+           .data.directorUid == request.auth.uid;
+}</code></pre>
+
+  <p>Read it as a human reads it: look up the college's registry document, check
+  whether its <code>directorUid</code> field matches the caller. The trouble is
+  entirely in one word — <code>get()</code> — and in what Firestore's rules
+  language does when the document being fetched does not exist.</p>
+
+  <p><code>get()</code> on a missing document does not return an empty result, and it
+  does not return null in a way a rule can gracefully handle. It returns a value
+  whose <code>.data</code> is null, and accessing <code>.data</code> on it — as the
+  function above does, immediately, with no check in between — raises. A raised
+  expression inside a security rule does not partially succeed; the request the rule
+  was evaluating is denied outright, indistinguishably from a request that was
+  legitimately refused.</p>
+
+  <p>The final piece is why this hit selectively. The desktop application creates a
+  college by writing directly to <code>/institutions/{collegeId}</code> and never
+  creates a matching document under the older <code>/colleges/{collegeId}</code>
+  registry that this function queried — a legacy collection carried over from an
+  earlier design, superseded everywhere except in this one function. Every
+  institution the desktop app had ever created was, from this function's point of
+  view, a college that did not exist. Every write to it, from any platform bound by
+  the rules, was denied — which is every platform except the desktop application
+  itself, which bypasses rules entirely through the mechanism described in Chapter
+  16. The desktop app could not see this bug because the desktop app does not go
+  through the code that contains it, for the same reason it could not see the
+  disclosure in Chapter 14.</p>
+
+  <h3>The fix, and the rule it teaches</h3>
+
+  <p>Firestore's rules language has an <code>exists()</code> check specifically for
+  this situation, and it must be evaluated before any <code>get()</code> whose
+  document might be absent:</p>
+
+<pre><code>// Guarded by exists() — a missing registry document means "not a director
+// by this route", never a denied request.
+function isCollegeDirector(collegeId) {
+  return signedIn()
+      && exists(/databases/$(database)/documents/colleges/$(collegeId))
+      && get(/databases/$(database)/documents/colleges/$(collegeId))
+           .data.directorUid == request.auth.uid;
+}</code></pre>
+
+  <p>A second instance of the identical shape was found once this one was
+  understood and the rest of the file was checked deliberately for siblings — a
+  map lookup, <code>x in profile.collegeIds</code>, which raises exactly the same
+  way when a profile has no <code>collegeIds</code> field at all, which every
+  profile created before that field existed did not have. The rules language
+  provides <code>.get(key, default)</code> for precisely this case, and the fix was
+  the same shape again: never index or dereference something whose absence is a
+  normal state, always ask first.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>In a security rules language, an error and a denial look identical from
+    outside, and the language is built to fail closed — which is the right default,
+    and also means a rule that raises for the wrong reason is indistinguishable from
+    a rule correctly protecting something. Absence is not failure. A missing
+    document, a missing field, a missing array — each is a normal state a rule must
+    be written to expect, not an exceptional one it can assume away.</p>
+  </div>
+
+  <h3>Why forty-one tests, and what they are actually for</h3>
+
+  <p>The rules test suite mentioned in Chapter 14 was written directly out of this
+  investigation, and understanding why explains what a rules test is for that a
+  manual check in the console is not.</p>
+
+  <p>Security rules are declarative and cannot be stepped through with a debugger.
+  There is no breakpoint to set inside <code>isCollegeDirector()</code>, no variable
+  inspector to open mid-evaluation. The only way to know what a rule actually does is
+  to send it a request and observe whether Firestore allows or denies it — which
+  means testing rules requires an environment that behaves exactly like production
+  Firestore, evaluating the exact same rules file, without touching a real project or
+  real data. The Firestore emulator is that environment, and the suite runs against
+  it directly:</p>
+
+<pre><code>const testEnv = await initializeTestEnvironment({
+  projectId: "demo-nexlib",
+  firestore: { rules: RULES, host: "127.0.0.1", port: 8080 },
+});</code></pre>
+
+  <p>Two design choices in the suite are worth calling out on their own, because
+  each closes a way the tests could lie.</p>
+
+  <p><strong>The seed data is written the way the desktop application actually
+  writes it</strong> — an institution with no <code>/colleges</code> document,
+  exactly the shape that triggered the original bug — rather than the clean,
+  complete records a developer writing tests from scratch might reach for by
+  habit. A rules test suite seeded with tidy data proves the rules handle tidy data,
+  which is not the same claim as proving they handle what your own application
+  actually produces.</p>
+
+  <p><strong>Every positive assertion is paired with a negative one.</strong>
+  Confirming that a college's own staff <em>can</em> write its books is half a test;
+  the other half, sitting immediately beside it in the file, confirms that a
+  different college's staff <em>cannot</em>:</p>
+
+<pre><code>await check("staff can create a book (was denied: null.data on /colleges)", () =&gt;
+  assertSucceeds(setDoc(doc(staff, "institutions/GDC-ZIAM/books/b2"), { title: "New" })));
+
+await check("outsider CANNOT write another college's books", () =&gt;
+  assertFails(setDoc(doc(outsider, "institutions/GDC-ZIAM/books/evil"), { title: "hack" })));</code></pre>
+
+  <p>A suite containing only <code>assertSucceeds</code> calls proves that
+  legitimate access works and says nothing whatsoever about whether illegitimate
+  access is blocked — which is, for a multi-tenant system, the half of the claim
+  that actually matters.</p>
+
+  <h3>What Chapter 14 adds to this picture</h3>
+
+  <p>This chapter and Chapter 14 describe the same test suite catching one defect
+  and missing another, and the difference between those two outcomes is the whole
+  argument of Part IV. This suite caught the <code>null.data</code> failure on its
+  first run, because the test asserting <code>staff can create a book</code> was
+  written from the requirement — colleges must be able to write their own data —
+  and the rules, at the time, did not meet it. The suite missed the cross-tenant
+  disclosure for as long as it did because the corresponding test had been written
+  by observing what the rules already permitted and recording that as correct,
+  rather than by stating in advance who must never be able to read what.</p>
+
+  <p>Both failures ran through the identical mechanism — an absence, mishandled —
+  and a suite built the right way around either one would have caught it. The
+  difference was never the tool. It was always the direction the test was written
+  in: toward a requirement decided before the code was read, or toward whatever the
+  code was already observed to do.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Write the security test before checking what the rule currently does, not
+    after. A test written afterward can only confirm; a test written beforehand can
+    actually fail — and a test that cannot fail was never testing anything.</p>
+  </div>
+</article>
+
 <section class="part">
   <p class="part-label">End of this edition</p>
-  <h2 class="part-title">Chapters 1–3, 7–8, 17–26 in preparation</h2>
+  <h2 class="part-title">Chapters 1–3, 7–8, 18–26 in preparation</h2>
   <p class="part-blurb">Each follows the same structure: symptom, false trails,
   mechanism, fix, lesson — drawn from the project's own commit history, where every
   case in this book is recorded with the reasoning that produced it.</p>
