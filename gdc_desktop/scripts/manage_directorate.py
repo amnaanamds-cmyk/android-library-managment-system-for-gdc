@@ -176,19 +176,33 @@ def _delete_collection(db, col_ref, batch_size: int = 300) -> int:
     under /institutions/{id}, so a wipe that skipped recursion would leave the
     bulk of the data behind while appearing to succeed.
     """
+    # list_documents(), NOT stream(). stream() returns only documents that
+    # exist; deleting a parent in the Firebase console leaves a PHANTOM — an
+    # id that is no longer a document but still holds subcollections. stream()
+    # cannot see phantoms, so a wipe run after a console deletion reported
+    # "0 documents" while every book under that college was still stored,
+    # still billed, and still able to reappear. list_documents() returns the
+    # phantom references too, which is the only way to reach their children.
     deleted = 0
     while True:
-        docs = list(col_ref.limit(batch_size).stream())
-        if not docs:
+        refs = list(col_ref.list_documents(page_size=batch_size))[:batch_size]
+        if not refs:
             return deleted
-        for d in docs:
-            for sub in d.reference.collections():
+        real = []
+        for ref in refs:
+            for sub in ref.collections():
                 deleted += _delete_collection(db, sub, batch_size)
-        batch = db.batch()
-        for d in docs:
-            batch.delete(d.reference)
-        batch.commit()
-        deleted += len(docs)
+            # A phantom has no document to delete — only children, now gone.
+            if ref.get().exists:
+                real.append(ref)
+        if real:
+            batch = db.batch()
+            for ref in real:
+                batch.delete(ref)
+            batch.commit()
+            deleted += len(real)
+        elif len(refs) < batch_size:
+            return deleted
 
 
 def wipe_all(db, include_auth: bool, confirm: str = ""):
