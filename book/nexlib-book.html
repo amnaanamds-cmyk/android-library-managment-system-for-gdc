@@ -205,8 +205,8 @@
   <h3>Part IV · Security Failures</h3>
   <ol>
     <li class="written"><span class="n">14</span><span>One rule, every college's data</span><span class="st">written</span></li>
-    <li><span class="n">15</span><span>The button that made everyone an administrator</span><span class="st">outlined</span></li>
-    <li><span class="n">16</span><span>Shipping a key that unlocks everything</span><span class="st">outlined</span></li>
+    <li class="written"><span class="n">15</span><span>The button that made everyone an administrator</span><span class="st">written</span></li>
+    <li class="written"><span class="n">16</span><span>Shipping a key that unlocks everything</span><span class="st">written</span></li>
     <li><span class="n">17</span><span>Testing rules instead of trusting them</span><span class="st">outlined</span></li>
   </ol>
 
@@ -1220,9 +1220,282 @@ await check("plain college director CANNOT list the whole registry", () =&gt;
   it.</p>
 </article>
 
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 15</p>
+  <h2>The button that made everyone an administrator</h2>
+
+  <p class="lede">This chapter describes a defect that is, as this book is being
+  written, still present in the code. It is included anyway, because a casebook
+  that only discusses fixed problems teaches half the lesson. The other half is
+  recognising a live one.</p>
+
+  <p><strong>Where it was found.</strong> Not through a bug report. It surfaced
+  during a routine read of the login screen while investigating something else
+  entirely — an illustration, in itself, that reading code with fresh eyes finds
+  things that testing the feature you set out to test does not.</p>
+
+  <h3>The desktop version</h3>
+
+  <p>The login screen carries three ways in: email and password, a PIN, and a
+  button labelled <em>"Biometric / Windows Hello Unlock"</em>. Directly beneath a
+  status line reading <em>"Role-Based Security Active."</em></p>
+
+  <p>Here is everything the button does:</p>
+
+<pre><code>def _do_biometric_login(self):
+    # Simulate Biometric / Windows Hello Unlock
+    # In a real environment, this would call Windows Hello APIs
+    self.login_btn.setEnabled(False)
+    self.login_btn.setText("Biometric Auth...")
+
+    # Simulate a short delay for scan
+    QtCore.QTimer.singleShot(800, self._on_bio_success)
+
+def _on_bio_success(self):
+    self.auth._current_user = User(
+        uid="bio-admin", email="admin@bio.local",
+        name="Admin (Biometric)", role="admin"
+    )
+    self.login_success.emit("admin")</code></pre>
+
+  <p>Read it slowly, because it is short enough to miss. There is no camera call, no
+  fingerprint reader, no call into the Windows Hello API the comment refers to. There
+  is a timer, set for eight hundred milliseconds, and at the end of it an
+  administrator account is fabricated in memory and the application logs in as it.
+  No password is checked. No hardware is queried. No credential of any kind is
+  presented, because none is asked for.</p>
+
+  <p>Anyone standing at the machine — a student, a visitor, anyone at all — clicks
+  the button, waits under a second, and is an administrator. The eight-hundred
+  millisecond delay is the entire security model: long enough to feel like something
+  happened, short enough not to try anyone's patience.</p>
+
+  <h3>Why "simulate" was the word that mattered</h3>
+
+  <p>The comment says <code>Simulate Biometric / Windows Hello Unlock</code>, and
+  that word is doing a great deal of quiet work. It is the developer's own honest
+  label for what the code does — and it is also the word that let this ship. A
+  simulated payment screen, a simulated network delay, a simulated sensor reading:
+  these are ordinary and useful during development, because they let a screen be
+  built and demonstrated before the real integration exists. The failure was not
+  writing the simulation. It was that nothing downstream distinguished a
+  demonstration stub from a finished feature, and the button reached a screen a real
+  librarian would use with the label unchanged.</p>
+
+  <p>A stub is not dangerous while it is understood to be a stub. It becomes
+  dangerous the moment someone other than its author encounters it without that
+  context — which, for anything committed to a repository and eventually built into
+  an installer, is inevitable.</p>
+
+  <h3>The Android version: same shape, real authentication, hardcoded credential</h3>
+
+  <p>Android's biometric handling is not a fabrication — it calls the platform's
+  real <code>BiometricPrompt</code> API, which genuinely reads a fingerprint or a
+  face and genuinely fails if it does not match. The problem sits one line past that
+  success callback:</p>
+
+<pre><code>override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+    // If fields are empty, allow biometric to act as an unlock for the
+    // default admin bypass
+    val loginEmail = if (email.isBlank()) "admin@gdc.edu" else email.trim()
+    val loginPass = if (password.isBlank()) "admin" else password
+    viewModel.login(loginEmail, loginPass)
+}</code></pre>
+
+  <p>If the email and password fields are empty at the moment the fingerprint
+  matches, the app signs in with a hardcoded email and a hardcoded password,
+  shipped in the APK for anyone to extract. The comment calls it "the default admin
+  bypass" — a name that assumes the reader already knows it exists, which is exactly
+  the problem with a bypass nobody documented anywhere else.</p>
+
+  <p>This version is less immediately dangerous than the desktop one — a real
+  fingerprint has to match, and it only works at all if that specific account exists
+  — but it embeds a permanent, unchangeable password into every copy of the
+  application, and its trigger condition is "leave the fields blank," which is the
+  default state of the login screen on first open.</p>
+
+  <h3>Why it matters more here than it would elsewhere</h3>
+
+  <p>Consider where this application runs. A college library counter, generally
+  unattended for stretches of the day, generally accessible to students and staff who
+  have every ordinary reason to be near it. It is close to the worst plausible
+  location for a one-click, no-credential path to administrator access — closer to a
+  bank counter than to a personal laptop, in terms of who has physical access and
+  how much damage an administrator account can do once obtained.</p>
+
+  <p>An administrator in this application can edit or delete any record, adjust
+  library settings, and — the specific worry for a Directorate-run network — reach
+  screens that touch cross-college data, because role checks in the rest of the
+  application trust whatever role the session carries. A bypass at login defeats
+  every downstream control that assumes login was real.</p>
+
+  <h3>What the fix looks like</h3>
+
+  <p>On the desktop side, the honest options are two: implement the real Windows
+  Hello integration the comment describes, or remove the button. There is no
+  acceptable middle position where it stays and does nothing real, because a control
+  labelled <em>"Role-Based Security Active"</em> sitting directly above a button that
+  grants every role with no check is worse than having no such button at all — it
+  actively asserts a protection that is not present.</p>
+
+  <p>On Android, the fix is smaller and should happen regardless of what desktop
+  does: delete the hardcoded fallback. A successful fingerprint match should unlock
+  whatever account is already signed in on that device — the credential a real
+  librarian entered once and asked the phone to remember — never conjure a
+  privileged one from nothing.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>A stub that grants access rather than denying it is not a neutral placeholder.
+    "Not yet implemented" should fail closed — an error, a disabled button, a message
+    saying the feature is coming — never fail open into the highest privilege the
+    system has. The cost of building a feature honestly disabled is a support
+    message. The cost of building it honestly bypassed is everyone's data.</p>
+  </div>
+
+  <h3>How to find the others</h3>
+
+  <p>This class of bug has a signature worth grepping for directly: the words
+  <em>simulate</em>, <em>placeholder</em>, <em>TODO</em>, and <em>bypass</em>,
+  searched across a codebase before it ships, and read in full wherever they appear
+  — not skimmed, because the comment that explains the danger is usually sitting
+  right next to the code that creates it, exactly as it was here.</p>
+</article>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 16</p>
+  <h2>Shipping a key that unlocks everything</h2>
+
+  <p class="lede">Every failure so far in this book lives in application code and can
+  be fixed by changing application code. This one lives in the architecture, and
+  fixing it means changing what the desktop application is allowed to be.</p>
+
+  <h3>Two ways to talk to a database</h3>
+
+  <p>Firestore, the cloud database behind NEXLIB, can be reached in two fundamentally
+  different ways. A client SDK — the path Android and the web applications use —
+  authenticates as a particular signed-in user and is bound by the security rules
+  written for that user's role. An administrative SDK — the path the desktop
+  application uses — authenticates with a service account credential and bypasses
+  every rule entirely. It can read and write anything in the project, unconditionally,
+  because it is not a user being governed by rules; it is treated as the
+  infrastructure the rules exist within.</p>
+
+  <p>The desktop application uses the administrative path. This was, originally, a
+  reasonable engineering choice: it made batch operations, migrations and reports
+  straightforward to write, and for a single-college pilot running on a machine
+  its developer controlled, the risk was abstract.</p>
+
+  <h3>What the credential actually is, and where it lives</h3>
+
+  <p>The administrative SDK needs a credential to authenticate as the project's
+  infrastructure, and that credential is a file:
+  <code>serviceAccountKey.json</code>. The build configuration is explicit about
+  what it grants:</p>
+
+<pre><code># serviceAccountKey.json — a Firebase ADMIN key that bypasses every
+# security rule. It must never be bundled into the executable...</code></pre>
+  <p class="caption">gdc_desktop.spec</p>
+
+  <p>The comment is not hedging. This one file, on its own, with no Firestore rule
+  able to stop it, is unrestricted read and write access to every college's books,
+  members, loan records and settings, and to the directorate's own oversight data —
+  the exact cross-tenant boundary that Chapter 14 was so carefully rebuilt to
+  enforce, sitting one file away from being walked straight through.</p>
+
+  <h3>The distribution problem</h3>
+
+  <p>A single trusted machine holding this file is a manageable risk. The
+  deployment plan is not a single machine — it is an installer, handed to each of
+  several hundred colleges across a province, each running the desktop application
+  independently. For the administrative path to keep working after installation,
+  every one of those colleges needs its own copy of the file that unlocks every
+  other college's data.</p>
+
+  <p>Put plainly: the plan, unless changed, is to distribute a master key to every
+  location it must never be usable from. This is not a probabilistic risk that might
+  or might not materialise depending on how careful everyone is. It is a design that
+  is broken the moment the second college receives it, regardless of anyone's
+  intentions or diligence — any one of several hundred independent recipients losing,
+  leaking, or being careless with a file is not a tail risk, it is closer to a
+  certainty over enough colleges and enough years.</p>
+
+  <p>This is why the current build deliberately excludes the file from the packaged
+  installer and requires it to be placed manually beside the executable — a
+  precaution that keeps development honest, but does not solve the delivery problem,
+  because a working desktop application still needs the file present on every
+  machine that runs it.</p>
+
+  <h3>Why this could not simply be caught by the rules that protect everything else</h3>
+
+  <p>It is worth being precise about why the extensive rules work in Chapter 14, and
+  the forty-one tests that verify them, do nothing here. Security rules govern
+  requests that arrive as a particular authenticated user, and they are evaluated by
+  Firestore before it acts on that request. The administrative SDK does not make
+  requests as a user at all — it authenticates as the infrastructure the rules are
+  written for, and rules do not apply to infrastructure. There is no rule that could
+  be written to close this gap, because the gap exists a layer below where rules
+  operate.</p>
+
+  <p>This also explains something that recurs throughout this book and is worth
+  naming directly here. Every defect in Part IV that the rules successfully catch —
+  and several elsewhere — was invisible to whoever tested using the desktop
+  application, because the desktop application does not go through the rules at all.
+  A category of fault was structurally undetectable from the platform used every
+  day during development, not through carelessness, but as a direct consequence of
+  this one architectural decision.</p>
+
+  <h3>What the actual fix requires</h3>
+
+  <p>Removing the administrative SDK from the desktop application and replacing it
+  with the same client SDK path Android and the web applications already use.
+  Concretely: the desktop application signs in as a real user through Firebase
+  Authentication, exactly as the other two platforms do, and every read and write it
+  performs is then governed by the same security rules — the same tenant boundary,
+  the same role checks, the same tests.</p>
+
+  <p>This is not a small patch. Every service that currently assumes unrestricted
+  access — batch imports, report generation, the administrative CLI used for
+  onboarding and account repair — has to be re-examined against what a
+  rules-governed client is actually permitted to do, and in some cases the
+  permission model itself needs new rules to grant a legitimate owner or admin
+  account operations that were previously available for free through the bypass.
+  It is real work, correctly sequenced ahead of any wider rollout, and it is the
+  single item in this book's list of open issues that blocks distribution
+  outright — not degrades it, not risks it, blocks it.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>A credential that bypasses your access control is not a convenience with a
+    security cost attached to it. It is a second, unwritten access control system
+    running in parallel with the one you actually built and tested — and the moment
+    you distribute that credential beyond a single trusted operator, it becomes the
+    system's real security model, whatever the rules say.</p>
+  </div>
+
+  <h3>A smaller finding from the same investigation</h3>
+
+  <p>While tracing where administrative credentials lived in this project, a second
+  one turned up: the Android release signing keystore, and every password it needs,
+  committed to the repository in plain text. It grants a different capability — the
+  ability to build and sign a modified application that Android devices will accept
+  as a legitimate update to the real one, carrying over all existing data with no
+  warning to the user — but it is the same category of mistake by the same
+  mechanism: a secret capable of undermining every other control, checked into
+  source control because the immediate task in front of the developer at the time
+  did not require thinking about who else the repository would eventually reach.</p>
+
+  <p>Two instances of the identical failure, found on the same afternoon, is itself
+  worth recording as a finding. When one credential-in-the-wrong-place bug turns
+  up, the right response is not to fix that one and move on — it is to search
+  specifically for its siblings, because whatever habit produced the first one was
+  probably not a single lapse.</p>
+</article>
+
 <section class="part">
   <p class="part-label">End of this edition</p>
-  <h2 class="part-title">Chapters 1–3, 7–8, 15–26 in preparation</h2>
+  <h2 class="part-title">Chapters 1–3, 7–8, 17–26 in preparation</h2>
   <p class="part-blurb">Each follows the same structure: symptom, false trails,
   mechanism, fix, lesson — drawn from the project's own commit history, where every
   case in this book is recorded with the reasoning that produced it.</p>
