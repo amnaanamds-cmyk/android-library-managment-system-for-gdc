@@ -212,7 +212,7 @@
 
   <h3>Part V · Scale, Cost and Memory</h3>
   <ol>
-    <li><span class="n">18</span><span>Read amplification: the 155-fold bill</span><span class="st">outlined</span></li>
+    <li class="written"><span class="n">18</span><span>Read amplification: the 155-fold bill</span><span class="st">written</span></li>
     <li><span class="n">19</span><span>Why the catalogue size was bounded by RAM</span><span class="st">outlined</span></li>
     <li><span class="n">20</span><span>Measuring instead of projecting</span><span class="st">outlined</span></li>
   </ol>
@@ -1664,9 +1664,160 @@ await check("outsider CANNOT write another college's books", () =&gt;
   </div>
 </article>
 
+
+<section class="part">
+  <p class="part-label">Part V</p>
+  <h2 class="part-title">Scale, Cost and Memory</h2>
+  <p class="part-blurb">A system that works perfectly for one college can fail for
+  reasons that only exist at the three-hundred-and-fiftieth. This part is about
+  finding those reasons before the three hundred and fiftieth college does.</p>
+</section>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 18</p>
+  <h2>Read amplification: the 155-fold bill</h2>
+
+  <p class="lede">Nothing in this chapter is a bug in the sense the rest of the book
+  uses the word. Every line of the code discussed here does exactly what it was
+  written to do. The failure is that what it was written to do turns out, at
+  provincial scale, to cost roughly a hundred and fifty times more than it needed
+  to — and the code looked entirely ordinary while doing it.</p>
+
+  <h3>What the listeners actually do</h3>
+
+  <p>NEXLIB keeps every device's local copy current with real-time listeners — one
+  each for books, ebooks, members, issued loans and reservations, attached the moment
+  a device connects to its college:</p>
+
+<pre><code>fun observeBooks(collegeId: String): Flow&lt;List&lt;Book&gt;&gt; {
+    return subcollection(collegeId, "books").snapshots().map { snapshot ->
+        snapshot.documents.mapNotNull { it.data&lt;Book&gt;() }
+    }
+}</code></pre>
+
+  <p>Read that signature carefully: it takes a college id and returns a flow of the
+  <em>entire</em> books collection, every time it changes. This is not a bug in the
+  ordinary sense — it is the Firestore SDK's documented, intended behaviour for a
+  collection listener, and it is what nearly every tutorial shows. Attach a listener
+  to a collection, and Firestore keeps you current with everything in it, forever,
+  for as long as the listener is attached.</p>
+
+  <p>"Current with everything in it" is the phrase to sit with. The first thing that
+  happens when this listener attaches is not an update — it is a full read of every
+  document in the collection, because that is what "current" means for a listener
+  that has just started. Five listeners, attached on every launch, means five full
+  collection reads on every launch, before a single real-time update has occurred.</p>
+
+  <h3>Multiplying it out</h3>
+
+  <p>A college running a 20,000-book catalogue holds roughly 30,800 documents across
+  the five synchronised collections. Three devices — the two counters and a phone —
+  each attach on roughly three app launches a day. That is the read cost of simply
+  opening the application, before a single book is issued or returned:</p>
+
+<pre><code>30,800 documents × 3 devices × 3 launches/day = 277,200 reads/day, one college</code></pre>
+
+  <p>Firestore's free tier allows fifty thousand document reads a day, shared across
+  the entire project — not per college, the whole deployment. One mid-sized college,
+  simply by being used normally, consumes that allowance five and a half times over
+  by itself.</p>
+
+  <p>The project's Firestore billing is not the free tier alone; it is priced per
+  hundred thousand reads beyond it. Carried to a province of roughly three hundred
+  and fifty colleges at this profile, the read volume prices out to approximately
+  seven million rupees a year — for a system whose actual, useful work is a
+  librarian scanning a barcode or a student returning a book.</p>
+
+  <h3>Why nothing about this looks wrong in isolation</h3>
+
+  <p>This is worth dwelling on, because it is the chapter's real subject. A code
+  reviewer reading <code>observeBooks()</code> in isolation has nothing to flag. It
+  is short, it is idiomatic Firestore usage, it does what its name says, and it was
+  tested — correctly — against a single college with a few dozen books, where the
+  difference between reading everything and reading only what changed is a few
+  dozen documents either way, invisible in any development budget.</p>
+
+  <p>The defect only exists as a property of the whole system at its intended scale:
+  many devices, launching often, against collections that grow into the tens of
+  thousands. No unit test catches it, because a unit test exercises one call in
+  isolation and this is a cost that only appears when you multiply three numbers
+  together that no single function ever sees at once — collection size, device
+  count, launch frequency. It is, in the fullest sense, an architectural cost rather
+  than a coding error, and it is exactly the kind of cost that a correctness review
+  is not designed to find.</p>
+
+  <h3>The fix was already half-written</h3>
+
+  <p>This is the detail that turns the chapter from a warning into a workable
+  lesson. The same file already contained the alternative, built for a different
+  purpose and sitting a few dozen lines below the listeners it should have been
+  informing:</p>
+
+<pre><code>// Incremental pulls (used by the periodic full sync and the initial
+// backfill). Only records newer than `since` are fetched.
+private fun incrementalQuery(collegeId: String, sub: String, since: Long): Query {
+    val base = subcollection(collegeId, sub)
+    return if (since > 0L) base.where { "lastUpdated" greaterThan since } else base
+}
+
+suspend fun fetchBooks(collegeId: String, since: Long): List&lt;Book&gt; {
+    return incrementalQuery(collegeId, "books", since).get().documents
+        .mapNotNull { it.data&lt;Book&gt;() }
+}</code></pre>
+
+  <p>A query filtered to records changed after the last successful sync already
+  existed, already worked, and was already used by a periodic background sync
+  running alongside the real-time listeners. The two mechanisms had simply never
+  been reconciled: one path fetched only what changed, and a parallel path,
+  unaware of it, kept fetching everything.</p>
+
+  <p>Applying the existing filter to the real-time listeners — tracking each
+  collection's last-seen timestamp and attaching <code>where lastUpdated &gt;
+  since</code> to every listener query rather than only to the periodic backfill —
+  drops the daily read count for that same college from 277,200 to roughly eleven
+  hundred: ordinary daily activity plus a fixed overhead for reconnecting, rather
+  than the entire catalogue on every launch. At provincial scale, the same
+  arithmetic that produced seven million rupees a year produces closer to forty-five
+  thousand.</p>
+
+  <h3>The number is worth more once it is measured</h3>
+
+  <p>A projected saving invites a reasonable question: how do you know the number
+  is real, and not an assumption compounding an assumption? The honest answer is
+  that a spreadsheet projection and a measured result are different kinds of claim,
+  and only one of them survives contact with a sceptical evaluator.</p>
+
+  <p>The project's diagnostic tooling includes a load-testing mode built for exactly
+  this: seed a synthetic college of a chosen size, attach a listener the way the
+  real application does, and count the documents that cross the wire on that first
+  attach — a live measurement of read amplification rather than an arithmetic
+  estimate of it. Run once against the current listeners and once against the
+  incremental version, the two runs produce a before-and-after that is evidence
+  rather than argument, and the gap between them is the number that belongs in a
+  costing document — not a projection defended in a meeting, but a measurement
+  anyone can reproduce.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Cost bugs do not look like bugs. They look like ordinary, correct,
+    well-tested code that happens to run at a scale nobody multiplied out on paper.
+    The review question that catches them is not "does this line do what it says"
+    but "what does this cost when there are three hundred and fifty of it, each
+    doing this many times a day" — a question a correctness review never asks, and a
+    load test is the only way to actually answer.</p>
+  </div>
+
+  <p>One further note, because it recurs as a pattern worth naming on its own. The
+  fix here was not a new idea — it was reusing a mechanism that already existed for
+  a different purpose, sitting unused a short distance from the problem it could
+  have solved. Before designing a fix for a cost or performance defect, it is worth
+  searching the codebase for whether the fix has, in some form, already been
+  written.</p>
+</article>
+
 <section class="part">
   <p class="part-label">End of this edition</p>
-  <h2 class="part-title">Chapters 1–3, 7–8, 18–26 in preparation</h2>
+  <h2 class="part-title">Chapters 1–3, 7–8, 19–26 in preparation</h2>
   <p class="part-blurb">Each follows the same structure: symptom, false trails,
   mechanism, fix, lesson — drawn from the project's own commit history, where every
   case in this book is recorded with the reasoning that produced it.</p>
