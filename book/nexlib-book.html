@@ -1,0 +1,799 @@
+<title>Field Notes from a Provincial System</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{
+    --paper:#FBFAF7;
+    --ink:#1A1814;
+    --ink-soft:#4E4A42;
+    --ink-faint:#837D71;
+    --rule:#DDD7C9;
+    --rule-soft:#EBE6DA;
+    --accent:#8A5B2A;
+    --code-bg:#F2EFE7;
+    --stop:#963A2C;
+    --display:"Newsreader",Georgia,serif;
+    --body:"Newsreader",Georgia,"Times New Roman",serif;
+    --ui:"Public Sans",-apple-system,"Segoe UI",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#15140F; --ink:#E9E4D8; --ink-soft:#B5AE9F; --ink-faint:#8A8377;
+      --rule:#33302A; --rule-soft:#262420; --accent:#D3A163; --code-bg:#1E1C17;
+      --stop:#DE8A78;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#15140F; --ink:#E9E4D8; --ink-soft:#B5AE9F; --ink-faint:#8A8377;
+    --rule:#33302A; --rule-soft:#262420; --accent:#D3A163; --code-bg:#1E1C17;
+    --stop:#DE8A78;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:var(--body); font-size:17px; line-height:1.66;
+    margin:0; padding-inline:22px; padding-block:0;
+  }
+  .book{max-width:38em;margin-inline:auto;padding-block:48px 72px}
+
+  /* ── title page ───────────────────────────────────────────── */
+  .title-page{border-bottom:3px double var(--rule);padding-bottom:44px;margin-bottom:44px}
+  .series{font-family:var(--ui);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+          color:var(--accent);margin:0 0 20px}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(2.2rem,7vw,3.4rem);
+     line-height:1.06;letter-spacing:-.02em;margin:0 0 14px;text-wrap:balance}
+  .subtitle{font-family:var(--display);font-style:italic;font-weight:300;
+            font-size:clamp(1.1rem,3vw,1.45rem);color:var(--ink-soft);margin:0 0 26px;line-height:1.4}
+  .byline{font-family:var(--ui);font-size:13px;color:var(--ink-faint);margin:0;line-height:1.7}
+
+  /* ── structure ────────────────────────────────────────────── */
+  .part{margin-top:64px;padding-top:26px;border-top:2px solid var(--ink)}
+  .part-label{font-family:var(--ui);font-size:11px;font-weight:700;letter-spacing:.18em;
+              text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+  .part-title{font-family:var(--display);font-size:1.9rem;font-weight:600;margin:0 0 10px;
+              letter-spacing:-.01em}
+  .part-blurb{color:var(--ink-soft);font-style:italic;margin:0 0 4px;max-width:34em}
+
+  .chapter{margin-top:46px}
+  .chapter-num{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.14em;
+               color:var(--accent);margin:0 0 4px}
+  h2{font-family:var(--display);font-size:1.62rem;font-weight:600;line-height:1.2;
+     margin:0 0 16px;letter-spacing:-.012em;text-wrap:balance}
+  h3{font-family:var(--ui);font-size:1rem;font-weight:700;margin:30px 0 8px;letter-spacing:-.003em}
+
+  p{margin:0 0 15px}
+  p.lede{font-size:1.06em;color:var(--ink-soft)}
+  ul,ol{margin:0 0 15px;padding-left:1.35em}
+  li{margin-bottom:7px}
+  strong{font-weight:600}
+  em{font-style:italic}
+
+  code{font-family:var(--mono);font-size:.82em;background:var(--code-bg);
+       padding:1px 5px;border-radius:2px;word-break:break-word}
+  pre{font-family:var(--mono);font-size:.78rem;line-height:1.55;background:var(--code-bg);
+      border-left:2px solid var(--accent);padding:13px 16px;overflow-x:auto;margin:0 0 16px}
+  pre code{background:none;padding:0;font-size:1em}
+  .caption{font-family:var(--ui);font-size:12px;color:var(--ink-faint);margin:-10px 0 18px}
+
+  blockquote{margin:0 0 16px;padding:12px 18px;background:var(--code-bg);
+             border-left:2px solid var(--ink-faint);font-style:italic;color:var(--ink-soft)}
+  .lesson{border:1px solid var(--rule);border-left:3px solid var(--accent);
+          background:var(--code-bg);padding:15px 18px;margin:22px 0}
+  .lesson .lesson-label{font-family:var(--ui);font-size:10.5px;font-weight:700;letter-spacing:.14em;
+                        text-transform:uppercase;color:var(--accent);display:block;margin-bottom:5px}
+  .lesson p{margin:0;font-style:italic;color:var(--ink-soft)}
+
+  /* ── contents ─────────────────────────────────────────────── */
+  .toc{margin:36px 0 0}
+  .toc h3{font-family:var(--ui);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);margin:28px 0 8px;font-weight:700}
+  .toc ol{list-style:none;margin:0;padding:0}
+  .toc li{display:grid;grid-template-columns:2.4em 1fr auto;gap:10px;align-items:baseline;
+          font-size:.95rem;margin-bottom:5px;color:var(--ink-soft)}
+  .toc .n{font-family:var(--mono);font-size:.78rem;color:var(--ink-faint)}
+  .toc .st{font-family:var(--ui);font-size:9.5px;font-weight:700;letter-spacing:.09em;
+           text-transform:uppercase;color:var(--ink-faint);white-space:nowrap}
+  .toc li.written{color:var(--ink)}
+  .toc li.written .st{color:var(--accent)}
+
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-family:var(--ui);font-size:.86rem;margin:0 0 18px}
+  th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  th{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-faint);font-weight:700}
+
+  hr.scene{border:0;height:1px;background:none;text-align:center;margin:26px 0}
+  hr.scene::before{content:"§";color:var(--ink-faint);font-family:var(--display)}
+
+  @media (max-width:640px){ .book{padding-block:32px 48px} body{font-size:16px} }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="book">
+
+<header class="title-page">
+  <p class="series">A NEXLIB Engineering Casebook</p>
+  <h1>Field Notes from a Provincial System</h1>
+  <p class="subtitle">Errors, crashes and silent failures in a multi-platform library network — and how each one was found</p>
+  <p class="byline">
+    Drawn from the development of NEXLIB, a library management system for Government
+    Degree Colleges under the Higher Education Department, Khyber Pakhtunkhwa.<br>
+    Four applications · ~57,700 lines · Android, Windows, and two web portals.
+  </p>
+</header>
+
+<section>
+  <h2>Preface: why these notes exist</h2>
+
+  <p class="lede">Most books about debugging are written backwards. The author knows the answer
+  before the first sentence, so the bug arrives already labelled, the investigation
+  runs in a straight line, and the reader never experiences the thing that actually
+  makes debugging hard: not knowing, for hours, which of forty possibilities is true.</p>
+
+  <p>This book is assembled from a real project's wreckage. Every failure in it
+  happened, in order, to a working system with real users and real library data. The
+  diagnoses are the ones that were actually reached — including the ones that were
+  wrong first, and had to be abandoned.</p>
+
+  <p>NEXLIB is a library management system for the government degree colleges of
+  Khyber Pakhtunkhwa. It is four separate applications — an Android app, a Windows
+  desktop program, a college web portal and a directorate portal — sharing one
+  multi-tenant cloud database, and designed to keep working in colleges where the
+  internet does not. That shape generates a particular and instructive class of bug:
+  faults that appear on one platform and not another, faults that are invisible
+  until a second device disagrees, and faults that never crash anything at all.</p>
+
+  <p>Three convictions run through what follows.</p>
+
+  <p><strong>A crash is the best kind of failure.</strong> It is loud, it names a file
+  and a line, and it stops before doing more damage. The failures that cost this
+  project the most time never crashed: a delete that quietly did nothing, a status
+  badge that reported the wrong problem, a wipe that reported success while leaving
+  most of the data behind. Chapter after chapter here is about failures that looked
+  like nothing.</p>
+
+  <p><strong>The error message is usually not the error.</strong> <code>Connection to
+  the Kotlin daemon has been unexpectedly lost</code> is an out-of-memory condition.
+  <code>INVALID_LOGIN_CREDENTIALS</code> frequently means the account does not exist.
+  A library book reappearing after deletion is a query that excluded the wrong rows.
+  Learning to read past the message to the mechanism is most of the skill.</p>
+
+  <p><strong>Architecture decides which bugs are possible.</strong> The desktop app
+  talks to the database through an administrative credential that bypasses every
+  security rule. That one decision made an entire category of fault invisible on the
+  platform the developer used daily, and guaranteed it would appear only on the
+  platforms he could not easily test. No amount of care compensates for that; only
+  changing the architecture does.</p>
+
+  <p>The chapters are grouped so they can be read out of order. Each case study
+  follows the same shape: the symptom as it was first seen, the false trails, the
+  mechanism, the fix, and what it should have taught us earlier.</p>
+</section>
+
+<!-- ─────────────────────────── CONTENTS ─────────────────────────── -->
+
+<section class="toc">
+  <h2>Contents</h2>
+  <p class="caption">Chapters marked <em>written</em> are complete in this edition.
+  The remainder are outlined and drafted in sequence.</p>
+
+  <h3>Part I · The System and Its Shape</h3>
+  <ol>
+    <li><span class="n">1</span><span>Four applications, one database</span><span class="st">outlined</span></li>
+    <li><span class="n">2</span><span>What multi-tenancy actually requires</span><span class="st">outlined</span></li>
+    <li><span class="n">3</span><span>Offline-first: the inversion that changes everything</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part II · Crashes</h3>
+  <ol>
+    <li class="written"><span class="n">4</span><span>What a crash actually is</span><span class="st">written</span></li>
+    <li class="written"><span class="n">5</span><span>Two crashes, dissected</span><span class="st">written</span></li>
+    <li class="written"><span class="n">6</span><span>The crash that was not a crash</span><span class="st">written</span></li>
+    <li><span class="n">7</span><span>Reading a traceback you did not write</span><span class="st">outlined</span></li>
+    <li><span class="n">8</span><span>Crashes that only happen after packaging</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part III · Failures That Never Crash</h3>
+  <ol>
+    <li class="written"><span class="n">9</span><span>The cost of catching everything</span><span class="st">written</span></li>
+    <li class="written"><span class="n">10</span><span>The delete that came back</span><span class="st">written</span></li>
+    <li><span class="n">11</span><span>The status badge that blamed the network</span><span class="st">outlined</span></li>
+    <li><span class="n">12</span><span>Phantoms: deleting what is already gone</span><span class="st">outlined</span></li>
+    <li><span class="n">13</span><span>Last-write-wins and the clock you do not control</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part IV · Security Failures</h3>
+  <ol>
+    <li><span class="n">14</span><span>One rule, every college's data</span><span class="st">outlined</span></li>
+    <li><span class="n">15</span><span>The button that made everyone an administrator</span><span class="st">outlined</span></li>
+    <li><span class="n">16</span><span>Shipping a key that unlocks everything</span><span class="st">outlined</span></li>
+    <li><span class="n">17</span><span>Testing rules instead of trusting them</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part V · Scale, Cost and Memory</h3>
+  <ol>
+    <li><span class="n">18</span><span>Read amplification: the 155-fold bill</span><span class="st">outlined</span></li>
+    <li><span class="n">19</span><span>Why the catalogue size was bounded by RAM</span><span class="st">outlined</span></li>
+    <li><span class="n">20</span><span>Measuring instead of projecting</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part VI · Build and Delivery</h3>
+  <ol>
+    <li><span class="n">21</span><span>Builds that fail for reasons unrelated to code</span><span class="st">outlined</span></li>
+    <li><span class="n">22</span><span>Wiping a system so it stays wiped</span><span class="st">outlined</span></li>
+    <li><span class="n">23</span><span>The delivery checklist</span><span class="st">outlined</span></li>
+  </ol>
+
+  <h3>Part VII · Practice</h3>
+  <ol>
+    <li><span class="n">24</span><span>Building a diagnostic tool</span><span class="st">outlined</span></li>
+    <li><span class="n">25</span><span>Instrumenting a system you cannot visit</span><span class="st">outlined</span></li>
+    <li><span class="n">26</span><span>What we would do differently</span><span class="st">outlined</span></li>
+  </ol>
+</section>
+
+<!-- ─────────────────────────── PART II ─────────────────────────── -->
+
+<section class="part">
+  <p class="part-label">Part II</p>
+  <h2 class="part-title">Crashes</h2>
+  <p class="part-blurb">The failures that announce themselves — and are therefore the
+  easiest kind to have.</p>
+</section>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 4</p>
+  <h2>What a crash actually is</h2>
+
+  <p class="lede">Before dissecting particular crashes it is worth being precise about
+  what one is, because the word covers at least four different events that need
+  different responses.</p>
+
+  <p>In a Python desktop application, a crash is usually an <em>unhandled
+  exception</em>: some function raised, no enclosing block caught it, and the
+  interpreter unwound the stack to the top and stopped. In a Kotlin Android
+  application it is much the same, with the operating system killing the process at
+  the end. But "the app crashed" is also said about a process killed by the
+  operating system for using too much memory, about a window that stopped repainting,
+  and about a program that exited cleanly for reasons the user did not understand.
+  These have almost nothing in common except the user's experience of them.</p>
+
+  <p>The distinction matters because only the first leaves evidence.</p>
+
+  <h3>The global handler, and why it is not optional</h3>
+
+  <p>A GUI application without a top-level exception handler simply vanishes. The
+  user sees the window disappear; there is no message, no log, nothing to report. The
+  desktop half of NEXLIB installs one at startup:</p>
+
+<pre><code>def _global_exception_handler(exc_type, exc_value, exc_tb):
+    """Show a dialog for unhandled exceptions instead of silently crashing."""
+    msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    logger.critical(f"Unhandled exception: {msg}")
+    try:
+        dlg = QMessageBox()
+        dlg.setWindowTitle("Unexpected Error")
+        dlg.setText("An unexpected error occurred. The application may be unstable.")
+        dlg.setDetailedText(msg)
+        dlg.setIcon(QMessageBox.Icon.Critical)
+        dlg.exec()
+    except Exception:
+        pass
+
+sys.excepthook = _global_exception_handler</code></pre>
+  <p class="caption">gdc_desktop/main.py</p>
+
+  <p>Three things in that handler are worth noting, because each was learned rather
+  than designed.</p>
+
+  <p>It <strong>logs before it displays</strong>. Showing a dialog requires the Qt
+  event loop to be in a sane state, and the thing that just crashed may have left it
+  otherwise. Writing to the log first means the evidence survives even when the
+  dialog cannot be drawn.</p>
+
+  <p>It puts the traceback in <code>setDetailedText</code> rather than the main
+  message. A librarian sees one plain sentence; the person diagnosing it clicks
+  "Show Details" and gets the whole stack. A dialog that dumps a traceback at a
+  non-technical user teaches them to dismiss dialogs without reading.</p>
+
+  <p>It <strong>wraps its own dialog in a try/except</strong>. A crash handler that
+  crashes produces the original silent disappearance plus a confusing second
+  failure.</p>
+
+  <h3>The handler that does not catch everything</h3>
+
+  <p>Here is the limitation that cost this project real time. <code>sys.excepthook</code>
+  is called for unhandled exceptions <em>on the main thread</em>. An exception raised
+  inside a <code>QThread</code> worker never reaches it.</p>
+
+  <p>NEXLIB has twenty-two files that use <code>QThread</code>, and background
+  workers are precisely where the risky work lives: network calls, Firestore syncs,
+  report generation, bulk imports. The application's most failure-prone code was the
+  part the crash handler could not see. A sync worker could raise, die, and leave the
+  user with a library that simply stopped synchronising — no dialog, no log entry,
+  nothing.</p>
+
+  <p>The fix is a second handler, introduced in Python 3.8:</p>
+
+<pre><code>threading.excepthook = _thread_exception_handler</code></pre>
+
+  <p>Any platform with background threads has this same hole. Android needs
+  <code>Thread.setDefaultUncaughtExceptionHandler</code>; JavaScript needs both
+  <code>window.onerror</code> and a separate <code>unhandledrejection</code>
+  listener, because a rejected promise is not an error event and the two are reported
+  through different channels.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Count your entry points for failure, not just your handlers. Every thread,
+    every event loop, every promise chain is a place an exception can escape, and
+    each needs its own catch of last resort.</p>
+  </div>
+
+  <h3>What a crash log is for</h3>
+
+  <p>A log that nobody reads is not instrumentation; it is a file. The desktop app
+  wrote crashes faithfully to <code>gdc_library.log</code> for months, and in that
+  time nobody opened it once — not from negligence, but because a log is an
+  undifferentiated stream and the interesting part is buried.</p>
+
+  <p>What made the log useful was grouping. One bug that fires forty times produces
+  forty tracebacks, which reads as catastrophe; grouped by fault it reads as one
+  problem with a count, which is what it is:</p>
+
+<pre><code>CRASHES — 2 total, 1 distinct
+
+   2 x  ValueError: Invalid image mode
+
+ERRORS — 2 total, 1 distinct
+
+   2 x  Push failed: DEADLINE_EXCEEDED
+        first 2026-09-20 09:30:00, last 2026-09-20 11:30:00</code></pre>
+
+  <p>Two numbers do most of the work here. <em>Distinct</em> tells you how many
+  problems you have. <em>Total</em> tells you how much they are hurting. A fault with
+  a count of two and a fault with a count of four hundred deserve very different
+  attention, and the raw log makes that distinction almost impossible to see.</p>
+
+  <p>There is a subtlety in the grouping worth recording, because getting it wrong
+  made the first version of that report useless. The global handler writes a line
+  beginning <code>Unhandled exception:</code> followed by the traceback. A naive
+  error tally counts that line too — so every crash appeared twice: once under its
+  real fault, and once under the generic heading that names nothing. The tally has to
+  skip the line that opens a traceback, because it is already counted by the fault it
+  introduces.</p>
+
+  <hr class="scene">
+
+  <p>The chapters that follow examine specific crashes. Keep two questions in mind
+  for each: <em>what did the user actually see?</em> and <em>what evidence survived?</em>
+  In nearly every case the gap between those two answers is where the time went.</p>
+</article>
+
+<!-- ─────────────────────────── CHAPTER 5 ─────────────────────────── -->
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 5</p>
+  <h2>Two crashes, dissected</h2>
+
+  <p class="lede">These two arrived on the same afternoon, in the same application,
+  and looked identical to the user: a dialog saying "Unexpected Error". Their causes
+  had nothing in common, and the difference between them is instructive.</p>
+
+  <h3>Case one: a variable that was never defined</h3>
+
+  <p><strong>Symptom.</strong> A librarian clicks "Generate Full Analytics PDF". The
+  dialog appears. No report is produced.</p>
+
+  <p><strong>Evidence.</strong> The detailed text showed:</p>
+
+<pre><code>NameError: name 'gold' is not defined
+  File "services/report_service.py", line 333, in generate_full_analytics_report</code></pre>
+
+  <p><strong>Mechanism.</strong> Line 333 used a colour variable named
+  <code>gold</code> to draw a horizontal rule. Two other report functions in the same
+  file defined <code>gold</code> as a local at the top of their bodies. This one did
+  not. The function had been written by copying a neighbour and editing the middle,
+  and the definition lived above the copied region.</p>
+
+  <p>This is as simple as a bug gets, and it survived into a shipped application for
+  a reason worth naming: <strong>Python does not check that a name exists until the
+  line runs.</strong> Any function whose unhappy path is never exercised can carry a
+  <code>NameError</code> indefinitely. The report generated correctly for months
+  because line 333 sat inside a branch that only executed when the analytics section
+  had data to draw a rule under.</p>
+
+  <p><strong>Fix.</strong> Define the local, as its neighbours do.</p>
+
+  <p>The interesting question is not how to fix it but how it was allowed to exist.
+  A linter would have caught this in under a second — <code>pyflakes</code> reports
+  undefined names without running anything. The project had no linter and no
+  continuous integration. One tool, configured once, would have found this class of
+  fault across all 20,000 lines of Python.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>In a dynamically typed language, unexecuted code is unverified code. Static
+    analysis is not a luxury; it is the only thing standing between you and a
+    <code>NameError</code> in a branch nobody has taken yet.</p>
+  </div>
+
+  <h3>Case two: an image in the wrong mode</h3>
+
+  <p><strong>Symptom.</strong> Opening the Digital ID Cards screen produced the same
+  "Unexpected Error" dialog. The screen never appeared at all.</p>
+
+  <p><strong>Evidence.</strong> The traceback ended inside Qt's image conversion,
+  called from a function that turns a member's ID into a QR code.</p>
+
+  <p><strong>The false trail.</strong> The obvious first hypothesis was a bad member
+  record — a null field, an unprintable character in a name. That hypothesis is
+  attractive because it is the kind of bug one expects, and it wasted time. The crash
+  occurred for every member, including ones whose records were plainly clean.</p>
+
+  <p><strong>Mechanism.</strong> The <code>qrcode</code> library returns a PIL image
+  in mode <code>"1"</code> — one bit per pixel, the natural representation for
+  something that is only ever black or white. Qt's <code>ImageQt</code> bridge
+  accepts several PIL modes, but support for 1-bit images varies across combinations
+  of Pillow and Qt versions. On this machine's combination, it did not.</p>
+
+  <p>So the code was correct, the data was correct, and the crash was real. What
+  failed was an assumption about a dependency's behaviour that had held on the
+  developer's previous environment and stopped holding on this one.</p>
+
+  <p><strong>Fix.</strong> Convert to a mode every version supports before handing
+  the image to Qt:</p>
+
+<pre><code># qrcode returns a 1-bit ("1" mode) image, which PIL's ImageQt does not
+# support on all Pillow/Qt combinations — convert to RGB first.
+img = qr.make_image(fill_color="black", back_color="white").convert("RGB")</code></pre>
+  <p class="caption">gdc_desktop/ui/screens/digital_id_screen.py</p>
+
+  <p>A second change mattered as much as the conversion: the call to
+  <code>generate_qr</code> was wrapped so that one member whose QR cannot be built
+  does not prevent the whole screen from opening. Before, a single bad record took
+  down the entire Digital ID feature. After, that member's card is blank and the
+  other fifteen hundred print.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Decide the blast radius deliberately. When one item in a list fails, the
+    question "should this kill the list?" has a right answer, and it is usually no.
+    Failing the whole screen is a decision, even when it is made by omission.</p>
+  </div>
+
+  <h3>What the two cases share</h3>
+
+  <p>Nothing, in their mechanisms. But both were in code paths that no automated
+  test touched, in an application with four unit tests across 57,700 lines. Both
+  were found by a user clicking a button.</p>
+
+  <p>That is the real finding, and it recurs throughout this book: the project's
+  defect rate was not unusual. Its <em>detection</em> rate was. Faults were
+  discovered in the order that users happened to encounter them, which is the most
+  expensive possible order.</p>
+</article>
+
+<!-- ─────────────────────────── CHAPTER 6 ─────────────────────────── -->
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 6</p>
+  <h2>The crash that was not a crash</h2>
+
+  <p class="lede">Some failures lie about their own nature. This one presented as a
+  crashed process, was reported as a lost connection, and was in fact a machine
+  running out of memory.</p>
+
+  <p><strong>Symptom.</strong> Building the Android application failed:</p>
+
+<pre><code>Daemon compilation failed: Connection to the Kotlin daemon has been
+unexpectedly lost. This might be caused by the daemon being killed by
+another process or the operating system, or by JVM crash.
+
+org.jetbrains.kotlin.gradle.tasks.DaemonCrashedException</code></pre>
+
+  <p><strong>What the message suggests.</strong> Read plainly, it proposes three
+  causes: another process killed the daemon, the operating system killed it, or the
+  JVM crashed. All three sound like environmental misfortune — antivirus
+  interference, a flaky machine, a corrupted installation. None sounds like
+  "configuration".</p>
+
+  <p>This framing is actively misleading, and it is worth pausing on why. The Gradle
+  process is not the process that died. It observed a socket close and reported what
+  it could observe. The dying process had no opportunity to explain itself, because a
+  JVM terminated by the operating system's memory manager does not get to write a
+  message. So the only account available comes from a witness who saw nothing but
+  the silence.</p>
+
+  <p><strong>Mechanism.</strong> The project configured the Kotlin compiler daemon
+  with a one-gigabyte heap:</p>
+
+<pre><code>org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=512m
+kotlin.daemon.jvmargs=-Xmx1024m</code></pre>
+
+  <p>One gigabyte is generous for a small module and inadequate for this one. The
+  shared module compiles Jetpack Compose, Hilt with its annotation processors,
+  SQLDelight's generated sources and Apache POI in a single unit. The compiler
+  exhausted its heap, the JVM died, the socket closed, and Gradle reported a lost
+  connection.</p>
+
+  <p>There is a second resource that fails the same way and is easy to overlook.
+  Metaspace holds class metadata, and annotation processors load an enormous number
+  of classes. A daemon can exhaust metaspace while heap sits comfortably
+  under its limit, producing the identical symptom. The original configuration set
+  no metaspace limit for the daemon at all.</p>
+
+  <p><strong>Fix.</strong></p>
+
+<pre><code>org.gradle.jvmargs=-Xmx2560m -XX:MaxMetaspaceSize=768m -XX:+UseParallelGC
+kotlin.daemon.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseParallelGC</code></pre>
+
+  <p>And an operational detail that wastes an afternoon when missed: <strong>a running
+  daemon keeps the arguments it started with.</strong> Editing the configuration
+  changes nothing until the existing daemon is stopped. <code>gradlew --stop</code>
+  is not housekeeping; it is the step that makes the fix take effect.</p>
+
+  <h3>When more memory is not available</h3>
+
+  <p>Raising the limits got the build further — to a genuine compilation error rather
+  than a dead socket — but it failed again on the same machine, because that machine
+  was also running an IDE holding two gigabytes of its own. Two JVMs wanting 2.5 GB
+  and 2 GB on a machine that did not have them simply moved the problem.</p>
+
+  <p>The second fix removes the second process entirely:</p>
+
+<pre><code>kotlin.compiler.execution.strategy=in-process</code></pre>
+
+  <p>The compiler now runs inside the Gradle daemon. Cold builds are slower, because
+  the compiler is no longer kept warm between runs. In exchange, there is no separate
+  process to lose a connection to — one process cannot lose a connection to itself.
+  For a build that otherwise cannot finish, that is an easy trade.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>When an error message describes a <em>relationship</em> failing — a lost
+    connection, a closed pipe, a timeout — ask what happened to the thing at the
+    other end. The reporter is rarely the casualty, and the casualty rarely gets to
+    file a report.</p>
+  </div>
+
+  <h3>A note on believing build errors</h3>
+
+  <p>The same build later failed with <code>Compilation error. See log for more
+  details</code> and no <code>e:</code> line naming a file — which is what Kotlin
+  emits when the daemon dies mid-compilation. It looked like a code error and was
+  another instance of the same memory problem wearing a different costume.</p>
+
+  <p>The discriminator is simple and worth memorising: <strong>a real Kotlin
+  compilation error always names a file and a line.</strong> A "compilation error"
+  with nothing to point at is not a compilation error.</p>
+</article>
+
+<!-- ─────────────────────────── PART III ─────────────────────────── -->
+
+<section class="part">
+  <p class="part-label">Part III</p>
+  <h2 class="part-title">Failures That Never Crash</h2>
+  <p class="part-blurb">The expensive ones. No dialog, no traceback, no log entry —
+  just a system quietly doing the wrong thing.</p>
+</section>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 9</p>
+  <h2>The cost of catching everything</h2>
+
+  <p class="lede">A count, to begin with. Across the four applications there are 357
+  broad exception handlers: 180 in Python, 149 in Kotlin, 28 in TypeScript. That is
+  roughly one for every 160 lines of code.</p>
+
+  <p>Each one was written for a good reason. A network call might fail; a malformed
+  record might not parse; a file might be missing. Catching the exception keeps the
+  application running instead of dropping the librarian back to a blank screen. The
+  applications feel stable, and that stability is real.</p>
+
+  <p>But an exception handler is a decision about what should happen next, and the
+  overwhelming majority of these made the same decision:</p>
+
+<pre><code>try:
+    do_the_thing()
+except Exception:
+    pass</code></pre>
+
+  <p>Which says: <em>if this fails, proceed as though it succeeded.</em></p>
+
+  <p>That is occasionally correct. Failing to write an optional cache entry should
+  not stop a sale. But applied broadly it converts a system that fails loudly into
+  one that fails silently, and silent failure in a data system is not a smaller
+  problem than a crash — it is a larger one, because it is discovered later and by
+  someone with less information.</p>
+
+  <h3>The shape of the damage</h3>
+
+  <p>Consider a sync worker that pushes pending records to the cloud. Wrapped in a
+  broad handler, a failure at any point produces: no crash, no dialog, no log entry
+  the user would see, and a status badge that continues to read <em>Synced</em>
+  because the code that sets it was never reached by the failure path.</p>
+
+  <p>The librarian catalogues books for three weeks. Every record is saved locally
+  and every record is correct. None of them reach the network. The failure surfaces
+  when a second device shows a different catalogue, or when the directorate's totals
+  do not match, or — worst — when the machine dies and the records that were
+  supposedly in the cloud turn out not to be.</p>
+
+  <p>Three weeks of invisible divergence is a far worse outcome than an error dialog
+  on the first day.</p>
+
+  <h3>What to do instead</h3>
+
+  <p>The instruction "never catch broad exceptions" is not useful advice for a real
+  codebase; there are places where continuing is genuinely right. Three rules proved
+  more workable.</p>
+
+  <p><strong>Catch narrowly where you can name the failure.</strong>
+  <code>except ConnectionError</code> states a belief about what can go wrong and
+  lets everything else through. <code>except Exception</code> states no belief at
+  all.</p>
+
+  <p><strong>Never swallow silently.</strong> Even when continuing is correct, a
+  logged line costs nothing and is the difference between a diagnosable system and an
+  opaque one. Most of the 357 handlers would have been acceptable with a single
+  <code>logger.warning</code> inside them.</p>
+
+  <p><strong>Distinguish "failed" from "not attempted."</strong> A sync that did not
+  run and a sync that ran and failed should never present identically. This one
+  distinction, made explicit in the status model, resolved a fault that had consumed
+  days — the subject of Chapter 11.</p>
+
+  <h3>The compensating control</h3>
+
+  <p>Retrofitting 357 handlers is not realistic. What is realistic is an external
+  check that does not depend on any of them being correct: compare local record
+  counts against the cloud, per collection, and report divergence.</p>
+
+<pre><code>[  ok  ] In sync: books        4,812 both sides
+[ FAIL ] Divergence: members   local 1,504 vs cloud 1,171 (+333)
+         — records are not reaching the network</code></pre>
+
+  <p>This asks the only question that matters and does not care why the answer is
+  wrong. It catches a failure in any of the 357 handlers, plus failures in code that
+  has no handler at all, plus failures nobody anticipated.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>When you cannot trust a system to report its own failures, measure its
+    outcomes from outside. An independent check on the result is worth more than any
+    number of internal assertions about the process.</p>
+  </div>
+</article>
+
+<!-- ─────────────────────────── CHAPTER 10 ─────────────────────────── -->
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 10</p>
+  <h2>The delete that came back</h2>
+
+  <p class="lede">A librarian deletes a book on the Android app. It disappears. The
+  next day it is back. This chapter is about why, and about a general principle of
+  distributed systems that the bug illustrates exactly.</p>
+
+  <p><strong>Symptom.</strong> Deletions performed on Android did not persist.
+  Deletions performed on the desktop did. The book reappeared after a delay — usually
+  overnight, sometimes within minutes — which made it look intermittent.</p>
+
+  <p><strong>The false trail.</strong> Intermittency suggests a race condition, and
+  a good deal of time went into examining sync timing. The behaviour was in fact
+  perfectly deterministic; the <em>delay</em> was variable because it depended on
+  when the next pull happened, but the outcome never varied at all.</p>
+
+  <h3>Mechanism</h3>
+
+  <p>The Android delete executed a hard SQL delete:</p>
+
+<pre><code>DELETE FROM books WHERE id = :id;</code></pre>
+
+  <p>The row was gone from the device. Now consider how the push engine decides what
+  to upload:</p>
+
+<pre><code>getUnsyncedBooks:
+SELECT * FROM books WHERE syncStatus = 'pending' AND deleted = 0;</code></pre>
+
+  <p>It uploads rows. A deleted row is not a row. There was nothing left to tell the
+  cloud about, so the cloud never learned of the deletion — and on the next pull,
+  helpfully returned the book that the device appeared to be missing.</p>
+
+  <p>The system was working exactly as designed. The design was wrong.</p>
+
+  <h3>The principle</h3>
+
+  <p>In a system that synchronises by exchanging records, <strong>a deletion is a
+  fact that must itself be transmitted.</strong> Absence cannot be transmitted;
+  only presence can. If the only record of a deletion is the absence of a row, that
+  deletion exists on one device and nowhere else, and any device that still has the
+  row is correct to reinstate it.</p>
+
+  <p>The standard answer is a tombstone: instead of removing the row, mark it dead
+  and let the marker replicate like any other change.</p>
+
+  <h3>The fix, and the three things it required</h3>
+
+  <p>Switching to a soft delete was the obvious part. Two further changes were
+  needed, and each was its own small bug.</p>
+
+  <p><strong>The tombstone must be eligible for pushing.</strong> The query above
+  excluded <code>deleted = 0</code> — which was written to avoid uploading junk, and
+  which guaranteed a tombstone could never be uploaded. It had to become:</p>
+
+<pre><code>-- Deleted rows MUST be included here: a soft delete is pushed to Firestore
+-- as a tombstone (deleted = 1), and excluding them meant a delete never left
+-- the device and the book reappeared on the next pull.
+getUnsyncedBooks:
+SELECT * FROM books WHERE syncStatus = 'pending';</code></pre>
+
+  <p><strong>The tombstone must be queued.</strong> The soft-delete statement marked
+  the row dead but left <code>syncStatus</code> as it was. A row already marked
+  <code>synced</code> stayed invisible to the push engine forever:</p>
+
+<pre><code>softDelete:
+UPDATE books SET deleted = 1, syncStatus = 'pending', lastUpdated = :lastUpdated
+WHERE id = :id;</code></pre>
+
+  <p><strong>Everything that reads must now exclude the dead.</strong> This is the
+  cost of tombstones: every list, count, search and lookup has to filter them, and
+  each place you forget is a deleted record reappearing in one particular view.
+  Eleven queries needed the filter — <code>getAllBooks</code>,
+  <code>getAvailableBooks</code>, <code>searchBooks</code>,
+  <code>getBooksByCategory</code>, <code>getCategories</code>,
+  <code>getTotalCount</code>, <code>getAvailableCount</code>, and the member
+  equivalents.</p>
+
+  <p>One of them mattered more than the rest:</p>
+
+<pre><code>-- deleted = 0 matters here: without it a removed member could still sign in
+-- to the OPAC portal with their old ID and PIN.
+loginOpacStudent:
+SELECT * FROM members WHERE memberId = :memberId AND pin = :pin AND deleted = 0
+LIMIT 1;</code></pre>
+
+  <p>A removed member could still authenticate. The deletion bug had quietly become
+  an access-control bug — and would not have been found by testing deletion, because
+  nobody thinks to test whether a deleted user can still log in.</p>
+
+  <h3>Where tombstones are deliberately not applied</h3>
+
+  <p>Two categories of query were left unfiltered, on purpose, and the reasoning
+  deserves recording because "filter everywhere" is the wrong instinct.</p>
+
+  <p>The <code>*Static</code> variants used for backups keep full fidelity: a backup
+  that silently drops deleted records is not a backup of the database. And lookups by
+  id or sync id stay unfiltered because the sync engine itself needs to find
+  tombstones in order to process them — filtering there would break the very
+  mechanism the tombstones exist for.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Deleting data in a synchronised system is not the removal of a row; it is the
+    creation of a record that says the row is gone. Systems that treat deletion as
+    absence will always resurrect what they delete.</p>
+  </div>
+
+  <h3>A closing observation</h3>
+
+  <p>This bug existed only on Android. The desktop app had implemented soft deletes
+  from the start. That asymmetry is characteristic of multi-platform systems: the
+  same feature, implemented independently three times, will be correct in some
+  implementations and wrong in others, and the ones that are wrong will be the ones
+  the developer uses least.</p>
+
+  <p>Which is the subject of Part IV, where the same asymmetry produces something
+  considerably worse than a reappearing library book.</p>
+</article>
+
+<section class="part">
+  <p class="part-label">End of this edition</p>
+  <h2 class="part-title">Chapters 1–3, 7–8, 11–26 in preparation</h2>
+  <p class="part-blurb">Each follows the same structure: symptom, false trails,
+  mechanism, fix, lesson — drawn from the project's own commit history, where every
+  case in this book is recorded with the reasoning that produced it.</p>
+</section>
+
+</div>
