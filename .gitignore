@@ -25,3 +25,30 @@ ui-debug.log
 
 # Rules test deps
 tests/firestore/node_modules/
+
+# ── Generated output and library data ────────────────────────────────────────
+# The apps write reports, exports and backups into the folder they are run
+# from, so these land in the working tree on every use. They also carry real
+# library data — a borrower leaderboard names patrons, and a master backup
+# contains the whole member register — which must never be committed.
+*.log
+gdc_library.log
+Book_Catalog_Export.csv
+Missing_Books_Report.csv
+GDC_Library_Master_Backup.xlsx
+Library_Statistics_Report.pdf
+GDC_Director_Summary.pdf
+Leaderboard_*.pdf
+Availability_Ratio.pdf
+Top_Publishers_Chart.pdf
+*_Report.pdf
+*_Export.csv
+
+# Local database and its SQLite journals
+*.db
+*.db-wal
+*.db-shm
+
+# Scratch and leftover patches
+scratch/
+*.patch
