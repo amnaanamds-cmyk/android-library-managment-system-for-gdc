@@ -197,14 +197,14 @@
   <ol>
     <li class="written"><span class="n">9</span><span>The cost of catching everything</span><span class="st">written</span></li>
     <li class="written"><span class="n">10</span><span>The delete that came back</span><span class="st">written</span></li>
-    <li><span class="n">11</span><span>The status badge that blamed the network</span><span class="st">outlined</span></li>
-    <li><span class="n">12</span><span>Phantoms: deleting what is already gone</span><span class="st">outlined</span></li>
-    <li><span class="n">13</span><span>Last-write-wins and the clock you do not control</span><span class="st">outlined</span></li>
+    <li class="written"><span class="n">11</span><span>The status badge that blamed the network</span><span class="st">written</span></li>
+    <li class="written"><span class="n">12</span><span>Phantoms: deleting what is already gone</span><span class="st">written</span></li>
+    <li class="written"><span class="n">13</span><span>Last-write-wins and the clock you do not control</span><span class="st">written</span></li>
   </ol>
 
   <h3>Part IV · Security Failures</h3>
   <ol>
-    <li><span class="n">14</span><span>One rule, every college's data</span><span class="st">outlined</span></li>
+    <li class="written"><span class="n">14</span><span>One rule, every college's data</span><span class="st">written</span></li>
     <li><span class="n">15</span><span>The button that made everyone an administrator</span><span class="st">outlined</span></li>
     <li><span class="n">16</span><span>Shipping a key that unlocks everything</span><span class="st">outlined</span></li>
     <li><span class="n">17</span><span>Testing rules instead of trusting them</span><span class="st">outlined</span></li>
@@ -788,9 +788,441 @@ LIMIT 1;</code></pre>
   considerably worse than a reappearing library book.</p>
 </article>
 
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 11</p>
+  <h2>The status badge that blamed the network</h2>
+
+  <p class="lede">For several days the working theory was that the college had a
+  connectivity problem. It did not. The application was reporting a fault it had no
+  evidence for, and everyone — including the people who wrote it — believed the
+  report.</p>
+
+  <p><strong>Symptom.</strong> The Android app showed a red badge reading
+  <em>Offline</em>. Nothing synchronised. The device had a perfectly good internet
+  connection; other applications on the same phone worked normally.</p>
+
+  <p><strong>The false trail.</strong> A badge that says Offline is a strong claim,
+  and it was taken at face value. Time went into network diagnosis: signal strength,
+  captive portals, firewall rules, whether Firestore's endpoints were reachable from
+  that network. The user eventually said, with some exasperation, that there was no
+  offline issue and the real issue was sync — which was correct, and which the
+  application had been actively contradicting.</p>
+
+  <h3>Mechanism</h3>
+
+  <p>The sync engine tracked its state in a single value initialised at
+  construction:</p>
+
+<pre><code>private val _status = MutableStateFlow&lt;SyncStatus&gt;(SyncStatus.Offline)</code></pre>
+
+  <p>Every entry point into the engine began with the same guard:</p>
+
+<pre><code>override fun startRealtimeSync(scope: CoroutineScope) {
+    if (currentInstitutionId.isEmpty()) return
+    ...
+}
+
+override suspend fun pushChanges() {
+    if (currentInstitutionId.isEmpty()) return
+    ...
+}</code></pre>
+
+  <p>Read those two fragments together. If the device has no institution — no college
+  to synchronise with — every entry point returns immediately <em>without touching
+  the status</em>. The status therefore remains whatever it was initialised to, which
+  is <code>Offline</code>.</p>
+
+  <p>So the badge was not reporting a measurement. It was reporting a default that
+  nothing had ever overwritten. The application had never attempted a network
+  operation, had no information about connectivity whatsoever, and was displaying a
+  confident red assertion about the network.</p>
+
+  <h3>Why the device had no institution</h3>
+
+  <p>The institution id is written to preferences at login and nowhere else. The
+  device in question had been reinstalled over an existing install, which preserved
+  application data including a stale cached id — or, in other cases, had signed in
+  before the profile carried an institution at all. Either way the engine had nothing
+  to work with, and the only honest thing to display was <em>this device is not
+  attached to a college</em>.</p>
+
+  <h3>The fix</h3>
+
+  <p>The state model was missing a state. Adding it took three lines:</p>
+
+<pre><code>/**
+ * No institution is linked on this device, so there is nothing to sync
+ * with. Kept separate from [Offline] because the two need opposite
+ * responses — Offline resolves itself when the network returns, this one
+ * never does until the user signs in again — and reporting it as Offline
+ * sent people hunting for a network fault that did not exist.
+ */
+data object NotLinked : SyncStatus</code></pre>
+
+  <p>It became the initial value, and was set explicitly at each early return. The
+  badge now reads <em>"Not linked — sign in again"</em>, which is not merely more
+  accurate: it is the actual remedy, stated on the screen where the problem appears.</p>
+
+  <h3>The general fault</h3>
+
+  <p>This is a state-modelling error, and it has a recognisable signature. The engine
+  had three real conditions — <em>working</em>, <em>network unavailable</em>, and
+  <em>nothing configured to work with</em> — and a model with only the first two. When
+  a model lacks a state, the condition does not disappear; it gets misfiled under
+  whichever existing state is nearest, and the user is told something false.</p>
+
+  <p>The two conditions that got conflated require opposite responses, which is what
+  made the conflation so costly. <em>Offline</em> resolves itself: wait, move nearer
+  the router, and it clears. <em>NotLinked</em> never resolves on its own, no matter
+  how long anyone waits, because the missing thing is a login rather than a signal.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>A default value displayed as a measurement is a lie the system tells with
+    complete confidence. Initialise state to <em>unknown</em>, never to a plausible
+    answer — a wrong diagnosis on screen is worse than no diagnosis, because people
+    act on it.</p>
+  </div>
+
+  <p>One further detail deserves recording. A related state, also displayed as
+  <em>Offline</em>, meant that Firebase had failed to initialise at all — a build
+  problem, typically a missing or mismatched <code>google-services.json</code>.
+  That is a third distinct condition with a third distinct remedy, and it too was
+  being reported as a network fault. The troubleshooting table now separates all
+  three, because the word "Offline" had been doing the work of three different
+  diagnoses.</p>
+</article>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 12</p>
+  <h2>Phantoms: deleting what is already gone</h2>
+
+  <p class="lede">This chapter concerns a bug that reported success. The wipe tool
+  said it had deleted everything. The console agreed that the documents were gone.
+  Several thousand records remained in storage, and were still being billed.</p>
+
+  <p><strong>Symptom.</strong> The user deleted every document in Firestore by hand
+  through the Firebase console. Afterwards, three collections — <code>users</code>,
+  <code>institutions</code>, <code>colleges</code> — still appeared in the console and
+  could not be removed. Running the project's own wipe tool reported nothing left to
+  delete.</p>
+
+  <h3>Two facts about Firestore that together produce the trap</h3>
+
+  <p><strong>First: a collection is not an object.</strong> It has no existence of its
+  own. A collection appears in the console exactly as long as something lives beneath
+  it, and vanishes when the last document goes. So a collection that refuses to
+  disappear is not being stubborn — it is telling you, correctly, that something is
+  still down there.</p>
+
+  <p><strong>Second: deleting a document does not delete its subcollections.</strong>
+  This is documented, and it still surprises nearly everyone. Delete
+  <code>institutions/GDC-MARDAN-01</code> and its <code>books</code>,
+  <code>members</code> and <code>issued_books</code> subcollections are untouched. What
+  remains is an id that is no longer a document but still has children — a
+  <strong>phantom</strong>. The console shows phantom ids in italics, which is a
+  detail almost nobody knows to look for.</p>
+
+  <p>In this project each college held roughly thirty thousand documents in
+  subcollections. Deleting the parent removed one document and orphaned thirty
+  thousand — invisible in the console, still stored, still counted against the
+  bill, and still able to reappear if anything recreated the parent.</p>
+
+  <h3>The second bug, hiding behind the first</h3>
+
+  <p>The project already had a recursive delete written precisely because of this
+  behaviour. It did not work after a console deletion, and the reason is a single
+  method call.</p>
+
+<pre><code>docs = list(col_ref.limit(batch_size).stream())
+if not docs:
+    return deleted</code></pre>
+
+  <p><code>stream()</code> executes a query and returns documents. A phantom is not a
+  document — it has no fields, no data, nothing to return. It is invisible to any
+  query. So <code>stream()</code> returned an empty list, the function concluded the
+  collection was empty, and returned zero.</p>
+
+  <p>The tool was not failing. It was correctly reporting that there were no
+  <em>documents</em>, in a situation where the problem was thirty thousand documents
+  beneath something that was not a document.</p>
+
+  <p>The fix is a different enumeration method:</p>
+
+<pre><code># list_documents(), NOT stream(). stream() returns only documents that
+# exist; deleting a parent in the Firebase console leaves a PHANTOM — an
+# id that is no longer a document but still holds subcollections. stream()
+# cannot see phantoms, so a wipe run after a console deletion reported
+# "0 documents" while every book under that college was still stored,
+# still billed, and still able to reappear.
+refs = list(col_ref.list_documents(page_size=batch_size))</code></pre>
+
+  <p><code>list_documents()</code> returns <em>references</em> rather than data, and a
+  phantom has a reference. Having reached it, the code recurses into its
+  subcollections, deletes the children, and then deletes the parent only if it
+  actually exists — a phantom has nothing left to delete once its children are gone.</p>
+
+  <h3>Why this class of bug is dangerous</h3>
+
+  <p>A tool that fails loudly gets fixed. A tool that reports success while doing
+  nothing produces confident wrong belief, and the belief persists until something
+  else contradicts it. Here the contradiction came from the console, which kept
+  showing collections that were supposed to be gone — and even then the first
+  interpretation was that the console was wrong.</p>
+
+  <p>Note also that both the console route and the scripted route failed, in
+  different ways, for the same underlying reason. Having two methods did not provide
+  redundancy, because both rested on the same incorrect assumption: that deleting a
+  parent deals with its children.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Verify destructive operations by their outcome, never by their report.
+    "Deleted 0 documents" and "there was nothing to delete" are different claims, and
+    a tool that cannot distinguish them will tell you the wrong one with confidence.</p>
+  </div>
+
+  <p>The practical consequence was a change in procedure. Every wipe is now followed
+  by an independent check that asserts emptiness and fails if anything survived — the
+  same principle as Chapter 9's divergence check, applied to deletion. The tool that
+  performs an operation is the worst possible judge of whether it worked.</p>
+</article>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 13</p>
+  <h2>Last-write-wins and the clock you do not control</h2>
+
+  <p class="lede">This chapter describes a weakness that has not been fixed. It is
+  included because a casebook of only solved problems misrepresents engineering, and
+  because knowing where your system is fragile is worth more than pretending it is
+  not.</p>
+
+  <p>When two devices edit the same record while both are offline, and both later
+  reconnect, something has to decide which version survives. NEXLIB uses
+  last-write-wins on a timestamp: each record carries <code>lastUpdated</code>, and
+  the higher value wins.</p>
+
+  <p>This is the simplest workable strategy, and for a library system it is mostly
+  the right one. Two librarians rarely edit the same book at the same moment, and
+  when they do, the later edit is usually the one intended. It requires no
+  coordination, no version vectors, and no user-facing conflict dialog that nobody
+  would understand.</p>
+
+  <h3>The first weakness: whose clock?</h3>
+
+  <p><code>lastUpdated</code> is set by the device making the change, from that
+  device's own clock. Consider a tablet whose clock is ten minutes fast — not an
+  exotic scenario; it is the default outcome of a dead battery, a manual timezone
+  change, or a cheap device with no network time.</p>
+
+  <p>That tablet now wins every conflict it participates in, permanently and
+  invisibly. A correction made on the desktop at 10:05 loses to an older edit made on
+  the tablet at 09:58, because the tablet stamped it 10:08. Nobody is told. The
+  desktop's change simply disappears on the next pull, and the librarian who made it
+  concludes the app did not save.</p>
+
+  <p>Clock skew converts a fair-ish arbitration rule into a fixed hierarchy
+  determined by whose clock runs fastest. In a deployment across hundreds of colleges
+  with uncontrolled hardware, some device somewhere has a badly wrong clock. It is a
+  certainty, not a risk.</p>
+
+  <h3>The second weakness: documents, not fields</h3>
+
+  <p>The comparison is per record, not per field. Librarian A corrects a book's ISBN;
+  librarian B, offline, updates its shelf location. Both push. The later write
+  replaces the whole document, and one of the two corrections is gone — even though
+  they touched different fields and did not actually conflict.</p>
+
+  <p>The data loss here is silent and, to the person who made the lost edit, looks
+  exactly like the application failing to save.</p>
+
+  <h3>What would fix it</h3>
+
+  <p>Three directions, in increasing order of cost.</p>
+
+  <p><strong>Server timestamps.</strong> Firestore can stamp a write with the
+  server's clock rather than the client's. This removes skew entirely for records
+  written while online. It does not help a record created offline, which by
+  definition has no server contact at the moment of writing — but it narrows the
+  exposure considerably.</p>
+
+  <p><strong>Field-level merging.</strong> Comparing per field rather than per
+  document would let A's ISBN and B's shelf location both survive. This is more work,
+  and needs care: some field groups are only meaningful together, and merging them
+  independently produces a record that is internally inconsistent.</p>
+
+  <p><strong>Detect and surface.</strong> Cheapest of the three and possibly the most
+  valuable: when a pull overwrites a local record that had unpushed changes, record
+  it. The project already has a <code>sync_conflicts</code> table and writes to it.
+  Nothing ever reads it. A conflict that is logged but never surfaced is not much
+  better than one that is not logged at all.</p>
+
+  <h3>Why it has not been fixed</h3>
+
+  <p>Because two blockers outrank it — an administrative credential shipping inside
+  the desktop application, and a sync design that would cost the department seven
+  million rupees a year at provincial scale. Both are certain harms. This is a
+  probable one, and the pilot exists partly to find out how probable.</p>
+
+  <p>That is a legitimate engineering decision, and it becomes an illegitimate one
+  the moment it stops being written down. An unfixed weakness that is documented,
+  scheduled and disclosed is a managed risk. The same weakness unmentioned is a
+  defect waiting to be discovered by a librarian who will be told the app is working
+  correctly.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Write down the faults you are choosing not to fix, and say why. The knowledge
+    that a system is fragile in a specific place is itself a deliverable — and it is
+    the first thing lost when the person who knew it moves on.</p>
+  </div>
+</article>
+
+<section class="part">
+  <p class="part-label">Part IV</p>
+  <h2 class="part-title">Security Failures</h2>
+  <p class="part-blurb">Where a bug stops being an inconvenience and becomes a
+  disclosure. Three of these shipped; one is still in the code as this is written.</p>
+</section>
+
+<article class="chapter">
+  <p class="chapter-num">CHAPTER 14</p>
+  <h2>One rule, every college's data</h2>
+
+  <p class="lede">The most serious defect in this book was not found by a crash, a
+  test, or a user complaint. It was found by reading a list of role names and noticing
+  that one of them meant two different things.</p>
+
+  <p><strong>The context.</strong> NEXLIB is multi-tenant. Each college's books,
+  members and loans live under <code>/institutions/{collegeId}/</code> and must be
+  readable only by that college. Above them sits a registry,
+  <code>/directorate_index</code>, holding one small summary document per college —
+  counts and a heartbeat, no patron records — which the Higher Education Department
+  reads to see the province.</p>
+
+  <p>The registry is deliberately aggregate-only, and that design is sound: a
+  document containing nothing but counts is safe to expose to oversight staff in a
+  way that patron records never would be. The failure was in deciding who counted as
+  oversight staff.</p>
+
+  <h3>The mechanism: one word, two meanings</h3>
+
+  <p>The system has a per-college role named <code>director</code>. In the desktop
+  application's own code it is documented as an alias for
+  <code>college_admin</code> — the person who runs one college's library. It is an
+  ordinary account that hundreds of colleges would hold.</p>
+
+  <p>It also reads like the word for the Directorate. And so it appeared in the list
+  of roles granted network-wide oversight, in two places at once — the web
+  application's role constants, and the security rules themselves:</p>
+
+<pre><code>function isDirectorateAdmin() {
+  return userRole() in [
+    'DirectorateAdmin', 'directorate_admin',
+    'Director', 'director',           // &lt;-- a PER-COLLEGE role
+    'owner', 'admin', 'college_admin' // &lt;-- also per-college
+  ];
+}</code></pre>
+
+  <p>On its own that would have been a client-side annoyance. Combined with the rule
+  governing the registry, it was a disclosure:</p>
+
+<pre><code>match /directorate_index/{collegeId} {
+  allow read: if signedIn();
+}</code></pre>
+
+  <p>Any signed-in user could read the entire registry. Every college's book counts,
+  member counts, active loans, overdue figures and outstanding fines — readable by any
+  librarian at any of the other colleges, and by any account that could sign in at
+  all.</p>
+
+  <p>The client-side gate made it worse rather than better, because it created the
+  appearance of a control. The web application checked the role list before showing
+  the directorate dashboard — which meant a college's own owner or director account
+  simply <em>saw the menu item</em>, clicked it, and got the province. No
+  circumvention required. And even for accounts the client did block, the block was
+  cosmetic: the rules permitted the read, so anyone willing to call the API directly
+  had the data regardless.</p>
+
+  <h3>The fix</h3>
+
+  <p>Two changes, and the order of importance matters.</p>
+
+<pre><code>// Directorate-level oversight: 'director'/'Director' is a PER-COLLEGE role
+// (isDirector() treats it the same as owner/admin/college_admin), so it must
+// never appear here: including it previously let every ordinary college
+// account read every other college's aggregate counts network-wide.
+function isDirectorateAdmin() {
+  return userRole() in ['DirectorateAdmin', 'directorate_admin'];
+}
+
+match /directorate_index/{collegeId} {
+  allow read: if isDirectorateAdmin() || belongsToCollege(collegeId);
+}</code></pre>
+
+  <p>The second rule carries a judgement worth stating. A college may read its own
+  published summary — it needs to, in order to publish it. But it may not read anyone
+  else's, and the registry is not left open to "any signed-in user" the way some other
+  collections are. A college's own counts are not another college's business, even
+  though they contain no patron data.</p>
+
+  <p>The client-side role list was fixed too, but as tidiness rather than as the
+  remedy. <strong>The rules are the control; the client is a convenience.</strong> Any
+  security check that exists only in an application the user controls is not a
+  security check.</p>
+
+  <h3>The part that should worry you</h3>
+
+  <p>The project had a security test suite — forty-one behavioural tests running
+  against the Firestore emulator, written specifically to verify tenant isolation.
+  The tests passed throughout.</p>
+
+  <p>They passed because one of them asserted the broken behaviour was correct. The
+  suite had been written by examining what the rules did and encoding it, which is
+  the natural way to write tests for an existing system and is precisely how a test
+  suite becomes a record of current behaviour rather than a check on intended
+  behaviour. Once a defect is written into a test, the suite stops being able to find
+  it. It actively defends it: fix the bug and the tests go red, which looks like a
+  regression.</p>
+
+  <p>Fixing this required editing the test that encoded the fault, then adding
+  coverage for what should have been true all along:</p>
+
+<pre><code>await check("plain college director CANNOT read another college's snapshot", () =&gt;
+  assertFails(getDoc(doc(director, "directorate_index/GDC-ZIAM"))));
+await check("plain college director CANNOT list the whole registry", () =&gt;
+  assertFails(getDocs(collection(director, "directorate_index"))));</code></pre>
+
+  <p>The seeded fixture now includes a per-college <code>director</code> account for
+  no purpose other than proving it cannot see across tenants — the exact account that
+  the original list had quietly promoted.</p>
+
+  <div class="lesson">
+    <span class="lesson-label">Lesson</span>
+    <p>Tests written from the implementation certify the implementation. Security
+    tests in particular must be written from the requirement — <em>who must not be
+    able to do what</em> — or they will pass whatever the code happens to do,
+    including the thing you are most afraid of.</p>
+  </div>
+
+  <h3>Why it survived so long</h3>
+
+  <p>The asymmetry from Chapter 10 again, in its most damaging form. The desktop
+  application reaches Firestore through an administrative credential that bypasses
+  security rules entirely. It can read everything by design, so no rules defect is
+  observable from it — and the desktop app was the one used daily during development.
+  A category of fault had been made invisible on the platform where it would have
+  been noticed first.</p>
+
+  <p>That is not a testing failure. It is an architectural decision, made early for
+  convenience, whose cost arrived much later and in a form nobody connected back to
+  it.</p>
+</article>
+
 <section class="part">
   <p class="part-label">End of this edition</p>
-  <h2 class="part-title">Chapters 1–3, 7–8, 11–26 in preparation</h2>
+  <h2 class="part-title">Chapters 1–3, 7–8, 15–26 in preparation</h2>
   <p class="part-blurb">Each follows the same structure: symptom, false trails,
   mechanism, fix, lesson — drawn from the project's own commit history, where every
   case in this book is recorded with the reasoning that produced it.</p>
