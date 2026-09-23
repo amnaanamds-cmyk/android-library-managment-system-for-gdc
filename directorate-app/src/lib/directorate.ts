@@ -36,6 +36,7 @@ import {
 import { db } from "./firebase";
 import { useAuth } from "./auth-context";
 import { ROOT_COLLECTIONS } from "./schema";
+import { logAction } from "./audit";
 
 /** Schema version, so a director portal can tell stale publishers apart. */
 export const REGISTRY_SCHEMA_VERSION = 2;
@@ -128,6 +129,7 @@ export async function setApproval(
   const ref = doc(db, APPROVALS_COLLECTION, collegeId);
   if (status === "pending") {
     await deleteDoc(ref);
+    await logAction("college.restore", collegeId, { toStatus: "pending" });
     return;
   }
   await setDoc(
@@ -135,6 +137,12 @@ export async function setApproval(
     { collegeId, status, updatedAt: Date.now(), updatedBy: byEmail },
     { merge: true },
   );
+  // "hidden" reads as a restore in the audit trail only when it is REVERSING
+  // an existing approval; setApproval's caller does not currently
+  // distinguish that case, so both directions log under the status they
+  // are moving TO, which is the fact that actually matters for an auditor:
+  // what is true now, and who made it true.
+  await logAction(status === "approved" ? "college.approve" : "college.hide", collegeId, { toStatus: status });
 }
 
 export interface NetworkTotals {

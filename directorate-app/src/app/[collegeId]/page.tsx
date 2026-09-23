@@ -7,29 +7,31 @@ import { collection, doc, getDoc, getDocs, DocumentData } from "firebase/firesto
 import { db } from "@/lib/firebase";
 import { ROOT_COLLECTIONS, COLLECTIONS } from "@/lib/schema";
 import { isStale, DirectorateSnapshot } from "@/lib/directorate";
-
-const numberFmt = new Intl.NumberFormat("en-PK");
+import { scoreCompliance } from "@/lib/analytics";
+import { useCollegeNote, saveCollegeNote, useFollowups, createFollowup, resolveFollowup, useInspections } from "@/lib/registry-admin";
+import { useMyTier, tierCan } from "@/lib/staff";
+import { PageHeader, Card, SectionTitle, StatTile, Badge, Meter, Button, Input, Textarea, Field, Spinner, numberFmt } from "@/components/ui";
+import { IconCheck, IconFollowup, IconInspection } from "@/components/icons";
 
 /**
  * Single-college drill-down.
  *
  * The directorate is a read-only oversight role and is deliberately NOT a
- * member of any college, so tenant collections (members, loans) stay closed to
- * it under the security rules. What it can legitimately see is:
+ * member of any college, so tenant collections (members, loans) stay closed
+ * under the security rules. What it can legitimately see is:
  *
  *   - the college's published aggregate snapshot  (/directorate_index)
- *   - the college's public catalogue              (/institutions/{id}/books,
- *                                                  readable by anyone, since
- *                                                  the OPAC is public)
+ *   - the college's public catalogue              (/institutions/{id}/books)
+ *   - its own directorate_notes / followups / inspections about this college
  *
- * Anything requiring patron-level data stays with the college. That boundary
- * is enforced by the rules, not just by this page.
+ * Anything requiring patron-level data stays with the college. That
+ * boundary is enforced by the rules, not just by this page.
  */
 export default function CollegeDetail() {
   const params = useParams<{ collegeId: string }>();
-  const collegeId = decodeURIComponent(
-    Array.isArray(params.collegeId) ? params.collegeId[0] : params.collegeId || "",
-  );
+  const collegeId = decodeURIComponent(Array.isArray(params.collegeId) ? params.collegeId[0] : params.collegeId || "");
+  const tier = useMyTier();
+  const canWrite = tierCan(tier, "write");
 
   const [snapshot, setSnapshot] = useState<DirectorateSnapshot | null>(null);
   const [institution, setInstitution] = useState<DocumentData | null>(null);
@@ -37,10 +39,13 @@ export default function CollegeDetail() {
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { note } = useCollegeNote(collegeId);
+  const { items: followups } = useFollowups(collegeId);
+  const { items: inspections } = useInspections(collegeId);
+
   useEffect(() => {
     if (!collegeId) return;
     let cancelled = false;
-
     (async () => {
       setLoading(true);
       try {
@@ -49,7 +54,6 @@ export default function CollegeDetail() {
           getDoc(doc(db, ROOT_COLLECTIONS.institutions, collegeId)),
         ]);
         if (cancelled) return;
-
         if (idxSnap.exists()) {
           const d = idxSnap.data();
           setSnapshot({
@@ -75,35 +79,20 @@ export default function CollegeDetail() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-
-      // The public catalogue is a separate, best-effort read: if a college has
-      // locked it down, the rest of the page must still render.
       try {
-        const booksSnap = await getDocs(
-          collection(db, ROOT_COLLECTIONS.institutions, collegeId, COLLECTIONS.books),
-        );
+        const booksSnap = await getDocs(collection(db, ROOT_COLLECTIONS.institutions, collegeId, COLLECTIONS.books));
         if (cancelled) return;
-        setBooks(
-          booksSnap.docs
-            .map((d) => ({ id: d.id, ...d.data() }) as DocumentData)
-            .filter((b) => !b.deleted),
-        );
+        setBooks(booksSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as DocumentData).filter((b) => !b.deleted));
       } catch (err) {
         if (!cancelled) setCatalogueError((err as Error).message);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [collegeId]);
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const b of books) {
-      const key = (b.category as string) || "Uncategorized";
-      counts.set(key, (counts.get(key) || 0) + 1);
-    }
+    for (const b of books) counts.set((b.category as string) || "Uncategorized", (counts.get((b.category as string) || "Uncategorized") || 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [books]);
 
@@ -112,217 +101,250 @@ export default function CollegeDetail() {
     return { issued, available: books.length - issued };
   }, [books]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-24">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-          Loading {collegeId}…
-        </p>
-      </div>
-    );
-  }
+  if (loading) return <Spinner label={`Loading ${collegeId}…`} />;
 
   const name = snapshot?.name || institution?.name || collegeId;
+  const compliance = snapshot ? scoreCompliance(snapshot) : null;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <Link href="/" className="text-xs font-bold text-blue-400 hover:text-blue-300">
-          ← Back to network overview
-        </Link>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">{name}</h1>
-            <p className="mt-1 font-mono text-xs uppercase tracking-wider text-slate-500">
-              {collegeId}
-              {snapshot?.location ? ` · ${snapshot.location}` : ""}
-            </p>
-          </div>
-          {snapshot && (
+    <div>
+      <Link href="/registry" className="text-xs font-semibold text-blue-400 hover:text-blue-300">← Back to registry</Link>
+
+      <PageHeader
+        title={name}
+        description={`${collegeId}${snapshot?.location ? ` · ${snapshot.location}` : ""}${snapshot?.district ? ` · ${snapshot.district} district` : ""}`}
+        actions={
+          snapshot && (
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                Last published
-              </p>
-              <p
-                className={`text-sm font-bold ${
-                  isStale(snapshot) ? "text-amber-400" : "text-emerald-400"
-                }`}
-              >
-                {snapshot.lastSyncAt
-                  ? new Date(snapshot.lastSyncAt).toLocaleString("en-PK")
-                  : "Never"}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-600">
-                via {snapshot.lastSyncPlatform}
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Last published</p>
+              <Badge tone={isStale(snapshot) ? "amber" : "emerald"}>
+                {snapshot.lastSyncAt ? new Date(snapshot.lastSyncAt).toLocaleString("en-PK") : "Never"}
+              </Badge>
             </div>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {!snapshot && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-          <p className="font-bold">This college has not published a snapshot yet.</p>
-          <p className="mt-1 text-xs opacity-80">
-            Aggregate counts appear once its desktop, web, or Android app completes a sync while
-            signed in. The catalogue figures below are read directly from the public catalogue.
-          </p>
-        </div>
+        <Card className="mb-6 border-amber-900/60 bg-amber-500/5">
+          <p className="text-sm font-semibold text-amber-200">This college has not published a snapshot yet.</p>
+        </Card>
       )}
 
       {snapshot && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Books" value={snapshot.booksCount} />
-          <Stat label="Members" value={snapshot.membersCount} />
-          <Stat label="Active Loans" value={snapshot.activeLoans} accent="text-blue-400" />
-          <Stat
-            label="Overdue"
-            value={snapshot.overdueCount}
-            accent={snapshot.overdueCount > 0 ? "text-red-400" : "text-slate-400"}
-          />
-          <Stat label="E-Books" value={snapshot.ebooksCount} />
-          <Stat label="Reservations" value={snapshot.reservationsCount} />
-          <Stat
-            label="Fines Outstanding"
-            value={snapshot.finesOutstanding}
-            prefix="Rs "
-            accent="text-[#E6C96E]"
-          />
-          <Stat
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Books" value={snapshot.booksCount} />
+          <StatTile label="Members" value={snapshot.membersCount} />
+          <StatTile label="Active Loans" value={snapshot.activeLoans} tone="blue" />
+          <StatTile label="Overdue" value={snapshot.overdueCount} tone={snapshot.overdueCount > 0 ? "red" : "default"} />
+          <StatTile label="E-Books" value={snapshot.ebooksCount} />
+          <StatTile label="Reservations" value={snapshot.reservationsCount} />
+          <StatTile label="Fines Outstanding" value={snapshot.finesOutstanding} prefix="Rs " tone="amber" />
+          <StatTile
             label="Utilisation"
-            value={
-              snapshot.booksCount > 0
-                ? Math.round((snapshot.activeLoans / snapshot.booksCount) * 100)
-                : 0
-            }
+            value={snapshot.booksCount > 0 ? Math.round((snapshot.activeLoans / snapshot.booksCount) * 100) : 0}
             suffix="%"
           />
         </div>
       )}
 
-      {/* Public catalogue analysis */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Catalogue by Category</h3>
+      {compliance && (
+        <Card className="mb-6">
+          <SectionTitle>Compliance — {compliance.score}%</SectionTitle>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {compliance.checks.map((c) => (
+              <div key={c.key} className="flex items-start gap-2.5">
+                <Badge tone={c.pass ? "emerald" : "red"}>{c.pass ? "Pass" : "Fail"}</Badge>
+                <div>
+                  <p className="text-xs font-semibold text-slate-200">{c.label}</p>
+                  <p className="text-[11px] text-slate-500">{c.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div className="mb-6 grid gap-5 lg:grid-cols-2">
+        <Card>
+          <SectionTitle>Catalogue by category</SectionTitle>
           {catalogueError ? (
-            <p className="text-xs text-slate-500">
-              Catalogue not readable for this college ({catalogueError}).
-            </p>
+            <p className="text-xs text-slate-500">Catalogue not readable ({catalogueError}).</p>
           ) : categories.length === 0 ? (
             <p className="text-xs text-slate-500">No catalogue records found.</p>
           ) : (
             <div className="space-y-3">
-              {categories.map(([label, count]) => {
-                const pct = Math.round((count / books.length) * 100);
-                return (
-                  <div key={label}>
-                    <div className="mb-1 flex justify-between text-xs">
-                      <span className="font-semibold text-slate-300">{label}</span>
-                      <span className="text-slate-500">
-                        {numberFmt.format(count)} · {pct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-blue-950">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-600 to-[#C8A84B]"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+              {categories.map(([label, count]) => (
+                <div key={label}>
+                  <div className="mb-1 flex justify-between text-xs">
+                    <span className="font-semibold text-slate-300">{label}</span>
+                    <span className="text-slate-500">{numberFmt.format(count)} · {Math.round((count / books.length) * 100)}%</span>
                   </div>
-                );
-              })}
+                  <Meter pct={(count / books.length) * 100} tone="blue" />
+                </div>
+              ))}
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6 shadow-xl">
-          <h3 className="mb-4 text-lg font-bold text-white">Catalogue Availability</h3>
+        <Card>
+          <SectionTitle>Catalogue availability</SectionTitle>
           {catalogueError ? (
             <p className="text-xs text-slate-500">Not available.</p>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-emerald-900/40 bg-emerald-500/5 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">
-                    On shelf
-                  </p>
-                  <p className="mt-1 text-3xl font-black text-emerald-400">
-                    {numberFmt.format(availability.available)}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-blue-900/40 bg-blue-500/5 p-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">
-                    On loan
-                  </p>
-                  <p className="mt-1 text-3xl font-black text-blue-400">
-                    {numberFmt.format(availability.issued)}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-4 text-[11px] text-slate-500">
-                Counted from {numberFmt.format(books.length)} catalogue records readable by the
-                directorate. Patron-level records remain private to the college.
-              </p>
-            </>
+            <div className="grid grid-cols-2 gap-4">
+              <StatTile label="On shelf" value={availability.available} tone="emerald" />
+              <StatTile label="On loan" value={availability.issued} tone="blue" />
+            </div>
           )}
-        </div>
+        </Card>
       </div>
 
+      <div className="mb-6 grid gap-5 lg:grid-cols-2">
+        <FollowupsPanel collegeId={collegeId} collegeName={name} followups={followups} canWrite={canWrite} />
+        <InspectionsPanel inspections={inspections} />
+      </div>
+
+      <NotesPanel collegeId={collegeId} note={note} canWrite={canWrite} />
+
       {(institution?.email || institution?.phone || snapshot?.contactEmail) && (
-        <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-6">
-          <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-400">
-            Contact
-          </h3>
+        <Card className="mt-6">
+          <SectionTitle>Contact</SectionTitle>
           <dl className="grid gap-3 text-sm sm:grid-cols-3">
             {(snapshot?.contactEmail || institution?.email) && (
-              <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Email</dt>
-                <dd className="text-slate-300">{snapshot?.contactEmail || institution?.email}</dd>
-              </div>
+              <div><dt className="text-[10px] uppercase tracking-widest text-slate-600">Email</dt><dd className="text-slate-300">{snapshot?.contactEmail || institution?.email}</dd></div>
             )}
             {(snapshot?.phone || institution?.phone) && (
-              <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Phone</dt>
-                <dd className="text-slate-300">{snapshot?.phone || institution?.phone}</dd>
-              </div>
+              <div><dt className="text-[10px] uppercase tracking-widest text-slate-600">Phone</dt><dd className="text-slate-300">{snapshot?.phone || institution?.phone}</dd></div>
             )}
             {(snapshot?.location || institution?.address) && (
-              <div>
-                <dt className="text-[10px] uppercase tracking-widest text-slate-600">Address</dt>
-                <dd className="text-slate-300">{snapshot?.location || institution?.address}</dd>
-              </div>
+              <div><dt className="text-[10px] uppercase tracking-widest text-slate-600">Address</dt><dd className="text-slate-300">{snapshot?.location || institution?.address}</dd></div>
             )}
           </dl>
-        </div>
+        </Card>
       )}
     </div>
   );
 }
 
-function Stat({
-  label,
-  value,
-  accent = "text-white",
-  prefix = "",
-  suffix = "",
-}: {
-  label: string;
-  value: number;
-  accent?: string;
-  prefix?: string;
-  suffix?: string;
-}) {
+function FollowupsPanel({ collegeId, collegeName, followups, canWrite }: { collegeId: string; collegeName: string; followups: ReturnType<typeof useFollowups>["items"]; canWrite: boolean }) {
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const open = followups.filter((f) => f.status === "open");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await createFollowup(collegeId, collegeName, title.trim(), "", "");
+    setTitle("");
+    setAdding(false);
+  };
+
   return (
-    <div className="rounded-2xl border border-blue-950 bg-[#070F1E] p-5 shadow-xl">
-      <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
-        {label}
+    <Card>
+      <SectionTitle
+        icon={<IconFollowup className="h-4 w-4" />}
+        action={canWrite && <Button variant="ghost" size="sm" onClick={() => setAdding((v) => !v)}>+ Add</Button>}
+      >
+        Follow-ups ({open.length} open)
+      </SectionTitle>
+      {adding && (
+        <form onSubmit={submit} className="mb-3 flex gap-2">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs following up?" autoFocus className="flex-1" />
+          <Button variant="primary" size="sm" type="submit">Add</Button>
+        </form>
+      )}
+      {open.length === 0 ? (
+        <p className="text-xs text-slate-600">Nothing open for this college.</p>
+      ) : (
+        <div className="space-y-2">
+          {open.map((f) => (
+            <div key={f.id} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-slate-300">{f.title}</span>
+              {canWrite && (
+                <button onClick={() => resolveFollowup(f.id, collegeId)} className="text-slate-500 hover:text-emerald-400">
+                  <IconCheck className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function InspectionsPanel({ inspections }: { inspections: ReturnType<typeof useInspections>["items"] }) {
+  return (
+    <Card>
+      <SectionTitle icon={<IconInspection className="h-4 w-4" />}>Inspection history</SectionTitle>
+      {inspections.length === 0 ? (
+        <p className="text-xs text-slate-600">No visits recorded for this college.</p>
+      ) : (
+        <div className="space-y-2">
+          {inspections.map((i) => (
+            <div key={i.id} className="flex items-center justify-between text-xs">
+              <span className="text-slate-300">{i.purpose}</span>
+              <Badge tone={i.status === "completed" ? "emerald" : "blue"}>{i.scheduledDate}</Badge>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function NotesPanel({ collegeId, note, canWrite }: { collegeId: string; note: ReturnType<typeof useCollegeNote>["note"]; canWrite: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [principal, setPrincipal] = useState(note?.verifiedPrincipal || "");
+  const [remarks, setRemarks] = useState(note?.internalRemarks || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setPrincipal(note?.verifiedPrincipal || "");
+    setRemarks(note?.internalRemarks || "");
+  }, [note]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveCollegeNote(collegeId, { verifiedPrincipal: principal, internalRemarks: remarks });
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="mt-6">
+      <SectionTitle action={canWrite && !editing && <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>Edit</Button>}>
+        Directorate notes
+      </SectionTitle>
+      <p className="mb-3 text-[11px] text-slate-600">
+        Internal to the directorate — never visible to the college itself, and separate from anything the college publishes.
       </p>
-      <p className={`text-2xl font-black tracking-tighter ${accent}`}>
-        {prefix}
-        {numberFmt.format(value)}
-        {suffix}
-      </p>
-    </div>
+      {editing ? (
+        <div className="space-y-3">
+          <Field label="Verified principal / head of institution">
+            <Input value={principal} onChange={(e) => setPrincipal(e.target.value)} />
+          </Field>
+          <Field label="Internal remarks">
+            <Textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} />
+          </Field>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button variant="primary" size="sm" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+          </div>
+        </div>
+      ) : note ? (
+        <div className="space-y-2 text-xs">
+          {note.verifiedPrincipal && <p><span className="text-slate-500">Principal: </span><span className="text-slate-200">{note.verifiedPrincipal}</span></p>}
+          {note.internalRemarks && <p className="whitespace-pre-wrap text-slate-300">{note.internalRemarks}</p>}
+          <p className="text-slate-600">Updated by {note.updatedByEmail} · {new Date(note.updatedAt).toLocaleDateString("en-PK")}</p>
+        </div>
+      ) : (
+        <p className="text-xs text-slate-600">No notes recorded for this institution yet.</p>
+      )}
+    </Card>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { IconBuilding } from "@/components/icons";
 
 /** Firebase returns invalid-credential for a wrong password as well as an
  *  unknown email, so this must never claim the account does not exist. */
@@ -58,9 +59,11 @@ export default function DirectorateLogin() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <span className="inline-block rounded-2xl bg-[#C8A84B]/10 p-4 text-4xl">🏛️</span>
-          <h1 className="mt-4 text-2xl font-black uppercase tracking-widest text-[#E6C96E]">
-            NEXLIB Directorate
+          <span className="inline-flex rounded-xl border border-slate-800 bg-[#0B1220] p-3.5 text-amber-400">
+            <IconBuilding className="h-7 w-7" />
+          </span>
+          <h1 className="mt-4 text-xl font-bold tracking-tight text-white">
+            NEXLIB <span className="text-amber-400">MIS</span>
           </h1>
           <p className="mt-1 text-xs text-slate-500">
             Higher Education Department · Khyber Pakhtunkhwa
@@ -69,7 +72,7 @@ export default function DirectorateLogin() {
 
         <form
           onSubmit={submit}
-          className="rounded-2xl border border-blue-950 bg-[#070F1E] p-8 shadow-xl"
+          className="rounded-lg border border-slate-800 bg-[#0B1220] p-8"
         >
           <h2 className="mb-6 text-lg font-bold text-white">Directorate sign in</h2>
 
@@ -93,7 +96,7 @@ export default function DirectorateLogin() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"
-            className="mb-4 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-[#C8A84B]"
+            className="mb-4 w-full rounded-md border border-slate-700 bg-[#050B14] px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-500/60"
           />
 
           <label className="mb-1 block text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -104,13 +107,13 @@ export default function DirectorateLogin() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
-            className="mb-6 w-full rounded-lg border border-[#1E3050] bg-[#0D1F38] px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-[#C8A84B]"
+            className="mb-6 w-full rounded-md border border-slate-700 bg-[#050B14] px-3 py-2.5 text-sm text-slate-200 outline-none focus:border-amber-500/60"
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-[#C8A84B] px-4 py-2.5 text-sm font-bold text-[#1a1400] transition-colors hover:bg-[#E6C96E] disabled:opacity-40"
+            className="w-full rounded-md bg-amber-500 px-4 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-amber-400 disabled:opacity-40"
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>

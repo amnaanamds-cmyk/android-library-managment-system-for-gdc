@@ -1,10 +1,25 @@
 @import "tailwindcss";
 
-/* The directorate portal is a single-purpose, always-dark oversight console —
-   it deliberately does not carry the college web portal's light/dark token
-   set, since it has no screens that need theming. */
+/* The directorate portal is a single-purpose, always-dark oversight console
+   — it deliberately does not carry the college web portal's light/dark
+   token set, since it has no screens that need theming. */
 html,
 body {
   background: #050b14;
   color: #e2e8f0;
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* A print stylesheet exists for one page only (/reports) — see that page's
+   own comment for why print output needs light, not dark, styling. */
+@media print {
+  aside, header nav, footer { display: none !important; }
 }
