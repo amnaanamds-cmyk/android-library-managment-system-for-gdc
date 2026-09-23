@@ -9,6 +9,14 @@ rules_version = '2';
 //   /institutions/{collegeId}             tenant metadata (name, inviteCode, ...)
 //   /institutions/{collegeId}/{col}/{doc} ALL tenant data (books, members, ...)
 //   /directorate_index/{collegeId}        aggregate-only snapshot for directors
+//   /directorate_staff/{uid}              directorate portal access tier
+//   /directorate_audit_log/{id}           append-only: every directorate action
+//   /directorate_notes/{collegeId}        directorate's own annotations on a college
+//   /directorate_followups/{id}           things the directorate is chasing with a college
+//   /directorate_announcements/{id}       circulars (write: directorate; read: any signed-in)
+//   /directorate_documents/{id}           policy repository (write: directorate; read: any signed-in)
+//   /directorate_inspections/{id}         site visit scheduling and reports
+//   /directorate_snapshots_history/{id}   manually captured totals, for trend charts
 //   /colleges/{collegeId}                 LEGACY mirror, read-only compatibility
 //
 // Two rules below are load-bearing and were the cause of the cross-platform
@@ -74,6 +82,26 @@ service cloud.firestore {
     // every other college's aggregate counts network-wide.
     function isDirectorateAdmin() {
       return userRole() in ['DirectorateAdmin', 'directorate_admin'];
+    }
+
+    // Directorate staff tiers, layered ON TOP of isDirectorateAdmin() above —
+    // this never widens access, only narrows it for accounts explicitly
+    // enrolled with a lesser tier. Bootstrap-safe: an account with no
+    // /directorate_staff/{uid} record (every account before this shipped,
+    // including the original director@nexlib.com) is treated as
+    // super_admin, so nobody is locked out by a rules deploy alone.
+    function directorateStaffPath() {
+      return /databases/$(database)/documents/directorate_staff/$(request.auth.uid);
+    }
+
+    function directorateTier() {
+      return exists(directorateStaffPath())
+          ? get(directorateStaffPath()).data.get('tier', 'super_admin')
+          : 'super_admin';
+    }
+
+    function isDirectorateSuperAdmin() {
+      return isDirectorateAdmin() && directorateTier() == 'super_admin';
     }
 
     function isLibrarian() {
@@ -192,6 +220,100 @@ service cloud.firestore {
     match /directorate_approvals/{collegeId} {
       allow read: if isDirectorateAdmin() || belongsToCollege(collegeId);
       allow write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Directorate staff directory — who at the Higher Education Department
+    // has access, and at what tier (super_admin / analyst / regional).
+    // Only a super-admin may enrol or change another account's tier; every
+    // directorate account may read the directory so the portal can show who
+    // holds it. An account may always read its own record even if somehow
+    // not classed as directorate-admin elsewhere, so it can see why its
+    // access is limited.
+    // -------------------------------------------------------------
+
+    match /directorate_staff/{uid} {
+      allow read: if isDirectorateAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isDirectorateSuperAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Directorate audit log — append-only record of every approval,
+    // removal, restoration and staff-tier change made from the portal.
+    // Nobody may amend or delete an entry, including a super-admin: an
+    // audit trail that can be edited by the people it audits is not a trail.
+    // -------------------------------------------------------------
+
+    match /directorate_audit_log/{entryId} {
+      allow read: if isDirectorateAdmin();
+      allow create: if isDirectorateAdmin()
+                    && request.resource.data.byUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // Administrative overlay per college — verified profile fields and
+    // internal notes the directorate keeps about a college, separate from
+    // the institution's own document so directorate annotations can never
+    // be mistaken for something the college itself published, and so
+    // writing one never requires (or grants) write access to tenant data.
+    // -------------------------------------------------------------
+
+    match /directorate_notes/{collegeId} {
+      allow read, write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Follow-ups — internal tracking of things the directorate is chasing
+    // with a college (a requested catalogue cleanup, a pending response).
+    // Directorate-internal only; a college never sees its own follow-ups
+    // through this collection.
+    // -------------------------------------------------------------
+
+    match /directorate_followups/{entryId} {
+      allow read, write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Announcements and the document/circular repository. Write is
+    // directorate-only; read is open to any signed-in user because the
+    // intent is for a college's own apps to eventually display these —
+    // that client-side read is not built yet on any of the three college
+    // apps, but the data model and access rule are ready for it rather
+    // than needing another rules deploy later.
+    // -------------------------------------------------------------
+
+    match /directorate_announcements/{entryId} {
+      allow read: if signedIn();
+      allow write: if isDirectorateAdmin();
+    }
+
+    match /directorate_documents/{entryId} {
+      allow read: if signedIn();
+      allow write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Site inspection scheduling and visit reports. Directorate-internal.
+    // -------------------------------------------------------------
+
+    match /directorate_inspections/{entryId} {
+      allow read, write: if isDirectorateAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // Manually captured point-in-time network totals, for trend charts.
+    // There is no Cloud Functions plan backing this project (see
+    // RUNBOOK.md), so there is no scheduled nightly capture — a directorate
+    // user triggers one from the portal. Immutable once written, the same
+    // as the audit log, so a trend line can never be edited after the fact.
+    // -------------------------------------------------------------
+
+    match /directorate_snapshots_history/{entryId} {
+      allow read: if isDirectorateAdmin();
+      allow create: if isDirectorateAdmin()
+                    && request.resource.data.capturedByUid == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // -------------------------------------------------------------

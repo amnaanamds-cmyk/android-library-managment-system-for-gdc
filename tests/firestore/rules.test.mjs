@@ -12,7 +12,7 @@ import {
   assertSucceeds,
   assertFails,
 } from "@firebase/rules-unit-testing";
-import { doc, setDoc, getDoc, updateDoc, collection, getDocs } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 import { readFileSync } from "node:fs";
 
 const RULES = readFileSync(process.argv[2], "utf8");
@@ -37,6 +37,10 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
   // directorate oversight role — it must never see another college's data.
   await setDoc(doc(db, "users/dir1"), { email: "d@x.edu", role: "director", institutionId: "" });
   await setDoc(doc(db, "users/diradmin1"), { email: "da@x.edu", role: "directorate_admin", institutionId: "" });
+  // A second directorate account, explicitly enrolled as a lesser tier —
+  // this is what /directorate_staff narrows, never what it can widen.
+  await setDoc(doc(db, "users/diranalyst1"), { email: "an@x.edu", role: "directorate_admin", institutionId: "" });
+  await setDoc(doc(db, "directorate_staff/diranalyst1"), { tier: "analyst" });
   await setDoc(doc(db, "users/outsider"), { email: "z@x.edu", role: "staff", institutionId: "GDC-OTHER" });
   await setDoc(doc(db, "institutions/GDC-ZIAM/books/b1"), { title: "Seed", deleted: false });
   await setDoc(doc(db, "directorate_index/GDC-ZIAM"), { institutionId: "GDC-ZIAM", booksCount: 1 });
@@ -46,6 +50,7 @@ const staff = testEnv.authenticatedContext("staff1").firestore();
 const owner = testEnv.authenticatedContext("owner1").firestore();
 const director = testEnv.authenticatedContext("dir1").firestore();
 const directorateAdmin = testEnv.authenticatedContext("diradmin1").firestore();
+const directorateAnalyst = testEnv.authenticatedContext("diranalyst1").firestore();
 const outsider = testEnv.authenticatedContext("outsider").firestore();
 const anon = testEnv.unauthenticatedContext().firestore();
 
@@ -147,6 +152,70 @@ await check("user CANNOT overwrite an existing institution they don't own", () =
   assertFails(setDoc(doc(outsider, "institutions/GDC-ZIAM"), { name: "Hijacked" })));
 await check("any signed-in user CAN read institution metadata (invite codes)", () =>
   assertSucceeds(getDoc(doc(outsider, "institutions/GDC-ZIAM"))));
+
+
+console.log("\n── Directorate MIS collections: isolation from tenant accounts ──");
+// The load-bearing claim for all eight new collections at once: an ordinary
+// college account — owner, staff, or a plain per-college "director" — must
+// be unable to read or write ANY of them, exactly the boundary that failed
+// in the cross-tenant disclosure this rules file has already fixed once.
+const directorateOnlyCollections = [
+  "directorate_staff", "directorate_audit_log", "directorate_notes",
+  "directorate_followups", "directorate_inspections", "directorate_snapshots_history",
+];
+for (const col of directorateOnlyCollections) {
+  await check(`outsider CANNOT read ${col}`, () =>
+    assertFails(getDoc(doc(outsider, `${col}/x1`))));
+  await check(`college owner CANNOT write ${col}`, () =>
+    assertFails(setDoc(doc(owner, `${col}/x1`), { v: 1 })));
+  await check(`plain college director CANNOT write ${col}`, () =>
+    assertFails(setDoc(doc(director, `${col}/x1`), { v: 1 })));
+}
+// Announcements and documents are the two collections deliberately opened
+// to read by any signed-in user (for the college apps to consume later) —
+// so their isolation claim is about WRITE, not read.
+for (const col of ["directorate_announcements", "directorate_documents"]) {
+  await check(`outsider CAN read ${col} (open by design)`, () =>
+    assertSucceeds(getDoc(doc(outsider, `${col}/x1`))));
+  await check(`college owner CANNOT write ${col}`, () =>
+    assertFails(setDoc(doc(owner, `${col}/x1`), { v: 1 })));
+}
+await check("anonymous CANNOT read directorate_audit_log", () =>
+  assertFails(getDoc(doc(anon, "directorate_audit_log/x1"))));
+
+console.log("\n── Directorate staff tiers ──");
+await check("directorate_admin with NO staff record CAN write directorate_staff (bootstrap = super_admin)", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_staff/newperson"), { tier: "analyst" })));
+await check("directorate_admin with NO staff record CAN approve a college (bootstrap = super_admin)", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_approvals/GDC-ZIAM"), { status: "approved" })));
+await check("an analyst-tier account CANNOT enrol another staff member", () =>
+  assertFails(setDoc(doc(directorateAnalyst, "directorate_staff/someoneelse"), { tier: "analyst" })));
+await check("an analyst-tier account CAN still read the staff directory", () =>
+  assertSucceeds(getDoc(doc(directorateAnalyst, "directorate_staff/diranalyst1"))));
+await check("a per-college director CANNOT read the directorate staff directory even for their own uid", () =>
+  // "dir1" is not itself a key in directorate_staff, but this proves the
+  // self-read clause never becomes a general-purpose bypass for a
+  // non-directorate account probing an arbitrary uid.
+  assertFails(getDoc(doc(director, "directorate_staff/diranalyst1"))));
+
+console.log("\n── Audit log is genuinely append-only ──");
+await check("directorate_admin CAN append an audit entry naming themselves", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_audit_log/a1"),
+    { action: "approve", target: "GDC-ZIAM", byUid: "diradmin1", at: 1 })));
+await check("directorate_admin CANNOT forge an entry as someone else", () =>
+  assertFails(setDoc(doc(directorateAdmin, "directorate_audit_log/a2"),
+    { action: "approve", target: "GDC-ZIAM", byUid: "diranalyst1", at: 1 })));
+await check("directorate_admin CANNOT edit an existing audit entry", () =>
+  assertFails(updateDoc(doc(directorateAdmin, "directorate_audit_log/a1"), { action: "tampered" })));
+await check("directorate_admin CANNOT delete an audit entry", () =>
+  assertFails(deleteDoc(doc(directorateAdmin, "directorate_audit_log/a1"))));
+
+console.log("\n── Snapshot history is immutable once captured ──");
+await check("directorate_admin CAN capture a snapshot naming themselves", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_snapshots_history/s1"),
+    { capturedByUid: "diradmin1", at: 1, totals: {} })));
+await check("directorate_admin CANNOT edit a captured snapshot", () =>
+  assertFails(updateDoc(doc(directorateAdmin, "directorate_snapshots_history/s1"), { totals: { books: 999999 } })));
 
 await testEnv.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);
