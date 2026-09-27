@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEXLIB: A Systems Case Study</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+  :root{
+    --paper:#FBFAF7; --ink:#1A1814; --ink-soft:#4E4A42; --ink-faint:#837D71;
+    --rule:#DDD7C9; --rule-soft:#EBE6DA; --accent:#8A5B2A; --code-bg:#F2EFE7; --stop:#963A2C;
+    --display:"Newsreader",Georgia,serif;
+    --body:"Newsreader",Georgia,"Times New Roman",serif;
+    --ui:"Public Sans",-apple-system,"Segoe UI",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#15140F; --ink:#E9E4D8; --ink-soft:#B5AE9F; --ink-faint:#8A8377;
+      --rule:#33302A; --rule-soft:#262420; --accent:#D3A163; --code-bg:#1E1C17; --stop:#DE8A78;
+    }
+  }
+  *{box-sizing:border-box}
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16.5px;
+       line-height:1.62;margin:0;padding-inline:22px;text-align:justify;hyphens:auto}
+  .paper{max-width:42em;margin-inline:auto;padding-block:52px 80px}
+
+  /* ── masthead ─────────────────────────────────────────────── */
+  .masthead{border-bottom:3px double var(--rule);padding-bottom:30px;margin-bottom:34px;text-align:left}
+  .kicker{font-family:var(--ui);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+          color:var(--accent);margin:0 0 16px}
+  h1.title{font-family:var(--display);font-weight:600;font-size:clamp(1.7rem,5vw,2.35rem);
+     line-height:1.16;letter-spacing:-.015em;margin:0 0 10px;text-wrap:balance}
+  .subtitle{font-family:var(--display);font-style:italic;font-weight:300;
+            font-size:1.05rem;color:var(--ink-soft);margin:0 0 20px;line-height:1.4}
+  .byline{font-family:var(--ui);font-size:12.5px;color:var(--ink-faint);margin:0 0 3px;line-height:1.7}
+  .affil{font-family:var(--ui);font-size:11.5px;color:var(--ink-faint);font-style:italic}
+
+  /* ── abstract / keywords ──────────────────────────────────── */
+  .abstract{background:var(--code-bg);border-left:3px solid var(--accent);padding:18px 20px;margin:0 0 26px}
+  .abstract .label{font-family:var(--ui);font-size:10px;font-weight:700;letter-spacing:.16em;
+                    text-transform:uppercase;color:var(--accent);display:block;margin-bottom:8px}
+  .abstract p{margin:0;font-size:.95rem;color:var(--ink-soft)}
+  .keywords{font-family:var(--ui);font-size:11.5px;color:var(--ink-faint);margin:14px 0 0}
+  .keywords b{color:var(--ink-soft);font-weight:700;letter-spacing:.02em}
+
+  /* ── sections ─────────────────────────────────────────────── */
+  h2{font-family:var(--display);font-size:1.36rem;font-weight:600;line-height:1.25;
+     margin:40px 0 14px;letter-spacing:-.01em;border-bottom:1px solid var(--rule);padding-bottom:6px}
+  h2 .secnum{font-family:var(--ui);color:var(--accent);font-weight:700;margin-right:9px;font-size:.85em}
+  h3{font-family:var(--ui);font-size:.92rem;font-weight:700;margin:24px 0 8px;letter-spacing:-.002em}
+  h3 .secnum{color:var(--accent);margin-right:7px}
+
+  p{margin:0 0 14px}
+  p.lede{font-size:1.02em;color:var(--ink-soft)}
+  ul,ol{margin:0 0 14px;padding-left:1.3em;text-align:left}
+  li{margin-bottom:6px}
+  strong{font-weight:600}
+  em{font-style:italic}
+  a{color:var(--accent)}
+
+  code{font-family:var(--mono);font-size:.8em;background:var(--code-bg);
+       padding:1px 5px;border-radius:2px;word-break:break-word}
+  pre{font-family:var(--mono);font-size:.74rem;line-height:1.5;background:var(--code-bg);
+      border-left:2px solid var(--accent);padding:12px 15px;overflow-x:auto;margin:0 0 15px;text-align:left}
+  pre code{background:none;padding:0;font-size:1em}
+
+  blockquote{margin:0 0 15px;padding:11px 17px;background:var(--code-bg);
+             border-left:2px solid var(--ink-faint);font-style:italic;color:var(--ink-soft);text-align:left}
+
+  .finding{border:1px solid var(--rule);border-left:3px solid var(--stop);
+          background:var(--code-bg);padding:14px 17px;margin:18px 0;text-align:left}
+  .finding .flabel{font-family:var(--ui);font-size:10px;font-weight:700;letter-spacing:.13em;
+                        text-transform:uppercase;color:var(--stop);display:block;margin-bottom:5px}
+  .finding p{margin:0;color:var(--ink-soft);font-size:.93rem}
+
+  .callout{border:1px solid var(--rule);border-left:3px solid var(--accent);
+          background:var(--code-bg);padding:14px 17px;margin:18px 0;text-align:left}
+  .callout .clabel{font-family:var(--ui);font-size:10px;font-weight:700;letter-spacing:.13em;
+                        text-transform:uppercase;color:var(--accent);display:block;margin-bottom:5px}
+  .callout p{margin:0;color:var(--ink-soft);font-size:.93rem;font-style:italic}
+
+  .scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-family:var(--ui);font-size:.82rem;margin:0 0 8px;text-align:left}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  th{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;
+     border-bottom:1.5px solid var(--rule)}
+  tr:last-child td{border-bottom:1.5px solid var(--rule)}
+  .figcap{font-family:var(--ui);font-size:11.5px;color:var(--ink-faint);margin:-4px 0 20px;text-align:left}
+  .figcap b{color:var(--ink-soft)}
+
+  /* ── references ───────────────────────────────────────────── */
+  .refs{list-style:none;margin:0;padding:0;counter-reset:refnum}
+  .refs li{counter-increment:refnum;margin:0 0 11px;padding-left:2.1em;position:relative;
+           font-size:.87rem;color:var(--ink-soft);text-align:left}
+  .refs li::before{content:"[" counter(refnum) "]";position:absolute;left:0;color:var(--accent);
+                    font-family:var(--ui);font-size:.82em;font-weight:700}
+  .refs .rt{color:var(--ink);font-style:italic}
+
+  sup.cite{font-family:var(--ui);color:var(--accent);font-weight:700}
+
+  .appendix-tag{font-family:var(--ui);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+                color:var(--accent);margin:0 0 4px}
+
+  hr.sect{border:0;height:1px;background:var(--rule);margin:44px 0 0}
+
+  @media (max-width:640px){ .paper{padding-block:36px 56px} body{font-size:15.5px;text-align:left;hyphens:none} }
+</style>
+</head>
+<body>
+<div class="paper">
+
+<header class="masthead">
+  <p class="kicker">Systems Case Study</p>
+  <h1 class="title">NEXLIB: Aggregation Without Access</h1>
+  <p class="subtitle">Multi-tenant, offline-first library management for government degree colleges on a zero-cost serverless architecture, and what three real defects at 300-institution scale reveal about it</p>
+  <p class="byline">Prepared from the design, implementation, and test history of the NEXLIB system<br>
+  built for the Higher Education Department, Khyber Pakhtunkhwa, Pakistan</p>
+  <p class="affil">Companion document to <em>Field Notes from a Provincial System</em>, the project's engineering casebook</p>
+</header>
+
+<div class="abstract">
+  <span class="label">Abstract</span>
+  <p>
+  NEXLIB is a library management system deployed across four independent clients — Android, a Python
+  desktop application, a web onboarding portal, and a directorate oversight console — sharing one
+  multi-tenant Firestore backend, built and operated on a free-tier ("Spark") serverless plan with no
+  server-side compute available for authorization or aggregation. This paper documents the system's
+  central architectural device, which we term <em>client-published aggregation</em>: each tenant institution
+  periodically writes a small, PII-free rollup of its own counts to a shared registry, and a provincial
+  directorate reads that registry under security rules that grant it visibility without ever granting it
+  access to a single tenant record. We describe the resulting trust model, the governance layer built on
+  top of it, and the two-part verification strategy used to validate a system whose correctness lives
+  almost entirely in declarative security rules rather than server code: 75 behavioral rules assertions
+  against a local emulator, and a synthetic 300-institution scale harness that drives the real application
+  through every write path against deliberately irregular data. The scale harness surfaced three defects
+  invisible to the rules suite and to a passing type-check and build — two of them different symptoms of
+  the same unenforced identity assumption. We report those defects, their fixes, and the generalizable
+  lesson: an alert that detects a data-quality violation does not, on its own, defend the rest of a
+  codebase from that violation's consequences.
+  </p>
+  <p class="keywords"><b>Keywords —</b> multi-tenancy, offline-first synchronization, Firestore security rules,
+  serverless architecture, ICT for development, access-control bootstrapping, scale testing</p>
+</div>
+
+<h2><span class="secnum">1</span>Introduction</h2>
+<p class="lede">
+Government Degree Colleges (GDCs) under Khyber Pakhtunkhwa's Higher Education Department run their
+libraries the way most under-resourced public institutions do: paper registers, no cross-institution
+visibility, and no realistic path to a conventional IT department. NEXLIB was built to digitize a single
+college's library operations first, and only then to let a provincial directorate see the network of
+colleges as a whole — deliberately in that order, because a system that demands network-wide infrastructure
+before it is useful to a single librarian never survives contact with the first college that tries it.
+</p>
+<p>
+That ordering produces the paper's central engineering problem. A directorate needs aggregate visibility —
+how many books, how many active loans, which colleges have gone quiet — across every institution in the
+network. Firestore has no native cross-tenant aggregate query, and the project's budget rules out Cloud
+Functions, which require the pay-as-you-go ("Blaze") plan rather than the free "Spark" plan this deployment
+runs on. There is, in other words, no trusted server anywhere in this architecture that could compute a
+network-wide total on the directorate's behalf. Every authorization decision, and every aggregation, has to
+be expressible as a static, declarative Firestore security rule, evaluated per-document, with no procedural
+code behind it at all.
+</p>
+<p>
+This paper documents the pattern that resulted — <strong>client-published aggregation</strong> — the
+governance layer built on it, and, in its second half, a scale-testing methodology that treated "the
+build compiles and the type-checker is silent" as necessary but not sufficient evidence of correctness.
+Run against 300 synthetic institutions seeded with deliberately irregular data, that methodology found
+three real defects that no unit test, rules test, or manual review at small scale had caught. We report
+them not as a postmortem but as the paper's main empirical contribution: evidence for what a
+uniqueness assumption that is <em>detected</em> but not <em>enforced</em> actually costs a codebase.
+</p>
+<p><strong>Contributions.</strong></p>
+<ul>
+  <li>A description of the client-published aggregation pattern as a general technique for read-side
+  cross-tenant visibility on a serverless, no-compute backend, and the trust model it implies.</li>
+  <li>A bootstrap-safe access-tier design for the oversight layer built on that pattern, in which the
+  absence of an enrollment record resolves to the most privileged tier rather than the least — the
+  opposite of conventional least-privilege defaults, adopted specifically to make a permission-model
+  migration incapable of locking out an existing administrator.</li>
+  <li>A two-layer verification methodology for a system whose authorization logic lives entirely in
+  declarative rules: behavioral rules testing against an emulator, and a synthetic-scale harness that
+  drives the real client UI against realistic, irregular data rather than uniform test fixtures.</li>
+  <li>Three concrete defects recovered by that harness at n=300, with root-cause analysis showing two of
+  the three trace to one unenforced assumption surfacing in unrelated parts of the codebase.</li>
+</ul>
+
+<h2><span class="secnum">2</span>Related Work</h2>
+<p>
+NEXLIB's synchronization model sits inside what Kleppmann et al. call <em>local-first
+software</em><sup class="cite">[1]</sup>: each client keeps a usable local copy of its own tenant's data and
+reconciles with the network opportunistically, rather than treating connectivity as a precondition for the
+application being usable at all. The tension that framing predicts — between availability during partition
+and consistency once partition ends — is the applied form of the CAP theorem<sup class="cite">[2]</sup>: a
+college's desktop or Android client must remain fully operational while offline, which means the system
+accepts eventual rather than immediate consistency of the directorate's view of the network, precisely the
+trade CAP says a partition-tolerant system must make.
+</p>
+<p>
+On the authorization side, NEXLIB departs from the conventional trusted-server model in which an
+application server evaluates access-control decisions in procedural code. Firestore Security Rules are a
+declarative alternative — access control expressed as predicates evaluated by the database itself against
+the requesting identity and the document in question, with no application server in the loop at
+all<sup class="cite">[3]</sup>. This removes an entire class of server-side vulnerability by removing the
+server, but it also removes the conventional place most testing methodology assumes authorization logic
+lives, which motivates the behavioral rules-testing approach in Section 4.
+</p>
+<p>
+The broader context — an information system built for a public institution in a resource-constrained
+setting — sits inside a long-documented literature on the gap between what such systems are designed to do
+and what they survive doing once deployed. Heeks's design–reality gap framework<sup class="cite">[4]</sup>
+argues that ICT4D project failure is best predicted by the distance between the assumptions a system's
+design encodes and the operating reality of the institution that must run it; the desktop client's
+Admin-SDK trust bypass discussed in Section 3.3, adopted specifically because the deployment environment
+could not be assumed to have a technician available to manage service keys correctly, is exactly this kind
+of designed-in compromise, and Section 6 returns to it as an open risk rather than a closed one.
+</p>
+
+<h2><span class="secnum">3</span>System Architecture</h2>
+<p>
+NEXLIB comprises four independent client applications against one shared Firestore backend: an Android
+application (Kotlin, layered into repository and use-case modules), a desktop application for library
+staff (Python, PyQt6), a web onboarding and management portal (Next.js, React), and a directorate oversight
+console (Next.js, described in Section 5). All four read and write the same tenant schema; only the first
+three are tenant-facing, and only the fourth exists to look across tenants.
+</p>
+
+<h3><span class="secnum">3.1</span>Tenant schema and isolation</h3>
+<p>
+Each college is a tenant rooted at <code>/institutions/{institutionId}</code>, with its books, members,
+issued loans and reservations as subcollections beneath it. Firestore Security Rules enforce that a
+signed-in account may read or write only the subtree of the institution its own <code>/users/{uid}</code>
+profile names, evaluated per document on every request. This is the isolation boundary the rest of the
+architecture is built to respect without ever needing to re-express it: nothing above the tenant layer is
+permitted to read tenant data directly, including the directorate.
+</p>
+
+<h3><span class="secnum">3.2</span>Client-published aggregation</h3>
+<p>
+A provincial directorate needs exactly one thing tenant isolation is designed to prevent: a view across
+every tenant at once. Firestore cannot execute a cross-collection aggregate query, and Cloud Functions —
+the conventional place to compute one server-side — require a paid plan this deployment does not use. The
+system resolves this by having each tenant <em>publish</em> a small, non-identifying rollup of its own
+counts to a shared registry, <code>/directorate_index/{institutionId}</code>: book, member and loan counts,
+a last-sync timestamp, and nothing that identifies a patron or a book title. The directorate reads this
+registry collection directly; no tenant record is ever touched.
+</p>
+<div class="callout">
+  <span class="clabel">Design note</span>
+  <p>Admission to the network is a separate write path,
+  <code>/directorate_approvals/{institutionId}</code>, keyed the same way but owned exclusively by the
+  directorate. A tenant can publish its own rollup, but it cannot admit itself: approval and self-report
+  are different documents under different write rules specifically so that publishing counts and being
+  counted are not the same permission.</p>
+</div>
+<p>
+Because the aggregation is computed by the tenant about itself, the trust model has a bounded blast radius:
+a misbehaving or compromised tenant can misstate its own counts, but the security rules make it structurally
+incapable of writing to another tenant's rollup or forging its own approval. The directorate's visibility is
+therefore honest by construction with respect to <em>which</em> institution a number came from, even though
+it cannot independently verify that the number is accurate — a limitation the compliance and alerting layer
+in Section 5 is built to surface rather than hide.
+</p>
+
+<h3><span class="secnum">3.3</span>An asymmetric trust boundary</h3>
+<div class="finding">
+  <span class="flabel">Architectural limitation, not a defect</span>
+  <p>The desktop client authenticates to Firestore through the Firebase Admin SDK rather than the client
+  SDK, which bypasses security rules entirely by design — a deliberate choice made because the deployment
+  environment cannot be assumed to have a technician on-site able to manage per-user credentials correctly,
+  and an offline-capable desktop tool needs a working local database even when no rule server is reachable.
+  The practical consequence is that a security-rules regression is invisible from the desktop client and
+  fatal only on Android and the web portal, which is why the rules-testing methodology in Section 4 tests
+  behaviorally against the rules themselves rather than against any one client's behavior.</p>
+</div>
+
+<h2><span class="secnum">4</span>Verification Methodology</h2>
+<p>
+A system whose authorization logic is entirely declarative has no procedural code path for a conventional
+unit test to exercise. NEXLIB's verification strategy is built in two layers that test different failure
+classes, summarized in Table 1.
+</p>
+<div class="scroll">
+<table>
+<thead><tr><th>Layer</th><th>What it tests</th><th>Scale</th><th>What it cannot catch</th></tr></thead>
+<tbody>
+<tr><td>Type-check &amp; build</td><td>Internal consistency of the code</td><td>n/a</td><td>Whether the code does the right thing at all</td></tr>
+<tr><td>Behavioral rules tests</td><td>Every account class × every collection, ALLOW and DENY both asserted</td><td>Fixed, small fixture (≈10 accounts)</td><td>Emergent behavior only visible under realistic data distributions</td></tr>
+<tr><td>Synthetic scale harness</td><td>The real client UI, driven end-to-end, against irregular data</td><td>300 synthetic institutions</td><td>Production network conditions, concurrent writes, device heterogeneity</td></tr>
+</tbody>
+</table>
+</div>
+<p class="figcap"><b>Table 1.</b> The three verification layers used in this project, and the boundary of each.</p>
+
+<h3><span class="secnum">4.1</span>Behavioral rules testing</h3>
+<p>
+Using <code>@firebase/rules-unit-testing</code> against a local Firestore emulator, the suite instantiates
+one authenticated context per account class — a tenant's own staff, a tenant's owner, a per-college
+director role (a tenant-level title, distinct from the network-wide directorate), an outsider tenant, an
+anonymous caller, and directorate accounts at each of three access tiers — and asserts, for every collection
+the rules mention, both that the access each class should have succeeds and that everything else fails. At
+the time of writing this comprises 75 assertions across the tenant schema and eight directorate-only
+collections, and it is run before every rules deployment specifically because a regression here is, per
+Section 3.3, invisible from the desktop client and would otherwise ship undetected.
+</p>
+
+<h3><span class="secnum">4.2</span>Synthetic scale harness</h3>
+<p>
+Passing rules tests and a clean build establish that the system is internally consistent and that its
+access boundary holds against a small, clean fixture. Neither establishes that its features behave
+correctly once real data — irregular, partial, occasionally contradictory — reaches the scale a real
+network will eventually produce. The scale harness closes that gap by seeding a local emulator with 300
+synthetic institutions and then driving the actual directorate console through every screen and every
+write path with browser automation, rather than inspecting the seeded data directly.
+</p>
+<p>
+The seed is deliberately not uniform. Edge cases are injected at frequencies chosen to resemble what a real
+network eventually produces rather than a worst case: roughly two percent of institutions never publish a
+rollup at all, a further slice publish one that has since gone stale, some report zero books despite an
+active sync, some carry no recorded contact information, some show an implausibly high proportion of
+overdue loans, and — the case that turned out to matter most — one institution is represented by two
+different registry documents, simulating a stale client that republished under a new document identity
+after a local reset while still claiming the original institution's identity inside its data. This last
+case exists because the system's own alerting logic already anticipates it: an alert exists specifically to
+flag a duplicate institution identity as a data-quality problem. The harness asks a sharper question than
+"does the alert fire" — it asks what else in the codebase silently assumed that identity was unique.
+</p>
+
+<h2><span class="secnum">5</span>The Governance Layer</h2>
+<p>
+Built on top of the published registry, the directorate console is organized into fourteen sections across
+three groups — network oversight (registry, districts, benchmarking, alerts, trends, union catalogue
+search), engagement (follow-ups, announcements, documents, inspections), and governance (reports, an audit
+log, and staff administration) — and introduces an access-tier model with three levels: full administrative
+access, a regional tier that can act on colleges but not manage other staff, and a read-only analyst tier.
+</p>
+<div class="callout">
+  <span class="clabel">Bootstrap-safety, not least-privilege</span>
+  <p>An account with no entry in the staff-tier collection resolves to the <em>most</em> privileged tier,
+  not the least. This inverts the conventional default deliberately: every account that could sign in
+  before the tier system existed must keep working after it ships, with no migration step, and a
+  fail-closed default here would have locked out the one account the system most needs to keep working —
+  the account doing the deploying. The same default is enforced twice, independently, in the security
+  rules and in the client, so the client's UI and the server's enforcement can never silently disagree
+  about who is allowed to do what.</p>
+</div>
+<p>
+Every state-changing action in the console — admitting or removing a college, enrolling or removing staff,
+publishing an announcement, scheduling an inspection — appends an entry to an audit log collection that
+permits create only, with update and delete unconditionally denied at the rules layer, including to the
+most privileged tier. An audit trail its own subjects can edit is not a trail; the append-only guarantee is
+enforced where it cannot be bypassed by a UI change.
+</p>
+
+<h2><span class="secnum">6</span>Results: Three Defects at Scale</h2>
+<p>
+Run after the rules suite passed in full and the production build compiled cleanly across every route, the
+scale harness surfaced three defects, none of which any earlier layer of verification had caught. Table 2
+summarizes them; the discussion below traces each to its root cause.
+</p>
+<div class="scroll">
+<table>
+<thead><tr><th>#</th><th>Symptom</th><th>Where observed</th><th>Root cause</th></tr></thead>
+<tbody>
+<tr><td>D1</td><td>Rendering warning; rows silently duplicated or dropped</td><td>Three list views keyed on the institution's self-reported identity</td><td>That identity is not guaranteed unique</td></tr>
+<tr><td>D2</td><td>A bounded search query consumed twice its intended budget on one institution and returned duplicate hits</td><td>Cross-tenant catalogue search</td><td>Same unenforced identity assumption</td></tr>
+<tr><td>D3</td><td>A rejected account was returned to the login screen with no explanation shown</td><td>Authentication denial path</td><td>Two asynchronous auth-state callbacks racing; unrelated to D1/D2</td></tr>
+</tbody>
+</table>
+</div>
+<p class="figcap"><b>Table 2.</b> Defects recovered by the 300-institution scale harness. D1 and D2 share a root cause; D3 does not.</p>
+
+<h3><span class="secnum">6.1</span>D1 and D2: one assumption, two failures</h3>
+<p>
+The registry's own alerting logic (Section 3.2) already treats a duplicate institution identity as a
+data-quality violation worth flagging to an administrator. What it does not do — because detecting a
+violation and defending against its consequences are different obligations — is prevent the rest of the
+codebase from silently assuming the identity is unique anyway. Three list views used that identity
+directly as a rendering key; when the harness's seeded duplicate reached them, two documents claiming the
+same identity produced a key collision, which under the client framework's reconciliation model risks
+silently duplicated or dropped rows rather than a visible crash. The cross-tenant search feature made the
+same assumption in a different form: it treated each registry entry as a distinct search target, so the
+duplicate caused it to query one tenant's data twice, spending two of its fixed forty-institution query
+budget on a single institution and returning every result twice.
+</p>
+<p>
+The fix in both cases was the same: introduce a second identifier — the registry document's own storage
+identity, which the platform does guarantee unique — for anything that needs an identifier a hostile or
+merely confused publisher cannot forge, and reserve the institution's self-reported identity for what it
+was always meant for, addressing and linking to the college a user recognizes by name.
+</p>
+<div class="finding">
+  <span class="flabel">Generalizable finding</span>
+  <p>An alert that detects a uniqueness violation is not, by itself, a guarantee that the rest of the
+  system tolerates the violation gracefully. Every other component that consumes the same collection and
+  assumes the field is a valid key is exposed to the same failure the alert was built to report, until each
+  one is checked independently. Detection and defense are separate engineering obligations, and building
+  one does not retire the need for the other.</p>
+</div>
+
+<h3><span class="secnum">6.2</span>D3: a race in the denial path</h3>
+<p>
+Signing out a rejected account triggers the authentication client's own state-change notification, which
+runs a second, independent handler whose job is to clear session state when no user is signed in. That
+handler unconditionally cleared the rejection message the first handler had just set, before the interface
+had a chance to render it, because the sign-out call's internal notification completed before the
+handler that issued it returned. The account was silently returned to the login screen with no
+explanation — arguably a worse outcome for the person experiencing it than an incorrect password would
+have been, because a wrong-password message at least explains itself. The fix reorders the two operations
+so the explanatory state is set only after the sign-out call has fully settled, which is not a fix to any
+part of the duplicate-identity story; its recovery in the same testing pass and by the same methodology as
+D1 and D2 is itself part of the finding: a scale harness that drives real user flows end-to-end catches
+defect classes a rules-behavior suite, which asserts on data access rather than on interface behavior,
+structurally cannot.
+</p>
+
+<h2><span class="secnum">7</span>Discussion</h2>
+<p>
+Five points generalize beyond this specific deployment.
+</p>
+<p>
+<strong>Aggregation without access is achievable on a zero-compute backend</strong>, at the cost of trusting
+each tenant to report honestly about itself — a materially smaller trust requirement than trusting a shared
+backend to enforce isolation correctly, since a lying tenant can only misrepresent its own counts and cannot
+touch another tenant's data or approval status.
+</p>
+<p>
+<strong>Bootstrap-safety and least-privilege are in tension</strong>, and a system introducing an
+access-tier model onto an existing user base should resolve that tension explicitly rather than by
+accident. Defaulting an unenrolled account to full access until it is deliberately narrowed is safer for
+this class of system than the conventional fail-closed default, specifically because the failure mode of
+fail-closed here — locking out the administrator who would fix it — has no recovery path once every account
+requires the very tier system that is broken.
+</p>
+<p>
+<strong>Detection is not defense.</strong> Section 6.1's finding — that flagging a data-quality violation
+does not protect the rest of the codebase from it — almost certainly generalizes to any system that alerts
+on a uniqueness or integrity violation in data it does not have the authority to reject outright, which
+describes most federated or client-published data models.
+</p>
+<p>
+<strong>Divergent trust models across clients hide defects asymmetrically.</strong> A rules regression
+invisible to an Admin-SDK client and fatal to a rules-governed one (Section 3.3) means the choice of which
+client is used to validate a change determines what that validation can see; testing strategy has to be
+platform-aware for exactly this reason.
+</p>
+<p>
+<strong>Realistic irregularity finds what uniform fixtures cannot.</strong> All three defects in Section 6
+required data that was irregular in a specific, deliberate way — not merely large. A scale test that
+seeds 300 identical, well-formed rows would have exercised none of them; it would have proven only that the
+system renders a large table, which was never in doubt.
+</p>
+
+<h2><span class="secnum">8</span>Limitations</h2>
+<ul>
+  <li><strong>Single deployment context.</strong> The architecture and its trade-offs are argued to
+  generalize to similar public-sector, resource-constrained deployments; they are not validated against a
+  second one.</li>
+  <li><strong>Emulator-based scale testing approximates, but does not replicate, production conditions</strong> —
+  real network latency, concurrent writes from independent devices, and Android device/OS heterogeneity are
+  all outside what a local emulator run can exercise.</li>
+  <li><strong>No adversarial security review beyond behavioral rules testing</strong> has been performed;
+  the rules suite proves the boundary holds against the account classes and access patterns it enumerates,
+  not against deliberate, creative attack.</li>
+  <li><strong>The desktop client's Admin-SDK trust bypass (Section 3.3) remains an open architectural risk</strong>,
+  documented and reasoned about here but not resolved by this work.</li>
+  <li><strong>The system's cost model is a static formula</strong>, not a production-measured bill; validating
+  it against real usage telemetry is future work, not something this paper reports as measured.</li>
+</ul>
+
+<h2><span class="secnum">9</span>Conclusion</h2>
+<p>
+NEXLIB shows that a multi-tenant system with genuine cross-tenant oversight is achievable on a
+zero-compute, free-tier serverless backend, provided the aggregation is restructured as something each
+tenant publishes about itself rather than something a trusted server computes on the network's behalf. That
+restructuring produces its own trust model, its own governance requirements, and — as this paper's empirical
+half shows — its own failure class: assumptions about identity uniqueness that a data-quality alert can
+report but cannot, by itself, enforce. A verification strategy built only from a passing type-check, a
+clean build, and a rules-behavior suite would have shipped all three defects reported here. Finding them
+required treating "does it work" as a question about realistic, irregular data at scale, not a question
+about whether the code compiles.
+</p>
+
+<hr class="sect">
+
+<h2><span class="secnum">References</span></h2>
+<ol class="refs">
+  <li><span class="rt">M. Kleppmann, A. Wiggins, P. van Hardenberg, and M. McGranaghan.</span>
+  "Local-first software: you own your data, in spite of the cloud." <em>Proceedings of the 2019 ACM SIGPLAN
+  International Symposium on New Ideas, New Paradigms, and Reflections on Programming and Software
+  (Onward!)</em>, 2019.</li>
+  <li><span class="rt">E. A. Brewer.</span> "Towards Robust Distributed Systems." Keynote, <em>ACM Symposium
+  on Principles of Distributed Computing (PODC)</em>, 2000. Formalized in S. Gilbert and N. Lynch,
+  "Brewer's Conjecture and the Feasibility of Consistent, Available, Partition-Tolerant Web Services,"
+  <em>ACM SIGACT News</em>, 2002.</li>
+  <li><span class="rt">Google.</span> "Cloud Firestore Security Rules." Firebase documentation,
+  firebase.google.com/docs/firestore/security/get-started.</li>
+  <li><span class="rt">R. Heeks.</span> "Information Systems and Developing Countries: Failure, Success, and
+  Local Improvisation." <em>The Information Society</em>, 18(2), 2002.</li>
+  <li><span class="rt">OWASP Foundation.</span> "OWASP Top 10." owasp.org/Top10/.</li>
+  <li><span class="rt">NEXLIB project repository.</span> Source, security rules, and rules-behavior and
+  scale-test suites referenced throughout this paper. Private repository, Higher Education Department,
+  Khyber Pakhtunkhwa deployment.</li>
+</ol>
+
+<hr class="sect">
+<p class="appendix-tag" style="margin-top:36px">Appendix A</p>
+<h3 style="margin-top:0">Directorate access-tier permission matrix</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>Capability</th><th>Full access</th><th>Regional</th><th>Analyst</th></tr></thead>
+<tbody>
+<tr><td>Read every section</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Admit / remove a college</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+<tr><td>Write follow-ups, announcements, documents, inspections, notes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+<tr><td>Enroll or remove staff records</td><td>Yes</td><td>No</td><td>No</td></tr>
+<tr><td>Default when unenrolled</td><td colspan="3">Full access — see Section 5, bootstrap-safety note</td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="appendix-tag" style="margin-top:30px">Appendix B</p>
+<h3 style="margin-top:0">Verification summary at time of writing</h3>
+<div class="scroll">
+<table>
+<thead><tr><th>Check</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>Behavioral rules assertions</td><td>75 / 75 passing</td></tr>
+<tr><td>Production build</td><td>Compiles cleanly; all 17 routes generated</td></tr>
+<tr><td>Type-check</td><td>Clean</td></tr>
+<tr><td>Scale-harness console errors, pre-fix</td><td>3 distinct errors across 3 pages, all traced to D1</td></tr>
+<tr><td>Scale-harness console errors, post-fix</td><td>0, across all 14 sections and the institution detail view</td></tr>
+<tr><td>Write paths exercised live at n=300 and confirmed in the audit log</td><td>10 of 10 (admit/remove a college, follow-up create/resolve, announcement publish/retract, document add/remove, inspection schedule/complete, staff enroll/remove, note save, trend snapshot capture)</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</body>
+</html>
