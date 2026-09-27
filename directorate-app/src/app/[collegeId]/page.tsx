@@ -57,6 +57,7 @@ export default function CollegeDetail() {
         if (idxSnap.exists()) {
           const d = idxSnap.data();
           setSnapshot({
+            docId: collegeId,
             institutionId: collegeId,
             name: d.name || d.collegeName || collegeId,
             location: d.location || d.address || "",

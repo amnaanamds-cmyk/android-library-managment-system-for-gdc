@@ -48,6 +48,7 @@ export function rollupByDistrict(colleges: DirectorateSnapshot[]): DistrictRollu
 // grow from a handful of pilot colleges to the low hundreds.
 
 export interface RankedCollege {
+  docId: string;
   institutionId: string;
   name: string;
   value: number;
@@ -62,6 +63,7 @@ export function rankBy(
   const n = sorted.length;
   return sorted
     .map((c, i) => ({
+      docId: c.docId,
       institutionId: c.institutionId,
       name: c.name,
       value: c[key],
@@ -89,6 +91,7 @@ export interface ComplianceCheck {
 }
 
 export interface ComplianceResult {
+  docId: string;
   institutionId: string;
   name: string;
   checks: ComplianceCheck[];
@@ -131,7 +134,7 @@ export function scoreCompliance(c: DirectorateSnapshot): ComplianceResult {
     },
   ];
   const score = Math.round((checks.filter((x) => x.pass).length / checks.length) * 100);
-  return { institutionId: c.institutionId, name: c.name, checks, score };
+  return { docId: c.docId, institutionId: c.institutionId, name: c.name, checks, score };
 }
 
 // ── Data-quality and operational alerts ─────────────────────────────────

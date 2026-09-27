@@ -45,7 +45,18 @@ export const REGISTRY_SCHEMA_VERSION = 2;
 export const STALE_AFTER_MS = 48 * 60 * 60 * 1000; // 48 hours
 
 export interface DirectorateSnapshot {
-  /** Document id === institutionId. */
+  /** The real Firestore document id this row was read from. Normally equal
+   *  to institutionId, but NOT guaranteed to be: a stale or misbehaving
+   *  client can republish under a different document id while still
+   *  claiming the same institutionId inside its data (see the "duplicate
+   *  ID" alert in lib/analytics.ts). React keys and any other per-row
+   *  identity must use this field, never institutionId, or two rows
+   *  claiming the same college collide. */
+  docId: string;
+  /** The college's own claimed identity. NOT guaranteed unique across rows
+   *  — see docId above. Safe to use for links, approvals and writes that
+   *  are meant to target "the college named X" rather than "this specific
+   *  row". */
   institutionId: string;
   name: string;
   location?: string;
@@ -79,6 +90,7 @@ function normalise(id: string, data: DocumentData): DirectorateSnapshot {
   // Tolerate every historical field spelling so colleges that last published
   // from an older build still appear in the portal rather than as a blank row.
   return {
+    docId: id,
     institutionId: data.institutionId || data.collegeId || data.college_id || id,
     name:
       data.name ||

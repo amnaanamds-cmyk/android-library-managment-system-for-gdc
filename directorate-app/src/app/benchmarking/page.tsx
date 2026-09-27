@@ -49,7 +49,7 @@ export default function Benchmarking() {
           </p>
           <div className="space-y-3">
             {ranked.map((r, i) => (
-              <Link key={r.institutionId} href={`/${encodeURIComponent(r.institutionId)}`} className="block">
+              <Link key={r.docId} href={`/${encodeURIComponent(r.institutionId)}`} className="block">
                 <div className="mb-1 flex items-center justify-between text-xs">
                   <span className="flex items-center gap-2 font-semibold text-slate-300">
                     <span className="w-5 text-right font-mono text-slate-600">{i + 1}</span>
@@ -72,7 +72,7 @@ export default function Benchmarking() {
           </p>
           <div className="space-y-3">
             {compliance.map((c) => (
-              <Link key={c.institutionId} href={`/${encodeURIComponent(c.institutionId)}`} className="block rounded-md border border-slate-800/80 px-3 py-2.5 hover:border-slate-700">
+              <Link key={c.docId} href={`/${encodeURIComponent(c.institutionId)}`} className="block rounded-md border border-slate-800/80 px-3 py-2.5 hover:border-slate-700">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-200">{c.name}</span>
                   <Badge tone={c.score >= 75 ? "emerald" : c.score >= 50 ? "amber" : "red"}>{c.score}%</Badge>

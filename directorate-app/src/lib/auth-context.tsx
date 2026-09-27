@@ -68,14 +68,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!canViewDirectorate(role)) {
         // Not a directorate account. Sign out rather than leaving a session
-        // open against a portal it has no business in.
+        // open against a portal it has no business in. signOut() below fires
+        // its OWN onAuthStateChanged(null) synchronously as part of settling
+        // — that callback's "no user" branch unconditionally clears
+        // accessDenied — so setAccessDenied must run AFTER the await, not
+        // before, or this message is overwritten with null before React
+        // ever paints it and the account is bounced back to /login with no
+        // explanation at all.
         setProfile(null);
+        await signOut(auth);
         setAccessDenied(
           role
             ? `This account is signed in as "${role}". The directorate portal is limited to Higher Education Department directorate accounts.`
             : "This account has no directorate role assigned.",
         );
-        await signOut(auth);
         setLoading(false);
         if (pathname !== "/login") router.push("/login");
         return;

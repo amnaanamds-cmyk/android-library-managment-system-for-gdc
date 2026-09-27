@@ -80,7 +80,15 @@ export default function Followups() {
 }
 
 function NewFollowupForm({ colleges, onDone }: { colleges: { institutionId: string; name: string }[]; onDone: () => void }) {
-  const [collegeId, setCollegeId] = useState(colleges[0]?.institutionId || "");
+  // The registry can (rarely) hold two rows claiming the same institutionId
+  // — a stale duplicate publish, flagged by its own alert elsewhere in the
+  // portal. A target picker must offer each real institution once, not
+  // twice under the same value.
+  const pickable = React.useMemo(() => {
+    const seen = new Set<string>();
+    return colleges.filter((c) => (seen.has(c.institutionId) ? false : (seen.add(c.institutionId), true)));
+  }, [colleges]);
+  const [collegeId, setCollegeId] = useState(pickable[0]?.institutionId || "");
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -88,7 +96,7 @@ function NewFollowupForm({ colleges, onDone }: { colleges: { institutionId: stri
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const college = colleges.find((c) => c.institutionId === collegeId);
+    const college = pickable.find((c) => c.institutionId === collegeId);
     if (!college || !title.trim() || saving) return;
     setSaving(true);
     try {
@@ -106,7 +114,7 @@ function NewFollowupForm({ colleges, onDone }: { colleges: { institutionId: stri
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Field label="Institution">
           <Select value={collegeId} onChange={(e) => setCollegeId(e.target.value)} required>
-            {colleges.map((c) => <option key={c.institutionId} value={c.institutionId}>{c.name}</option>)}
+            {pickable.map((c) => <option key={c.institutionId} value={c.institutionId}>{c.name}</option>)}
           </Select>
         </Field>
         <Field label="Due date (optional)">

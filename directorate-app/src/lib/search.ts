@@ -70,8 +70,17 @@ export async function searchUnionCatalogue(
   const trimmed = term.trim();
   if (!trimmed) return { hits: [], collegesSearched: 0, collegesSkipped: 0, tookMs: 0 };
 
-  const targets = colleges.slice(0, MAX_COLLEGES_PER_SEARCH);
-  const skipped = Math.max(0, colleges.length - targets.length);
+  // Two registry rows can claim the same institutionId (a stale duplicate
+  // publish — see the "duplicate ID" alert in lib/analytics.ts). They point
+  // at the exact same institutions/{id}/books collection, so querying both
+  // would waste two of the fan-out budget on one tenant and return every
+  // hit twice. Collapse to distinct tenants before applying the cap.
+  const seen = new Set<string>();
+  const distinct = colleges.filter((c) =>
+    seen.has(c.institutionId) ? false : (seen.add(c.institutionId), true),
+  );
+  const targets = distinct.slice(0, MAX_COLLEGES_PER_SEARCH);
+  const skipped = Math.max(0, distinct.length - targets.length);
 
   const perCollege = await Promise.all(
     targets.map(async (c) => {

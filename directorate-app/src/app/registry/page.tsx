@@ -112,7 +112,7 @@ export default function Registry() {
           </p>
           <div className="mt-4 space-y-2">
             {pending.map((c) => (
-              <div key={c.institutionId} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-[#070F1E] px-4 py-3">
+              <div key={c.docId} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800 bg-[#070F1E] px-4 py-3">
                 <div>
                   <p className="font-semibold text-white">{c.name}</p>
                   <p className="font-mono text-[11px] uppercase text-slate-500">
@@ -143,7 +143,7 @@ export default function Registry() {
           <p className="mt-2 text-xs text-slate-500">Excluded from totals. Their library data is intact and unaffected.</p>
           <div className="mt-4 space-y-2">
             {hidden.map((c) => (
-              <div key={c.institutionId} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800/60 px-4 py-3">
+              <div key={c.docId} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-800/60 px-4 py-3">
                 <div>
                   <p className="font-semibold text-slate-300">{c.name}</p>
                   <p className="font-mono text-[11px] uppercase text-slate-600">{c.institutionId}</p>
@@ -189,7 +189,7 @@ export default function Registry() {
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {rows.map((c) => (
-                <Row key={c.institutionId} college={c} busy={busyId === c.institutionId} canWrite={canWrite} onRemove={() => decide(c.institutionId, "hidden")} />
+                <Row key={c.docId} college={c} busy={busyId === c.institutionId} canWrite={canWrite} onRemove={() => decide(c.institutionId, "hidden")} />
               ))}
             </tbody>
           </table>

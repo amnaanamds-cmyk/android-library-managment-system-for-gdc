@@ -112,14 +112,21 @@ function CompleteForm({ inspection, onDone }: { inspection: Inspection; onDone: 
 }
 
 function NewInspectionForm({ colleges, onDone }: { colleges: { institutionId: string; name: string }[]; onDone: () => void }) {
-  const [collegeId, setCollegeId] = useState(colleges[0]?.institutionId || "");
+  // See the identical note in followups/page.tsx: a stale duplicate publish
+  // can put two rows under the same institutionId, and this picker must
+  // offer each real institution once.
+  const pickable = React.useMemo(() => {
+    const seen = new Set<string>();
+    return colleges.filter((c) => (seen.has(c.institutionId) ? false : (seen.add(c.institutionId), true)));
+  }, [colleges]);
+  const [collegeId, setCollegeId] = useState(pickable[0]?.institutionId || "");
   const [scheduledDate, setScheduledDate] = useState("");
   const [purpose, setPurpose] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const college = colleges.find((c) => c.institutionId === collegeId);
+    const college = pickable.find((c) => c.institutionId === collegeId);
     if (!college || !scheduledDate || !purpose.trim() || saving) return;
     setSaving(true);
     try {
@@ -137,7 +144,7 @@ function NewInspectionForm({ colleges, onDone }: { colleges: { institutionId: st
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Field label="Institution">
           <Select value={collegeId} onChange={(e) => setCollegeId(e.target.value)} required>
-            {colleges.map((c) => <option key={c.institutionId} value={c.institutionId}>{c.name}</option>)}
+            {pickable.map((c) => <option key={c.institutionId} value={c.institutionId}>{c.name}</option>)}
           </Select>
         </Field>
         <Field label="Date">
