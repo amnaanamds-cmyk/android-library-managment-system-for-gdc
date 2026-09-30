@@ -71,6 +71,7 @@ export default function CollegeDetail() {
             overdueCount: Number(d.overdueCount ?? 0),
             reservationsCount: Number(d.reservationsCount ?? 0),
             finesOutstanding: Number(d.finesOutstanding ?? 0),
+            booksByCategory: d.booksByCategory && typeof d.booksByCategory === "object" ? d.booksByCategory : {},
             lastSyncAt: Number(d.lastSyncAt ?? d.lastSeen ?? 0),
             lastSyncPlatform: d.lastSyncPlatform || "unknown",
             schemaVersion: Number(d.schemaVersion ?? 1),

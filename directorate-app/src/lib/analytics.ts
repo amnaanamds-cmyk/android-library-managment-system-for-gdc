@@ -191,3 +191,71 @@ export function computeAlerts(colleges: DirectorateSnapshot[]): RegistryAlert[] 
 
   return alerts.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "high" ? -1 : 1));
 }
+
+// ── Category stock across the network ───────────────────────────────────
+//
+// booksByCategory is self-reported per college, same trust model as every
+// other figure in the registry (see lib/directorate.ts). A college that has
+// never published under schemaVersion 3 has an EMPTY booksByCategory, not a
+// zero one — every function here keeps "not reporting this category" and
+// "reports zero copies of it" distinct, so a college doesn't read as
+// understocked in everything the moment it upgrades.
+
+export interface CategoryTotal {
+  category: string;
+  totalCopies: number;
+  collegesReporting: number;
+}
+
+/** Every category any reporting college has published, network totals. */
+export function categoryNetworkTotals(colleges: DirectorateSnapshot[]): CategoryTotal[] {
+  const map = new Map<string, CategoryTotal>();
+  for (const c of colleges) {
+    for (const [category, count] of Object.entries(c.booksByCategory || {})) {
+      const row = map.get(category) || { category, totalCopies: 0, collegesReporting: 0 };
+      row.totalCopies += count;
+      row.collegesReporting += 1;
+      map.set(category, row);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.totalCopies - a.totalCopies);
+}
+
+export interface CollegeCategoryStock {
+  docId: string;
+  institutionId: string;
+  name: string;
+  district?: string;
+  copies: number;
+  percentile: number; // 0-100 among colleges that reported ANY category data
+}
+
+/** Colleges ranked by copies of one category, restricted to colleges that
+ *  have published category data at all — a college with no booksByCategory
+ *  yet is reported separately as `notReporting`, never silently folded into
+ *  the ranking at 0. */
+export function rankByCategory(
+  colleges: DirectorateSnapshot[],
+  category: string,
+): { ranked: CollegeCategoryStock[]; notReporting: DirectorateSnapshot[] } {
+  const reporting = colleges.filter((c) => Object.keys(c.booksByCategory || {}).length > 0);
+  const notReporting = colleges.filter((c) => Object.keys(c.booksByCategory || {}).length === 0);
+
+  const withCopies = reporting
+    .map((c) => ({ c, copies: c.booksByCategory[category] || 0 }))
+    .sort((a, b) => a.copies - b.copies);
+  const n = withCopies.length;
+
+  const ranked = withCopies
+    .map(({ c, copies }, i) => ({
+      docId: c.docId,
+      institutionId: c.institutionId,
+      name: c.name,
+      district: c.district,
+      copies,
+      percentile: n <= 1 ? 100 : Math.round((i / (n - 1)) * 100),
+    }))
+    .sort((a, b) => b.copies - a.copies);
+
+  return { ranked, notReporting };
+}

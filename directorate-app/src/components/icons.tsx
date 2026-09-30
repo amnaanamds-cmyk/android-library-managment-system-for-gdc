@@ -42,6 +42,7 @@ export const IconInspection = (p: IconProps) => base(<><rect x="3" y="4" width="
 export const IconAudit = (p: IconProps) => base(<><path d="M9 2h6l5 5v13a2 2 0 01-2 2H7a2 2 0 01-2-2V4a2 2 0 012-2z" /><path d="M14 2v5h5" /><path d="M8 12h8M8 16h5" /><circle cx="8.5" cy="9" r=".6" fill="currentColor" stroke="none" /></>, p);
 export const IconStaff = (p: IconProps) => base(<><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c.7-3.4 3.3-5.5 6.5-5.5s5.8 2.1 6.5 5.5" /><circle cx="18" cy="7" r="2.4" /><path d="M15.5 14.3c2.6.3 4.4 2.1 5 4.7" /></>, p);
 export const IconReports = (p: IconProps) => base(<><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M8 8h8M8 12h8M8 16h5" /></>, p);
+export const IconStock = (p: IconProps) => base(<><path d="M3 8l9-5 9 5-9 5-9-5z" /><path d="M3 8v8l9 5 9-5V8" /><path d="M12 13v8" /></>, p);
 export const IconLogout = (p: IconProps) => base(<><path d="M15 3H6a1 1 0 00-1 1v16a1 1 0 001 1h9" /><path d="M10 12h11M17 8l4 4-4 4" /></>, p);
 export const IconChevronDown = (p: IconProps) => base(<path d="M6 9l6 6 6-6" />, p);
 export const IconCheck = (p: IconProps) => base(<path d="M20 6L9 17l-5-5" />, p);

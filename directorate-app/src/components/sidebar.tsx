@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
 import {
   IconOverview, IconRegistry, IconDistrict, IconBench, IconAlert, IconTrend,
   IconSearch, IconFollowup, IconAnnouncement, IconDocument, IconInspection,
-  IconAudit, IconStaff, IconReports,
+  IconAudit, IconStaff, IconReports, IconStock,
 } from "./icons";
 
 interface NavItem {
@@ -36,6 +36,7 @@ export function useNavGroups(counts: { pending: number; alerts: number; openFoll
         { href: "/registry", label: "Registry", icon: IconRegistry, badge: counts.pending || undefined },
         { href: "/districts", label: "Districts", icon: IconDistrict },
         { href: "/benchmarking", label: "Benchmarking", icon: IconBench },
+        { href: "/stock", label: "Stock by Category", icon: IconStock },
         { href: "/alerts", label: "Alerts", icon: IconAlert, badge: counts.alerts || undefined },
         { href: "/trends", label: "Trends", icon: IconTrend },
         { href: "/search", label: "Union Search", icon: IconSearch },

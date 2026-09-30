@@ -99,6 +99,22 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
       createdAt: now - i * 3_600_000,
     });
 
+    // Category breakdown: only the first 200 colleges "publish" it, so the
+    // Stock page's not-reporting bucket has real content to show too.
+    // LOADTEST-{i where i%7==0} is deliberately thin in Science, to
+    // demonstrate the "Understocked" flag against real seeded data.
+    const reportsCategoryData = i <= 200;
+    const scienceThin = i % 7 === 0;
+    const booksByCategory = reportsCategoryData
+      ? {
+          Science: scienceThin ? 5 + (i % 10) : 80 + ((i * 17) % 300),
+          Arts: 40 + ((i * 11) % 200),
+          Commerce: 30 + ((i * 13) % 150),
+          "Computer Science": 20 + ((i * 19) % 180),
+          "Islamic Studies": 15 + ((i * 7) % 100),
+        }
+      : {};
+
     await setDoc(doc(db, "directorate_index", cid), {
       institutionId: cid,
       name: `Government Degree College ${district} ${i}`,
@@ -113,9 +129,10 @@ await testEnv.withSecurityRulesDisabled(async (ctx) => {
       overdueCount,
       reservationsCount: Math.round(members * 0.05),
       finesOutstanding: overdueCount * 50,
+      booksByCategory,
       lastSyncAt: neverSynced ? 0 : stale ? now - 5 * 24 * 3_600_000 : now - ((i * 91) % 24) * 3_600_000,
       lastSyncPlatform: i % 3 === 0 ? "android" : i % 3 === 1 ? "web" : "desktop",
-      schemaVersion: 2,
+      schemaVersion: reportsCategoryData ? 3 : 2,
     });
 
     // Most approved; a slice pending (no approval doc at all); a slice hidden.

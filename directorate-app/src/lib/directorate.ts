@@ -72,6 +72,13 @@ export interface DirectorateSnapshot {
   overdueCount: number;
   reservationsCount: number;
   finesOutstanding: number;
+  /** Category -> printed-copy count, self-reported by the college the same
+   *  way every other count here is — no titles, no patron data. Absent on
+   *  snapshots published before this field existed (schemaVersion < 3);
+   *  always default to {} rather than treating a missing key as zero
+   *  stock, or a college would read as "understocked in everything" the
+   *  moment it upgrades to a build that reports this. */
+  booksByCategory: Record<string, number>;
 
   // Provenance
   lastSyncAt: number;
@@ -109,6 +116,8 @@ function normalise(id: string, data: DocumentData): DirectorateSnapshot {
     overdueCount: Number(data.overdueCount ?? 0),
     reservationsCount: Number(data.reservationsCount ?? 0),
     finesOutstanding: Number(data.finesOutstanding ?? 0),
+    booksByCategory:
+      data.booksByCategory && typeof data.booksByCategory === "object" ? data.booksByCategory : {},
     lastSyncAt: Number(data.lastSyncAt ?? data.lastSeen ?? data.lastUpdated ?? 0),
     lastSyncPlatform: data.lastSyncPlatform || "unknown",
     schemaVersion: Number(data.schemaVersion ?? 1),
