@@ -121,7 +121,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.current_screen = ""
         self._nav_btns = {}
 
-        self.agent = LibraryAgent(self.db)
+        self.agent = LibraryAgent(self.db, firebase_service=self.fb, auth_service=self.auth)
         self.agent_overlay = None
 
         self._last_activity = time.time()
