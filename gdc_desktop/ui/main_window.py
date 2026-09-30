@@ -79,6 +79,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ("Analytics & Intelligence", [
             ("🔍", "OPAC Monitor",     "opac"),
             ("📊", "Reports",          "reports"),
+            ("📈", "Insights",         "insights"),
             ("🤖", "AI Recommender",   "recommendations"),
             ("🔥", "Usage Heatmap",    "heatmap"),
             ("🎯", "Reading Goals",    "reading_goals"),
@@ -391,6 +392,9 @@ class MainWindow(QtWidgets.QMainWindow):
             elif key == "reports":
                 from ui.screens.reports_screen import ReportsScreen
                 screen = ReportsScreen(self.fb, self.db, self.auth)
+            elif key == "insights":
+                from ui.screens.insights_screen import InsightsScreen
+                screen = InsightsScreen(self.db)
             elif key == "settings":
                 from ui.screens.settings_screen import SettingsScreen
                 screen = SettingsScreen(self.fb, self.auth, self.db)

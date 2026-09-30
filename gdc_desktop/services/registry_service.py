@@ -26,9 +26,13 @@ import time
 from typing import Optional
 
 import config
+from services.analytics_service import books_by_category
 
 # Bump when the document shape changes so readers can tell publishers apart.
-REGISTRY_SCHEMA_VERSION = 2
+# v3 adds booksByCategory — additive and tolerant: a directorate-app reading
+# an older v2 document simply sees no category breakdown for it, exactly
+# like every other optional field this registry already normalises.
+REGISTRY_SCHEMA_VERSION = 3
 
 REGISTRY_COLLECTION = "directorate_index"
 LEGACY_COLLECTION = "colleges"
@@ -78,6 +82,13 @@ class RegistryService:
                 [r for r in reservations if not r.deleted and r.status == "Pending"]
             ),
             "finesOutstanding": round(sum(i.fine or 0.0 for i in active), 2),
+            # Category counts only — no titles, no patron data. This is what
+            # lets the directorate answer "which colleges are understocked
+            # in Science" from the registry alone, without ever reading a
+            # single book record: the same self-reporting trust model as
+            # every other figure in this snapshot, just broken down by
+            # category instead of collapsed to one number.
+            "booksByCategory": books_by_category(books),
         }
 
     # ── Publishing ────────────────────────────────────────────────────────────
@@ -157,6 +168,7 @@ class RegistryService:
                     "overdueCount": 0,
                     "reservationsCount": 0,
                     "finesOutstanding": 0.0,
+                    "booksByCategory": {},
                     "lastSyncAt": now,
                     "lastSyncPlatform": "desktop",
                     "schemaVersion": REGISTRY_SCHEMA_VERSION,

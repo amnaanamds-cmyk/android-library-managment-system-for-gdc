@@ -14,20 +14,27 @@ class ReadingGoalsScreen(QWidget):
         self.init_ui()
 
     def init_db(self):
+        # DatabaseHelper has no persistent self.conn — every other screen in
+        # this app opens a connection per operation via _get_conn(), which
+        # this screen didn't do, so every method here raised AttributeError
+        # on the very first line and was silently swallowed by its own
+        # except block. Matching the rest of the codebase's access pattern
+        # fixes that; the column/table-name bugs below were a second,
+        # independent problem hiding behind the first.
         try:
-            cursor = self.db.conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS reading_goals (
-                    member_id TEXT,
-                    year INTEGER,
-                    target_books INTEGER,
-                    current_books INTEGER DEFAULT 0,
-                    streak_days INTEGER DEFAULT 0,
-                    last_read_date TEXT,
-                    PRIMARY KEY (member_id, year)
-                )
-            ''')
-            self.db.conn.commit()
+            with self.db._get_conn() as conn:
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS reading_goals (
+                        member_id TEXT,
+                        year INTEGER,
+                        target_books INTEGER,
+                        current_books INTEGER DEFAULT 0,
+                        streak_days INTEGER DEFAULT 0,
+                        last_read_date TEXT,
+                        PRIMARY KEY (member_id, year)
+                    )
+                ''')
+                conn.commit()
         except Exception as e:
             print(f"Error initializing reading_goals table: {e}")
 
@@ -116,28 +123,33 @@ class ReadingGoalsScreen(QWidget):
 
     def load_data(self):
         try:
-            cursor = self.db.conn.cursor()
-            current_year = datetime.datetime.now().year
-            
-            # Check if members table exists to get the actual name
-            cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='members'")
-            has_members = cursor.fetchone()[0] == 1
-            
-            if has_members:
-                cursor.execute("""
-                    SELECT m.name, r.target_books, r.current_books, r.streak_days, r.member_id
-                    FROM reading_goals r
-                    JOIN members m ON r.member_id = m.member_id
-                    WHERE r.year = ?
-                """, (current_year,))
-            else:
-                cursor.execute("""
-                    SELECT member_id, target_books, current_books, streak_days, member_id
-                    FROM reading_goals
-                    WHERE year = ?
-                """, (current_year,))
-                
-            rows = cursor.fetchall()
+            with self.db._get_conn() as conn:
+                cursor = conn.cursor()
+                current_year = datetime.datetime.now().year
+
+                # Check if members table exists to get the actual name
+                cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='members'")
+                has_members = cursor.fetchone()[0] == 1
+
+                if has_members:
+                    # members' own primary key column is memberId, not
+                    # member_id — that mismatch made this JOIN fail every
+                    # time, caught by the except below and left the table
+                    # permanently empty.
+                    cursor.execute("""
+                        SELECT m.name, r.target_books, r.current_books, r.streak_days, r.member_id
+                        FROM reading_goals r
+                        JOIN members m ON r.member_id = m.memberId
+                        WHERE r.year = ?
+                    """, (current_year,))
+                else:
+                    cursor.execute("""
+                        SELECT member_id, target_books, current_books, streak_days, member_id
+                        FROM reading_goals
+                        WHERE year = ?
+                    """, (current_year,))
+
+                rows = cursor.fetchall()
             self.table.setRowCount(len(rows))
             
             for row_idx, row in enumerate(rows):
@@ -172,16 +184,21 @@ class ReadingGoalsScreen(QWidget):
         
         member_combo = QComboBox()
         try:
-            cursor = self.db.conn.cursor()
-            cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='members'")
-            if cursor.fetchone()[0] == 1:
-                cursor.execute("SELECT member_id, name FROM members")
-                for row in cursor.fetchall():
+            with self.db._get_conn() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='members'")
+                if cursor.fetchone()[0] == 1:
+                    cursor.execute("SELECT memberId, name FROM members WHERE deleted = 0")
+                    rows = cursor.fetchall()
+                else:
+                    rows = []
+            if rows:
+                for row in rows:
                     member_combo.addItem(f"{row[0]} - {row[1]}", row[0])
             else:
-                member_combo.addItem("M001 - Dummy Member", "M001")
+                member_combo.addItem("No members found — add one first", "")
         except Exception:
-            member_combo.addItem("M001 - Dummy Member", "M001")
+            member_combo.addItem("No members found — add one first", "")
             
         layout.addRow("Member:", member_combo)
         
@@ -206,44 +223,44 @@ class ReadingGoalsScreen(QWidget):
         if not member_id:
             QMessageBox.warning(self, "Error", "No member selected")
             return
-            
+
         current_year = datetime.datetime.now().year
         try:
-            cursor = self.db.conn.cursor()
-            cursor.execute("""
-                INSERT INTO reading_goals (member_id, year, target_books)
-                VALUES (?, ?, ?)
-                ON CONFLICT(member_id, year) DO UPDATE SET target_books=excluded.target_books
-            """, (member_id, current_year, target))
-            self.db.conn.commit()
+            with self.db._get_conn() as conn:
+                conn.execute("""
+                    INSERT INTO reading_goals (member_id, year, target_books)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(member_id, year) DO UPDATE SET target_books=excluded.target_books
+                """, (member_id, current_year, target))
+                conn.commit()
             dialog.accept()
             self.load_data()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save goal: {e}")
 
     def update_all_progress(self):
+        # The real issue-history table is issued_books (memberMemberId,
+        # issueDate) — this used to query a table called book_issues with
+        # columns member_id/issue_date, none of which exist, so it always
+        # hit the "table not found" branch below and never actually updated
+        # anything.
         try:
-            cursor = self.db.conn.cursor()
             current_year = datetime.datetime.now().year
-            
-            cursor.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='book_issues'")
-            if cursor.fetchone()[0] == 1:
-                start_date = f"{current_year}-01-01"
-                end_date = f"{current_year}-12-31"
-                cursor.execute("""
+            start_date = f"{current_year}-01-01"
+            end_date = f"{current_year}-12-31"
+            with self.db._get_conn() as conn:
+                conn.execute("""
                     UPDATE reading_goals
                     SET current_books = (
-                        SELECT COUNT(*) FROM book_issues 
-                        WHERE book_issues.member_id = reading_goals.member_id 
-                        AND issue_date BETWEEN ? AND ?
+                        SELECT COUNT(*) FROM issued_books
+                        WHERE issued_books.memberMemberId = reading_goals.member_id
+                        AND issued_books.deleted = 0
+                        AND issued_books.issueDate BETWEEN ? AND ?
                     )
                     WHERE year = ?
                 """, (start_date, end_date, current_year))
-                self.db.conn.commit()
-                QMessageBox.information(self, "Success", "Progress updated successfully.")
-            else:
-                QMessageBox.warning(self, "Warning", "book_issues table not found.")
-            
+                conn.commit()
+            QMessageBox.information(self, "Success", "Progress updated successfully.")
             self.load_data()
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Could not update progress: {e}")

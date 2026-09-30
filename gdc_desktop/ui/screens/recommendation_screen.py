@@ -1,12 +1,14 @@
 import os
 import collections
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QScrollArea, QGridLayout, QFrame, QSizePolicy,
     QComboBox, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont, QCursor
+
+from services.analytics_service import work_key
 
 try:
     import pandas as pd
@@ -25,8 +27,6 @@ class RecommendationWorker(QThread):
 
     def run(self):
         try:
-            # Fetch data using the provided db helper
-            # Adjust if actual methods are named differently
             books_raw = self.db.get_books() if hasattr(self.db, 'get_books') else []
             issues_raw = self.db.get_issues() if hasattr(self.db, 'get_issues') else []
 
@@ -36,40 +36,31 @@ class RecommendationWorker(QThread):
             self.error.emit(str(e))
 
     def _parse_book(self, b):
-        if isinstance(b, dict):
-            return {
-                'id': str(b.get('book_id', b.get('id', ''))),
-                'title': b.get('title', 'Unknown Title'),
-                'author': b.get('author', 'Unknown Author'),
-                'category': b.get('category', 'General')
-            }
-        else:
-            # Assuming tuple format: (id, title, author, category, ...)
-            try:
-                return {
-                    'id': str(b[0]),
-                    'title': str(b[1]) if len(b) > 1 else 'Unknown',
-                    'author': str(b[2]) if len(b) > 2 else 'Unknown',
-                    'category': str(b[3]) if len(b) > 3 else 'General'
-                }
-            except Exception:
-                return {'id': '', 'title': 'Unknown', 'author': 'Unknown', 'category': 'General'}
+        # books_raw is always a list of real Book dataclass instances (see
+        # models/book.py) from database_helper.get_books() — never a dict or
+        # a tuple. The old dict-or-tuple-index parsing here raised
+        # TypeError on every single book (a dataclass isn't subscriptable),
+        # which the caller's bare except turned into an empty stub with an
+        # empty 'id' — meaning every recommendation ever generated against
+        # the real database was silently built from zero books and zero
+        # issues. work_key() is the same title/ISBN identity used by
+        # analytics_service's popularity ranking, so a book recommended here
+        # is the same "work" a librarian sees ranked there.
+        return {
+            'id': work_key(b.isbn, b.title),
+            'title': b.title or 'Unknown Title',
+            'author': b.author or 'Unknown Author',
+            'category': b.category or 'General',
+        }
 
     def _parse_issue(self, i):
-        if isinstance(i, dict):
-            return {
-                'member_id': str(i.get('member_id', '')),
-                'book_id': str(i.get('book_id', ''))
-            }
-        else:
-            # Assuming tuple format: (issue_id, book_id, member_id, ...)
-            try:
-                return {
-                    'member_id': str(i[2]) if len(i) > 2 else '',
-                    'book_id': str(i[1]) if len(i) > 1 else ''
-                }
-            except Exception:
-                return {'member_id': '', 'book_id': ''}
+        # IssueRecord has no author field, only bookIsbn/bookTitle — matches
+        # _parse_book's work_key() exactly, which is why work_key only ever
+        # needs isbn+title on either side.
+        return {
+            'member_id': i.memberMemberId or '',
+            'book_id': work_key(i.bookIsbn, i.bookTitle),
+        }
 
     def generate_recommendations(self, books_raw, issues_raw):
         # 1. Parse Data
@@ -79,8 +70,9 @@ class RecommendationWorker(QThread):
             if pb['id']:
                 books[pb['id']] = pb
 
-        issues = [self._parse_issue(i) for i in issues_raw if self._parse_issue(i)['book_id']]
-        
+        issues = [self._parse_issue(i) for i in issues_raw]
+        issues = [pi for pi in issues if pi['book_id']]
+
         # 2. Build User-Item Interaction
         user_books = collections.defaultdict(set)
         book_popularity = collections.Counter()

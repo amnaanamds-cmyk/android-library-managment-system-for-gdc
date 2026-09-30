@@ -114,6 +114,7 @@ class DatabaseHelper:
                 ("deleted", "books", "INTEGER DEFAULT 0"),
                 ("lastUpdated", "issued_books", "INTEGER"),
                 ("deleted", "issued_books", "INTEGER DEFAULT 0"),
+                ("issueTimestamp", "issued_books", "INTEGER DEFAULT 0"),
                 ("lastUpdated", "reservations", "INTEGER"),
                 ("deleted", "reservations", "INTEGER DEFAULT 0"),
             ]
@@ -138,6 +139,7 @@ class DatabaseHelper:
                     returnDate TEXT,
                     fine REAL DEFAULT 0.0,
                     status TEXT,
+                    issueTimestamp INTEGER DEFAULT 0,
                     lastUpdated INTEGER,
                     deleted INTEGER DEFAULT 0
                 )
@@ -617,18 +619,21 @@ class DatabaseHelper:
             conn.execute("""
                 INSERT INTO issued_books (
                     syncId, id, bookId, bookTitle, bookIsbn, memberId, memberName,
-                    memberMemberId, issueDate, dueDate, returnDate, fine, status, lastUpdated, deleted
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    memberMemberId, issueDate, dueDate, returnDate, fine, status,
+                    issueTimestamp, lastUpdated, deleted
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(syncId) DO UPDATE SET
                     bookId=excluded.bookId, bookTitle=excluded.bookTitle, bookIsbn=excluded.bookIsbn,
                     memberId=excluded.memberId, memberName=excluded.memberName,
                     memberMemberId=excluded.memberMemberId, issueDate=excluded.issueDate,
                     dueDate=excluded.dueDate, returnDate=excluded.returnDate, fine=excluded.fine,
-                    status=excluded.status, lastUpdated=excluded.lastUpdated, deleted=excluded.deleted
+                    status=excluded.status, issueTimestamp=excluded.issueTimestamp,
+                    lastUpdated=excluded.lastUpdated, deleted=excluded.deleted
             """, (
                 record.syncId, record.id, record.bookId, record.bookTitle, record.bookIsbn,
                 record.memberId, record.memberName, record.memberMemberId, record.issueDate,
-                record.dueDate, record.returnDate, record.fine, record.status, record.lastUpdated,
+                record.dueDate, record.returnDate, record.fine, record.status,
+                record.issueTimestamp, record.lastUpdated,
                 1 if record.deleted else 0
             ))
             if not is_clean:
@@ -645,18 +650,21 @@ class DatabaseHelper:
                     conn.execute("""
                         INSERT INTO issued_books (
                             syncId, id, bookId, bookTitle, bookIsbn, memberId, memberName,
-                            memberMemberId, issueDate, dueDate, returnDate, fine, status, lastUpdated, deleted
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            memberMemberId, issueDate, dueDate, returnDate, fine, status,
+                            issueTimestamp, lastUpdated, deleted
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(syncId) DO UPDATE SET
                             bookId=excluded.bookId, bookTitle=excluded.bookTitle, bookIsbn=excluded.bookIsbn,
                             memberId=excluded.memberId, memberName=excluded.memberName,
                             memberMemberId=excluded.memberMemberId, issueDate=excluded.issueDate,
                             dueDate=excluded.dueDate, returnDate=excluded.returnDate, fine=excluded.fine,
-                            status=excluded.status, lastUpdated=excluded.lastUpdated, deleted=excluded.deleted
+                            status=excluded.status, issueTimestamp=excluded.issueTimestamp,
+                            lastUpdated=excluded.lastUpdated, deleted=excluded.deleted
                     """, (
                         record.syncId, record.id, record.bookId, record.bookTitle, record.bookIsbn,
                         record.memberId, record.memberName, record.memberMemberId, record.issueDate,
-                        record.dueDate, record.returnDate, record.fine, record.status, record.lastUpdated,
+                        record.dueDate, record.returnDate, record.fine, record.status,
+                        record.issueTimestamp, record.lastUpdated,
                         1 if record.deleted else 0
                     ))
                     if not is_clean:

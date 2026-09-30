@@ -408,7 +408,8 @@ class IssueReturnScreen(QWidget):
                 bookId=book.id, bookTitle=book.title, bookIsbn=book.isbn,
                 memberId=member.id, memberName=member.name,
                 memberMemberId=member.memberId,
-                issueDate=time.strftime("%Y-%m-%d"), dueDate=due
+                issueDate=time.strftime("%Y-%m-%d"), dueDate=due,
+                issueTimestamp=int(time.time() * 1000),
             )
             user_email = self.auth.current_user.email if self.auth.current_user else ""
             self._worker = IssueWorker(self.db, record, book, user_email)
@@ -681,6 +682,7 @@ class IssueReturnScreen(QWidget):
                             issueDate=t.strftime("%Y-%m-%d"), dueDate=due
                         )
                         record.syncId = str(uuid.uuid4())
+                        record.issueTimestamp = int(t.time() * 1000)
                         record.lastUpdated = int(t.time() * 1000)
                         screen.db.save_issue(record)
                         bk.status = "Issued"

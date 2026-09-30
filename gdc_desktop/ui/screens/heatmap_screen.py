@@ -1,5 +1,4 @@
 import sys
-import random
 from datetime import datetime
 import numpy as np
 
@@ -109,21 +108,31 @@ class HeatmapScreen(QWidget):
         self.lbl_peak_hour = QLabel("Peak Hour: N/A")
         self.lbl_peak_day = QLabel("Peak Day: N/A")
         self.lbl_quietest = QLabel("Quietest Period: N/A")
-        
+
         font = QFont()
         font.setBold(True)
         font.setPointSize(11)
-        
+
         for lbl in [self.lbl_peak_hour, self.lbl_peak_day, self.lbl_quietest]:
             lbl.setFont(font)
             lbl.setStyleSheet("color: white; padding: 10px;")
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            
+
         summary_layout.addWidget(self.lbl_peak_hour, 0, 0)
         summary_layout.addWidget(self.lbl_peak_day, 0, 1)
         summary_layout.addWidget(self.lbl_quietest, 0, 2)
-        
+
         main_layout.addWidget(summary_frame)
+
+        # This heatmap used to fabricate the hour-of-day for every issue with
+        # a seeded random draw, which made "Peak Hour" a number that looked
+        # measured but never was. Real issue times only exist from the day
+        # this field was added onward, so this coverage note says exactly
+        # how much of the chart below is real, rather than hiding the gap.
+        self.lbl_coverage = QLabel("")
+        self.lbl_coverage.setStyleSheet("color: #94A3B8; font-style: italic; padding: 4px 10px;")
+        self.lbl_coverage.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.lbl_coverage)
 
     def create_legend_item(self, text, color):
         widget = QWidget()
@@ -141,18 +150,6 @@ class HeatmapScreen(QWidget):
         layout.addWidget(label)
         return widget
 
-    def parse_issue_date(self, issue):
-        """Extracts issueDate correctly whether issue is a dict, object, or tuple."""
-        if isinstance(issue, dict) and 'issueDate' in issue:
-            return issue['issueDate']
-        elif hasattr(issue, 'issueDate'):
-            return issue.issueDate
-        elif isinstance(issue, (list, tuple)):
-            for v in issue:
-                if isinstance(v, str) and len(v) == 10 and v.count('-') == 2:
-                    return v
-        return None
-
     def load_data(self):
         issues = []
         if self.db and hasattr(self.db, 'get_issues'):
@@ -161,34 +158,27 @@ class HeatmapScreen(QWidget):
             except Exception as e:
                 print(f"Error fetching issues: {e}")
 
+        self.total_issue_count = len(issues)
         self.raw_data = []
-        for i, issue in enumerate(issues):
-            date_str = self.parse_issue_date(issue)
-            if not date_str:
+        for issue in issues:
+            # issueTimestamp is 0 for every issue recorded before this field
+            # existed — that is real missing data, not midnight, so those
+            # records are left out of the day/hour grid entirely rather than
+            # guessed at. See models/issue_record.py for why this can't be
+            # backfilled or auto-filled on load.
+            ts = getattr(issue, 'issueTimestamp', 0) or 0
+            if not ts:
                 continue
             try:
-                dt = datetime.strptime(date_str, '%Y-%m-%d')
-                
-                # Simulate hour distribution with consistent randomized seed
-                random.seed(date_str + str(i))
-                hours = list(range(24))
-                weights = [1] * 24
-                # Simulate peaks at 9am-11am and 2pm-4pm (14-16)
-                for h in [9, 10, 11, 14, 15, 16]: 
-                    weights[h] = 10
-                for h in [8, 12, 13, 17]: 
-                    weights[h] = 5
-                
-                hour = random.choices(hours, weights=weights, k=1)[0]
-                
+                dt = datetime.fromtimestamp(ts / 1000)
                 self.raw_data.append({
                     'date': dt,
                     'day_of_week': dt.weekday(),
-                    'hour': hour,
+                    'hour': dt.hour,
                     'year': dt.year,
-                    'month': dt.month
+                    'month': dt.month,
                 })
-            except Exception:
+            except (ValueError, OSError):
                 pass
 
     def update_filter_dropdown(self):
@@ -255,8 +245,22 @@ class HeatmapScreen(QWidget):
         
         self.figure.tight_layout()
         self.canvas.draw()
-        
+
         self.update_summary(heatmap_data, days)
+
+        timestamped = len(self.raw_data)
+        if timestamped == 0:
+            self.lbl_coverage.setText(
+                "No timestamped usage data yet — this fills in as new issues are recorded. "
+                f"({self.total_issue_count} historical issue(s) predate time tracking and aren't shown here.)"
+            )
+        elif timestamped < self.total_issue_count:
+            self.lbl_coverage.setText(
+                f"Based on {timestamped} of {self.total_issue_count} issues with a recorded time "
+                "— older issues predate time tracking and aren't included."
+            )
+        else:
+            self.lbl_coverage.setText(f"Based on all {timestamped} recorded issue(s).")
 
     def update_summary(self, heatmap_data, days):
         if np.max(heatmap_data) == 0:
