@@ -387,15 +387,13 @@ class IssueReturnScreen(QWidget):
     def _filter_history(self):
         self._populate_history(self._history)
 
-    def _load_data(self):
-        try:
-            self._all_members = self.db.get_members()
-            self._all_books   = self.db.get_books()
-        except Exception:
-            pass
-
     def _issue_book(self):
-        self._load_data()
+        # Used to call self.db.get_members()+get_books() fresh on every
+        # click — a full unpaginated scan of both tables, synchronously, on
+        # the UI thread, on the single most frequent action in the whole
+        # app. refresh()'s LoadIssueDataWorker already keeps
+        # self._all_members/self._all_books current in the background,
+        # so there is nothing here left to fetch.
         if not self._all_members:
             QMessageBox.warning(self, "No Members", "No members found."); return
         if not [b for b in self._all_books if b.status == "Available"]:
@@ -649,8 +647,9 @@ class IssueReturnScreen(QWidget):
 
                 self._log(f"⟶ Scanned: <b>{val}</b>", "#E8EEF8")
 
-                # Look up book by Acc No
-                books = screen.db.get_books()
+                # Look up book by Acc No — from the screen's already-loaded
+                # cache, not a fresh table scan on every single scan event.
+                books = screen._all_books
                 matching = [b for b in books if b.accNo == val or b.isbn == val]
 
                 if not matching:
@@ -662,8 +661,6 @@ class IssueReturnScreen(QWidget):
 
                 if book.status == "Available":
                     self._log("✅ Book is available. Opening issue dialog…", "#10B981")
-                    # Trigger issue from parent screen
-                    screen._load_data()
                     members = screen._all_members
                     if not members:
                         self._log("⚠️ No members in database to assign issue.", "#F59E0B")
@@ -694,8 +691,9 @@ class IssueReturnScreen(QWidget):
                         self._log("Issue dialog cancelled.", "#6B8CAE")
 
                 elif book.status == "Issued":
-                    issues = [i for i in screen.db.get_issues()
-                              if i.bookId == book.id and i.status == "Issued"]
+                    # screen._issues is already filtered to active (status
+                    # == "Issued") loans by _on_issue_data_loaded.
+                    issues = [i for i in screen._issues if i.bookId == book.id]
                     if not issues:
                         self._log(f"⚠️ Book status is Issued but no active record found.", "#F59E0B")
                         return
