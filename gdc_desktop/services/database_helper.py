@@ -322,9 +322,16 @@ class DatabaseHelper:
                     memberId INTEGER,
                     requestDate INTEGER,
                     targetInstitution TEXT,
-                    status TEXT
+                    status TEXT,
+                    requesterId TEXT DEFAULT '',
+                    duration TEXT DEFAULT ''
                 )
             """)
+            for col, dtype in [("requesterId", "TEXT DEFAULT ''"), ("duration", "TEXT DEFAULT ''")]:
+                try:
+                    conn.execute(f"ALTER TABLE ill_requests ADD COLUMN {col} {dtype}")
+                except Exception:
+                    pass  # Column already exists
 
             # 5. Acquisitions / PO
             conn.execute("""
@@ -984,8 +991,9 @@ class DatabaseHelper:
         if isinstance(data, dict):
             book_title = data.get("bookTitle", "")
             author = data.get("requesterName", "")  # repurpose author field for requester
-            member_id = 0  # not tracked in old schema
+            requester_id = data.get("requesterId", "")
             target_institution = data.get("fromInstitution", "")
+            duration = data.get("duration", "")
             status = data.get("status", "Pending")
         else:
             # Legacy positional: save_ill_request(book_title, author, member_id, target_inst, status)
@@ -993,9 +1001,9 @@ class DatabaseHelper:
 
         with self._get_conn() as conn:
             conn.execute("""
-                INSERT INTO ill_requests (bookTitle, author, memberId, requestDate, targetInstitution, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (book_title, author, member_id, now, target_institution, status))
+                INSERT INTO ill_requests (bookTitle, author, memberId, requestDate, targetInstitution, status, requesterId, duration)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (book_title, author, 0, now, target_institution, status, requester_id, duration))
             conn.commit()
 
     def get_ill_requests(self) -> List[Dict[str, Any]]:

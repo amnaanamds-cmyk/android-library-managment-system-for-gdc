@@ -6,17 +6,23 @@ from PyQt6 import QtWidgets, QtCore, QtGui
 import config
 
 class EnterpriseFeaturesScreen(QtWidgets.QWidget):
-    def __init__(self, db_helper, firebase_service=None):
+    def __init__(self, db_helper, firebase_service=None, auth=None):
         super().__init__()
         self.db = db_helper
         # Shared Firestore collection, so records raised here reach the
         # Android and web apps. These features were local-SQLite-only.
         self.fb = firebase_service
+        self.auth = auth
         self.ops = None
         if firebase_service is not None:
             from services.operations_service import OperationsService
             self.ops = OperationsService(firebase_service)
         self._build_ui()
+
+    def _current_user_label(self):
+        if self.auth and getattr(self.auth, "current_user", None):
+            return self.auth.current_user.email
+        return ""
         
     def _build_ui(self):
         layout = QtWidgets.QVBoxLayout(self)
@@ -45,7 +51,7 @@ class EnterpriseFeaturesScreen(QtWidgets.QWidget):
     def _build_reading_room(self, tabs):
         w = QtWidgets.QWidget(); l = QtWidgets.QVBoxLayout(w); l.setContentsMargins(16,16,16,16)
         l.addWidget(QtWidgets.QLabel("Manage seat assignments for the physical reading room.", styleSheet="color:#A0B4CC;font-size:14px;"))
-        
+
         grid = QtWidgets.QGridLayout()
         self.seats = {}
         for i in range(1, 21):
@@ -55,51 +61,96 @@ class EnterpriseFeaturesScreen(QtWidgets.QWidget):
             btn.clicked.connect(lambda _, s=i: self._toggle_seat(s))
             self.seats[i] = btn
             grid.addWidget(btn, (i-1)//5, (i-1)%5)
-            
+
         l.addLayout(grid)
         l.addStretch()
         tabs.addTab(w, "🪑 Reading Room")
-        
+        self._load_seats()
+
+    def _load_seats(self):
+        # Seat occupancy used to be plain button text, reset to empty every
+        # time this screen was reopened. OperationsService.seats() reads the
+        # same `reading_room` Firestore collection the Android app's own
+        # Enterprise screen already uses, so a seat assigned on one device
+        # now shows the same way on the other.
+        by_seat = {}
+        if self.ops:
+            for rec in self.ops.seats():
+                try:
+                    by_seat[int(rec.get("seatNumber") or 0)] = rec
+                except (TypeError, ValueError):
+                    continue
+        for num, btn in self.seats.items():
+            occupant = (by_seat.get(num) or {}).get("occupantName") or ""
+            if occupant:
+                btn.setText(f"Seat {num}\n{occupant[:12]}")
+                btn.setStyleSheet("background:#EF4444;color:white;border-radius:8px;font-weight:bold;")
+            else:
+                btn.setText(f"Seat {num}\n(Empty)")
+                btn.setStyleSheet("background:#10B981;color:white;border-radius:8px;font-weight:bold;")
+
     def _toggle_seat(self, seat_num):
+        if not self.ops:
+            QtWidgets.QMessageBox.warning(self, "Offline", "Reading room seating requires a connected Firebase session.")
+            return
         btn = self.seats[seat_num]
         if "(Empty)" in btn.text():
-            mem_id, ok = QtWidgets.QInputDialog.getText(self, "Assign Seat", f"Enter Member ID for Seat {seat_num}:")
-            if ok and mem_id:
-                btn.setText(f"Seat {seat_num}\n{mem_id}")
-                btn.setStyleSheet("background:#EF4444;color:white;border-radius:8px;font-weight:bold;")
+            name, ok = QtWidgets.QInputDialog.getText(self, "Assign Seat", f"Occupant name for Seat {seat_num}:")
+            if ok and name.strip():
+                mem_id, _ = QtWidgets.QInputDialog.getText(self, "Assign Seat", "Member ID (optional):")
+                if self.ops.assign_seat(seat_num, name.strip(), (mem_id or "").strip()):
+                    self._load_seats()
+                else:
+                    QtWidgets.QMessageBox.warning(self, "Error", "Could not assign the seat. Check your connection and try again.")
         else:
             reply = QtWidgets.QMessageBox.question(self, "Free Seat", f"Make Seat {seat_num} empty?", QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                btn.setText(f"Seat {seat_num}\n(Empty)")
-                btn.setStyleSheet("background:#10B981;color:white;border-radius:8px;font-weight:bold;")
+                if self.ops.free_seat(seat_num):
+                    self._load_seats()
+                else:
+                    QtWidgets.QMessageBox.warning(self, "Error", "Could not free the seat. Check your connection and try again.")
 
     def _build_lost_found(self, tabs):
         w = QtWidgets.QWidget(); l = QtWidgets.QVBoxLayout(w); l.setContentsMargins(16,16,16,16)
         l.addWidget(QtWidgets.QLabel("Track items lost or found within the library premises.", styleSheet="color:#A0B4CC;font-size:14px;"))
-        
+
         self.lf_table = QtWidgets.QTableWidget(0, 4)
         self.lf_table.setHorizontalHeaderLabels(["Date", "Item Description", "Location", "Status"])
         self.lf_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.lf_table.setEditTriggers(QtWidgets.QTableWidget.EditTrigger.NoEditTriggers)
         self.lf_table.setStyleSheet("QTableWidget { background:#0D1B2A; color:#E8EEF8; border:1px solid #1E3050; } QHeaderView::section { background:#1E3050; color:#E8EEF8; }")
         l.addWidget(self.lf_table)
-        
+
         btn_row = QtWidgets.QHBoxLayout()
         add_btn = QtWidgets.QPushButton("➕ Report Item")
         add_btn.setStyleSheet("background:#2563EB;color:white;border-radius:8px;padding:8px 16px;font-weight:bold;")
         add_btn.clicked.connect(self._add_lf_item)
         btn_row.addWidget(add_btn)
-        
+
         claim_btn = QtWidgets.QPushButton("✅ Mark as Claimed/Resolved")
         claim_btn.setStyleSheet("background:#059669;color:white;border-radius:8px;padding:8px 16px;font-weight:bold;")
         claim_btn.clicked.connect(self._resolve_lf_item)
         btn_row.addWidget(claim_btn)
         btn_row.addStretch()
         l.addLayout(btn_row)
-        
+
         tabs.addTab(w, "🔍 Lost & Found")
-        self._add_lf_row("2024-05-12", "Blue Water Bottle", "Reading Room", "Found")
-        self._add_lf_row("2024-05-10", "HP Laptop Charger", "Section B", "Lost")
-        
+        self._load_lost_found()
+
+    def _load_lost_found(self):
+        # Used to re-insert the same two hardcoded demo rows ("Blue Water
+        # Bottle", "HP Laptop Charger") every time this tab opened, and
+        # anything reported through "Report Item" only ever lived in this
+        # table widget — gone the moment the screen closed. Now reads the
+        # shared `lost_found` Firestore collection the Android app's
+        # Enterprise screen already writes to.
+        self._lf_records = self.ops.lost_found() if self.ops else []
+        self.lf_table.setRowCount(0)
+        for rec in self._lf_records:
+            ts = rec.get("reportedAt")
+            date_str = time.strftime("%Y-%m-%d", time.localtime(ts / 1000)) if ts else ""
+            self._add_lf_row(date_str, rec.get("itemName", ""), rec.get("location", ""), rec.get("status", ""))
+
     def _add_lf_row(self, date, item, loc, status):
         row = self.lf_table.rowCount()
         self.lf_table.insertRow(row)
@@ -109,34 +160,47 @@ class EnterpriseFeaturesScreen(QtWidgets.QWidget):
         itm = QtWidgets.QTableWidgetItem(status)
         if status == "Lost": itm.setForeground(QtGui.QColor("#EF4444"))
         elif status == "Found": itm.setForeground(QtGui.QColor("#10B981"))
+        elif status == "Claimed": itm.setForeground(QtGui.QColor("#C8A84B"))
         self.lf_table.setItem(row, 3, itm)
-        
+
     def _add_lf_item(self):
+        if not self.ops:
+            QtWidgets.QMessageBox.warning(self, "Offline", "Lost & Found requires a connected Firebase session.")
+            return
         desc, ok = QtWidgets.QInputDialog.getText(self, "Report Item", "Item Description:")
-        if ok and desc:
+        if ok and desc.strip():
             loc, ok2 = QtWidgets.QInputDialog.getText(self, "Location", "Location:")
             if ok2:
                 status, ok3 = QtWidgets.QInputDialog.getItem(self, "Status", "Is it Lost or Found?", ["Lost", "Found"], 0, False)
                 if ok3:
-                    self._add_lf_row(datetime.date.today().strftime("%Y-%m-%d"), desc, loc, status)
-                    
+                    if self.ops.log_lost_found(desc.strip(), loc.strip(), status=status, reported_by=self._current_user_label()):
+                        self._load_lost_found()
+                    else:
+                        QtWidgets.QMessageBox.warning(self, "Error", "Could not save the report. Check your connection and try again.")
+
     def _resolve_lf_item(self):
         r = self.lf_table.currentRow()
-        if r >= 0:
-            itm = QtWidgets.QTableWidgetItem("Claimed/Resolved")
-            itm.setForeground(QtGui.QColor("#C8A84B"))
-            self.lf_table.setItem(r, 3, itm)
+        if r < 0 or r >= len(self._lf_records):
+            return
+        sync_id = self._lf_records[r].get("syncId")
+        if not sync_id or not self.ops:
+            return
+        if self.ops.set_lost_found_status(sync_id, "Claimed", claimed_by=self._current_user_label()):
+            self._load_lost_found()
+        else:
+            QtWidgets.QMessageBox.warning(self, "Error", "Could not update the record. Check your connection and try again.")
             
     def _build_events(self, tabs):
         w = QtWidgets.QWidget(); l = QtWidgets.QVBoxLayout(w); l.setContentsMargins(16,16,16,16)
         l.addWidget(QtWidgets.QLabel("Schedule library workshops, author talks, and community events.", styleSheet="color:#A0B4CC;font-size:14px;"))
-        
+
         self.ev_table = QtWidgets.QTableWidget(0, 4)
         self.ev_table.setHorizontalHeaderLabels(["Date & Time", "Event Title", "Speaker/Host", "Registered Attendees"])
         self.ev_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ev_table.setStyleSheet(self.lf_table.styleSheet())
+        self.ev_table.setEditTriggers(QtWidgets.QTableWidget.EditTrigger.NoEditTriggers)
+        self.ev_table.setStyleSheet("QTableWidget { background:#0D1B2A; color:#E8EEF8; border:1px solid #1E3050; } QHeaderView::section { background:#1E3050; color:#E8EEF8; }")
         l.addWidget(self.ev_table)
-        
+
         btn_row = QtWidgets.QHBoxLayout()
         add_btn = QtWidgets.QPushButton("📅 Schedule New Event")
         add_btn.setStyleSheet("background:#7C3AED;color:white;border-radius:8px;padding:8px 16px;font-weight:bold;")
@@ -144,11 +208,24 @@ class EnterpriseFeaturesScreen(QtWidgets.QWidget):
         btn_row.addWidget(add_btn)
         btn_row.addStretch()
         l.addLayout(btn_row)
-        
+
         tabs.addTab(w, "📅 Event Scheduler")
-        self._add_ev_row("2024-06-15 14:00", "Introduction to Python", "Dr. Ahmed", "45/50")
-        self._add_ev_row("2024-06-20 10:00", "Literature & Modern World", "Guest Author", "120/150")
-        
+        self._load_events()
+
+    def _load_events(self):
+        # Used to always show two hardcoded demo events ("Introduction to
+        # Python", "Literature & Modern World") with made-up attendee
+        # counts, and "Schedule New Event" only added a row to this table —
+        # never persisted, never visible to Android/web. Now backed by the
+        # shared `library_events` Firestore collection. There is no
+        # capacity field in the shared schema (see Operations.kt's
+        # LibraryEvent), so attendees is shown as a plain registered count,
+        # not a fabricated "x/50".
+        self._ev_records = self.ops.events() if self.ops else []
+        self.ev_table.setRowCount(0)
+        for rec in self._ev_records:
+            self._add_ev_row(rec.get("eventDate", ""), rec.get("title", ""), rec.get("organiser", ""), str(rec.get("attendees", 0)))
+
     def _add_ev_row(self, dt, title, host, att):
         row = self.ev_table.rowCount()
         self.ev_table.insertRow(row)
@@ -156,14 +233,20 @@ class EnterpriseFeaturesScreen(QtWidgets.QWidget):
         self.ev_table.setItem(row, 1, QtWidgets.QTableWidgetItem(title))
         self.ev_table.setItem(row, 2, QtWidgets.QTableWidgetItem(host))
         self.ev_table.setItem(row, 3, QtWidgets.QTableWidgetItem(att))
-        
+
     def _add_event(self):
+        if not self.ops:
+            QtWidgets.QMessageBox.warning(self, "Offline", "Scheduling events requires a connected Firebase session.")
+            return
         title, ok = QtWidgets.QInputDialog.getText(self, "New Event", "Event Title:")
-        if ok and title:
+        if ok and title.strip():
             host, ok2 = QtWidgets.QInputDialog.getText(self, "Host", "Speaker/Host:")
             if ok2:
                 dt = datetime.datetime.now() + datetime.timedelta(days=7)
-                self._add_ev_row(dt.strftime("%Y-%m-%d %H:%M"), title, host, "0/50")
+                if self.ops.add_event(title.strip(), dt.strftime("%Y-%m-%d %H:%M"), organiser=host.strip()):
+                    self._load_events()
+                else:
+                    QtWidgets.QMessageBox.warning(self, "Error", "Could not save the event. Check your connection and try again.")
 
     def _build_gamification(self, tabs):
         w = QtWidgets.QWidget(); l = QtWidgets.QVBoxLayout(w); l.setContentsMargins(16,16,16,16)

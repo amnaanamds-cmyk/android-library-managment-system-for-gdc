@@ -81,20 +81,10 @@ def init_db():
             )
         """)
         
-        # Seed a default directorate admin if none exists
-        cursor = conn.execute("SELECT COUNT(*) as cnt FROM directorate_users")
-        if cursor.fetchone()["cnt"] == 0:
-            # Hash of 'director' is generated with bcrypt
-            # For simplicity, we'll store a precomputed bcrypt/hash or verify with standard checks.
-            # We'll use passlib.hash.bcrypt or a standard verification.
-            # Default hash for password 'director' using bcrypt is:
-            # $2b$12$R9h/lIPsI3TvG9YNbyNTcOq.W6.u0wYn7i29j2wH7M8s0p3yZ64G2 (or similar)
-            # We will seed password "director123" with hash:
-            # Let's seed director@gdc.edu / director123
-            # We'll write a helper to seed on startup.
-            pass
-        
         conn.commit()
+
+    # First-admin creation is a deliberate step — see create_admin.py —
+    # not something seeded automatically here with a known password.
 
 if __name__ == "__main__":
     init_db()

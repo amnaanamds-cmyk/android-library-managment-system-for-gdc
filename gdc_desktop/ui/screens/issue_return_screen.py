@@ -4,6 +4,8 @@ atomic Firestore transactions, fine calculation, and history log.
 """
 import time
 import datetime
+import webbrowser
+from urllib.parse import quote
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QDialog,
@@ -513,11 +515,44 @@ class IssueReturnScreen(QWidget):
                 pending = [r for r in reservations if r.bookId == issue.bookId and r.status == "Pending"]
                 if pending:
                     res = pending[0]
-                    QMessageBox.information(self, "🔔 Reservation Alert",
-                                           f"This book has a pending reservation for <b>{res.memberName}</b>!\n\n"
-                                           "A WhatsApp notification has been queued for the member.")
-                    # Mock WhatsApp notify
-                    print(f"DEBUG: WhatsApp notify to {res.memberName} for {issue.bookTitle}")
+                    # This used to claim "A WhatsApp notification has been
+                    # queued" and then only print() a debug line — nothing
+                    # was ever sent or queued anywhere. reports_screen.py's
+                    # overdue reminders do this for real by opening a
+                    # wa.me link with a pre-filled message (the user still
+                    # clicks Send inside WhatsApp — there is no server-side
+                    # send) — reuse that same honest mechanism here.
+                    member = next((m for m in self.db.get_members() if m.id == res.memberId), None)
+                    phone = member.phone if member else ""
+                    msg = (
+                        f"Dear {res.memberName}, good news from GDC Library! "
+                        f"'{issue.bookTitle}' that you reserved is now available. "
+                        "Please collect it within 2 days to keep your reservation."
+                    )
+                    if phone:
+                        clean_phone = phone.replace("+", "").replace("-", "").replace(" ", "")
+                        if not clean_phone.startswith("92"):
+                            clean_phone = "92" + clean_phone.lstrip("0")
+                        wa_url = f"https://wa.me/{clean_phone}?text={quote(msg)}"
+                    else:
+                        wa_url = f"https://wa.me/?text={quote(msg)}"
+                    try:
+                        webbrowser.open(wa_url)
+                        opened = True
+                    except Exception:
+                        opened = False
+
+                    res.notifiedDate = time.strftime("%Y-%m-%d")
+                    self.db.save_reservation(res)
+
+                    if opened:
+                        QMessageBox.information(self, "🔔 Reservation Alert",
+                                               f"This book has a pending reservation for <b>{res.memberName}</b>!\n\n"
+                                               "A WhatsApp chat has been opened with a pre-filled pickup notice — click Send to deliver it.")
+                    else:
+                        QMessageBox.information(self, "🔔 Reservation Alert",
+                                               f"This book has a pending reservation for <b>{res.memberName}</b>, "
+                                               "but WhatsApp could not be opened automatically. Please notify them manually.")
 
                 self.refresh()
             else:

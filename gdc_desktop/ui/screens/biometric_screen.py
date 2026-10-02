@@ -221,17 +221,18 @@ class VerifyDialog(QDialog):
             self.result_lbl.setText("⚠️  No biometric enrolled — Proceed manually")
             self.result_lbl.setStyleSheet("color:#F59E0B;font-size:13px;font-weight:700;")
         else:
-            # Mismatch — simulate match for demo (real scanner would compare templates)
-            # In production: compare using SDK's 1:1 match function
-            match_score = random.randint(70, 99)
-            if match_score >= 75:
-                self._verified = True
-                self.result_lbl.setText(f"✅  MATCH ({match_score}%) — Access Granted")
-                self.result_lbl.setStyleSheet("color:#10B981;font-size:14px;font-weight:800;")
-            else:
-                self._verified = False
-                self.result_lbl.setText(f"❌  MISMATCH ({match_score}%) — Access Denied")
-                self.result_lbl.setStyleSheet("color:#EF4444;font-size:14px;font-weight:800;")
+            # Mismatch. This used to roll random.randint(70, 99) and grant
+            # "MATCH — Access Granted" whenever that roll was >= 75 — which,
+            # since a real scan here never equals the stored hash (see
+            # FingerprintWidget._tick: a fresh random hash every scan), meant
+            # a genuine mismatch was waved through as a match roughly 83% of
+            # the time. That silently defeated the one thing this screen
+            # exists to enforce. A real SDK's 1:1 match function belongs
+            # here in production; until then, a mismatch must always deny —
+            # never "usually deny".
+            self._verified = False
+            self.result_lbl.setText("❌  MISMATCH — Access Denied")
+            self.result_lbl.setStyleSheet("color:#EF4444;font-size:14px;font-weight:800;")
 
 
 # ── Main Screen ──────────────────────────────────────────────────────────────

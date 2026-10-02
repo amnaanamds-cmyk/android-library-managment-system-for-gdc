@@ -1,7 +1,8 @@
 import json
+import os
 import time
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi import FastAPI, HTTPException, Depends, Security, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -12,10 +13,15 @@ import alerts
 
 app = FastAPI(title="GDC Library Directorate Central Server", version="1.0.0")
 
-# Enable CORS for web-based dashboard
+# allow_origins=["*"] combined with allow_credentials=True used to be the
+# default here — a wide-open, credentialed CORS policy. DIRECTORATE_DASHBOARD_ORIGINS
+# (comma-separated) must now be set explicitly to the real dashboard
+# origin(s); it defaults to localhost only, which is right for local
+# development and wrong for anything else — set it before deploying.
+_origins = [o.strip() for o in os.getenv("DIRECTORATE_DASHBOARD_ORIGINS", "http://127.0.0.1:5500,http://localhost:5500").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,29 +30,29 @@ app.add_middleware(
 # API key header authentication for sync
 api_key_header = APIKeyHeader(name="X-College-API-Key", auto_error=False)
 
-# Seed database on startup
+# Seed database on startup.
+#
+# This used to also seed a default admin account (director@gdc.edu /
+# director123) and two demo colleges with hardcoded API keys
+# (key-peshawar-123, key-swat-456) on EVERY startup with no users present —
+# meaning any real deployment that hadn't been manually reconfigured yet
+# was reachable with a publicly-documented password, and shipped with two
+# working college identities an attacker could sync fake data as. Creating
+# the first admin account is now a deliberate, one-time step — see
+# create_admin.py in this directory — not something that happens silently
+# because the users table was empty.
 @app.on_event("startup")
 def startup_event():
     database.init_db()
-    # Seed default user director@gdc.edu / director123
     with database.get_db() as conn:
-        row = conn.execute("SELECT email FROM directorate_users WHERE email = 'director@gdc.edu'").fetchone()
-        if not row:
-            p_hash = auth.get_password_hash("director123")
-            conn.execute(
-                "INSERT INTO directorate_users (email, password_hash, name, role) VALUES (?, ?, ?, ?)",
-                ("director@gdc.edu", p_hash, "Directorate Administrator", "directorate_admin")
-            )
-            # Also seed some demo colleges with API keys for simulation
-            conn.execute(
-                "INSERT OR IGNORE INTO colleges (id, name, location, api_key, registered_at) VALUES (?, ?, ?, ?, ?)",
-                ("gdc-peshawar", "GDC Peshawar", "Peshawar", "key-peshawar-123", int(time.time()*1000))
-            )
-            conn.execute(
-                "INSERT OR IGNORE INTO colleges (id, name, location, api_key, registered_at) VALUES (?, ?, ?, ?, ?)",
-                ("gdc-swat", "GDC Swat", "Swat", "key-swat-456", int(time.time()*1000))
-            )
-        conn.commit()
+        has_admin = conn.execute("SELECT COUNT(*) as cnt FROM directorate_users").fetchone()["cnt"] > 0
+    if not has_admin:
+        print(
+            "\n⚠  No directorate admin account exists yet. This server will start, but nobody "
+            "can sign in until one is created. Run:\n\n"
+            "    python create_admin.py\n\n"
+            "from this directory to create the first account interactively.\n"
+        )
 
 class LoginRequest(BaseModel):
     email: str
@@ -77,14 +83,20 @@ class BookTransferRequest(BaseModel):
 
 # --- REST ENDPOINTS ---
 
-# 1. Login
+# 1. Login — no throttling previously existed, so the endpoint was
+# brute-forceable with no lockout. Rate-limited per client IP now.
 @app.post("/api/auth/login")
-def login(req: LoginRequest):
+def login(req: LoginRequest, request: Request):
+    client_key = request.client.host if request.client else "unknown"
+    auth.check_login_rate_limit(client_key)
+
     with database.get_db() as conn:
         user = conn.execute("SELECT * FROM directorate_users WHERE email = ?", (req.email,)).fetchone()
         if not user or not auth.verify_password(req.password, user["password_hash"]):
+            auth.record_login_failure(client_key)
             raise HTTPException(status_code=401, detail="Invalid email or password")
-            
+
+        auth.record_login_success(client_key)
         token = auth.create_access_token({"sub": user["email"], "role": user["role"]})
         return {
             "access_token": token,
@@ -236,10 +248,18 @@ def acknowledge_alert(alert_id: int, user: dict = Depends(auth.get_current_user)
     return {"status": "success"}
 
 # 8. Book Transfers
+#
+# All three endpoints below used to have NO authentication at all — anyone
+# who could reach this server could create a fake transfer request between
+# any two colleges, read any college's transfer history by guessing its ID,
+# or flip any transfer's status. Only /api/sync had the right idea
+# (checking the caller's API key against the specific college_id it claims
+# to act as); these three now follow the same pattern.
+
 @app.post("/api/transfers")
-def request_transfer(req: BookTransferRequest):
-    # This can be triggered from Python app.
-    # To keep it simple, we allow keyless creation or authenticating with college ID headers
+def request_transfer(req: BookTransferRequest, x_college_api_key: Optional[str] = Security(api_key_header)):
+    if not x_college_api_key or not auth.verify_api_key(req.from_college, x_college_api_key):
+        raise HTTPException(status_code=403, detail="Invalid College ID or API Key for from_college")
     with database.get_db() as conn:
         conn.execute("""
             INSERT INTO book_transfers (from_college, to_college, book_title, book_isbn, status, requested_at, updated_at)
@@ -252,7 +272,7 @@ def request_transfer(req: BookTransferRequest):
 def get_transfers(user: dict = Depends(auth.get_current_user)):
     with database.get_db() as conn:
         rows = conn.execute("""
-            SELECT t.*, f.name as from_college_name, o.name as to_college_name 
+            SELECT t.*, f.name as from_college_name, o.name as to_college_name
             FROM book_transfers t
             INNER JOIN colleges f ON t.from_college = f.id
             INNER JOIN colleges o ON t.to_college = o.id
@@ -261,11 +281,12 @@ def get_transfers(user: dict = Depends(auth.get_current_user)):
         return [dict(r) for r in rows]
 
 @app.get("/api/transfers/college/{college_id}")
-def get_college_transfers(college_id: str):
-    # Endpoint accessible by local colleges to see incoming / outgoing requests
+def get_college_transfers(college_id: str, x_college_api_key: Optional[str] = Security(api_key_header)):
+    if not x_college_api_key or not auth.verify_api_key(college_id, x_college_api_key):
+        raise HTTPException(status_code=403, detail="Invalid College ID or API Key")
     with database.get_db() as conn:
         rows = conn.execute("""
-            SELECT t.*, f.name as from_college_name, o.name as to_college_name 
+            SELECT t.*, f.name as from_college_name, o.name as to_college_name
             FROM book_transfers t
             INNER JOIN colleges f ON t.from_college = f.id
             INNER JOIN colleges o ON t.to_college = o.id
@@ -274,10 +295,29 @@ def get_college_transfers(college_id: str):
         return [dict(r) for r in rows]
 
 @app.post("/api/transfers/{transfer_id}/status")
-def update_transfer_status(transfer_id: int, status: str):
+def update_transfer_status(transfer_id: int, status: str, x_college_api_key: Optional[str] = Security(api_key_header)):
     if status not in ('requested', 'in-transit', 'received', 'rejected'):
         raise HTTPException(status_code=400, detail="Invalid status")
+    # Reject a missing key before looking anything up — otherwise a caller
+    # with no credentials at all could still learn which transfer IDs exist
+    # by watching 404 vs (eventual) 403 responses.
+    if not x_college_api_key:
+        raise HTTPException(status_code=403, detail="Invalid College ID or API Key for this transfer")
     with database.get_db() as conn:
+        transfer = conn.execute(
+            "SELECT from_college, to_college FROM book_transfers WHERE id = ?", (transfer_id,)
+        ).fetchone()
+        if not transfer:
+            raise HTTPException(status_code=404, detail="Transfer not found")
+        # Either party to THIS transfer may update it (e.g. the receiving
+        # college marking it received) — a valid key for any other college
+        # does not authorize touching someone else's transfer.
+        authorized = x_college_api_key and (
+            auth.verify_api_key(transfer["from_college"], x_college_api_key)
+            or auth.verify_api_key(transfer["to_college"], x_college_api_key)
+        )
+        if not authorized:
+            raise HTTPException(status_code=403, detail="Invalid College ID or API Key for this transfer")
         conn.execute(
             "UPDATE book_transfers SET status = ?, updated_at = ? WHERE id = ?",
             (status, int(time.time()*1000), transfer_id)

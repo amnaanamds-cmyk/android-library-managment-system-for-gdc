@@ -414,16 +414,27 @@ class UnionCatalogScreen(QWidget):
             requests = []
         self.ill_table.setRowCount(len(requests))
         for row, req in enumerate(requests):
-            status = req.get("status", "Pending") if isinstance(req, dict) else getattr(req, "status", "Pending")
+            # save_ill_request() stores the requester's name under the
+            # "author" column and the lending institution under
+            # "targetInstitution" (see database_helper.py) — this used to
+            # read back "requesterName"/"fromInstitution", keys that never
+            # existed in the stored row, so every reload silently showed
+            # blank requester and institution columns. requestDate is
+            # stored as epoch millis, not a display string.
+            ts = req.get("requestDate", 0) or 0
+            date_str = time.strftime("%Y-%m-%d", time.localtime(ts / 1000)) if ts else ""
+            status = req.get("status", "Pending")
             for col, val in enumerate([
-                req.get("requesterName", "") if isinstance(req, dict) else getattr(req, "requesterName", ""),
-                req.get("bookTitle", "") if isinstance(req, dict) else getattr(req, "bookTitle", ""),
-                req.get("fromInstitution", "") if isinstance(req, dict) else getattr(req, "fromInstitution", ""),
-                req.get("requestDate", "") if isinstance(req, dict) else getattr(req, "requestDate", ""),
-                req.get("duration", "") if isinstance(req, dict) else getattr(req, "duration", ""),
+                req.get("author", ""),
+                req.get("bookTitle", ""),
+                req.get("targetInstitution", ""),
+                date_str,
+                req.get("duration", ""),
                 status,
             ]):
                 item = QTableWidgetItem(str(val))
+                if col == 0:
+                    item.setData(Qt.ItemDataRole.UserRole, req.get("id"))
                 if col == 5:
                     item.setForeground(QColor(
                         "#10B981" if status == "Fulfilled" else
@@ -436,10 +447,17 @@ class UnionCatalogScreen(QWidget):
         if row < 0:
             QMessageBox.information(self, "Select", "Select an ILL request to mark as fulfilled.")
             return
-        status_item = self.ill_table.item(row, 5)
-        if status_item:
-            status_item.setText("Fulfilled")
-            status_item.setForeground(QColor("#10B981"))
+        name_item = self.ill_table.item(row, 0)
+        ill_id = name_item.data(Qt.ItemDataRole.UserRole) if name_item else None
+        if ill_id is None:
+            QMessageBox.warning(self, "Error", "Could not identify this ILL request. Please refresh and try again.")
+            return
+        try:
+            self.db.update_ill_status(ill_id, "Fulfilled")
+        except Exception as e:
+            QMessageBox.critical(self, "Database Error", f"Failed to update ILL request: {e}")
+            return
+        self._load_ill_requests()
         QMessageBox.information(self, "Updated", "ILL request marked as Fulfilled.")
 
     def _export(self):

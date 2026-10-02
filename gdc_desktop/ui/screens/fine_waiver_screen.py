@@ -43,6 +43,7 @@ class AnalysisWorker(QThread):
             results.append({
                 "row_index": member['row_index'],
                 "id": member['id'],
+                "db_id": member['db_id'],
                 "score": score,
                 "verdict": verdict,
                 "discount": discount,
@@ -91,10 +92,11 @@ class ExplanationWorker(QThread):
 # Main Screen Widget
 # ---------------------------------------------------------
 class FineWaiverScreen(QWidget):
-    def __init__(self, db_helper, agent):
+    def __init__(self, db_helper, agent, auth=None):
         super().__init__()
         self.db_helper = db_helper
         self.agent = agent
+        self.auth = auth
         self.members_data = [] # Stores current data
         self.analysis_results = {} # Maps row index to analysis data
         
@@ -231,28 +233,70 @@ class FineWaiverScreen(QWidget):
         return card
 
     def load_data(self):
-        """Loads members with fines from the database."""
-        # For a completely functioning file without knowing exact DB schema, we attempt to fetch,
-        # and fallback to mock data if table doesn't exist or method fails.
+        """Loads members with an outstanding fine balance from the real database.
+
+        There is no `members.total_fine`/`total_books`/`return_rate` column —
+        this used to check `hasattr(self.db_helper, "fetch_all")`, a method
+        DatabaseHelper never had, so that check always failed and the screen
+        silently ran on hardcoded mock members forever, no matter what was
+        actually owed. It also used to UPDATE a `members.total_fine` column
+        on "Apply" that does not exist, which would have thrown a real
+        sqlite3.OperationalError the moment real data ever reached it.
+        Outstanding balance here is computed the same way the existing fines
+        ledger in members_screen.py does it: sum of fines on returned issues,
+        minus payments/waivers already recorded in fine_payments.
+        """
+        from datetime import datetime, date
+
+        self.members_data = []
         try:
-            if hasattr(self.db_helper, "fetch_all"):
-                query = "SELECT member_id, name, total_fine, books_borrowed, return_rate, days_since_overdue FROM members WHERE total_fine > 0"
-                records = self.db_helper.fetch_all(query)
-            else:
-                raise Exception("Fallback to mock data")
-            
-            if not records:
-                self.members_data = []
-        except Exception:
-            # Fallback Mock Data for UI to be completely runnable and demonstrate the feature
-            self.members_data = [
-                {"row_index": 0, "name": "Alice Smith", "id": "M001", "fine": 120.0, "total_books": 25, "return_rate": 95, "days_since_overdue": 45},
-                {"row_index": 1, "name": "Bob Jones", "id": "M002", "fine": 30.0, "total_books": 10, "return_rate": 80, "days_since_overdue": 10},
-                {"row_index": 2, "name": "Charlie Brown", "id": "M003", "fine": 200.0, "total_books": 50, "return_rate": 92, "days_since_overdue": 5},
-                {"row_index": 3, "name": "Diana Prince", "id": "M004", "fine": 45.0, "total_books": 30, "return_rate": 98, "days_since_overdue": 100},
-                {"row_index": 4, "name": "Eve Davis", "id": "M005", "fine": 80.0, "total_books": 15, "return_rate": 60, "days_since_overdue": 2},
-            ]
-            
+            members = self.db_helper.get_members()
+            issues = self.db_helper.get_issues()
+            payments = self.db_helper.get_fine_payments()
+
+            issues_by_member = {}
+            for i in issues:
+                issues_by_member.setdefault(i.memberId, []).append(i)
+            payments_by_member = {}
+            for p in payments:
+                payments_by_member.setdefault(p["memberId"], []).append(p)
+
+            for m in members:
+                m_issues = issues_by_member.get(m.id, [])
+                total_books = len(m_issues)
+                returned = [i for i in m_issues if i.status == "Returned"]
+                return_rate = round((len(returned) / total_books) * 100) if total_books else 0
+                fine_history = [i for i in returned if (i.fine or 0) > 0]
+                total_fines = sum(i.fine or 0 for i in fine_history)
+                total_paid = sum(p["amount"] for p in payments_by_member.get(m.id, []))
+                balance = round(total_fines - total_paid, 2)
+                if balance <= 0:
+                    continue
+
+                last_return = None
+                for i in fine_history:
+                    if i.returnDate and (last_return is None or i.returnDate > last_return):
+                        last_return = i.returnDate
+                days_since_overdue = 0
+                if last_return:
+                    try:
+                        days_since_overdue = (date.today() - datetime.strptime(last_return, "%Y-%m-%d").date()).days
+                    except Exception:
+                        days_since_overdue = 0
+
+                self.members_data.append({
+                    "name": m.name,
+                    "id": m.memberId,
+                    "db_id": m.id,
+                    "fine": balance,
+                    "total_books": total_books,
+                    "return_rate": return_rate,
+                    "days_since_overdue": days_since_overdue,
+                })
+        except Exception as e:
+            print(f"[FineWaiver] Failed to load member fine data: {e}")
+            self.members_data = []
+
         self.populate_table()
         self.update_summary()
 
@@ -333,39 +377,42 @@ class FineWaiverScreen(QWidget):
     def apply_waiver(self, row):
         if row not in self.analysis_results:
             return
-            
+
         res = self.analysis_results[row]
         member_id = res['id']
+        db_id = res['db_id']
         discount = res['discount']
         current_fine = res['fine']
-        
+
         new_fine = current_fine - (current_fine * discount)
         waiver_amount = current_fine * discount
 
-        # Update DB and log audit
+        # A waiver is recorded as a credit against the balance, the same way
+        # members_screen.py's "Waive Fine" button does it — there is no
+        # members.total_fine column to overwrite; balance is always
+        # (fines on returned issues) - (payments + waivers already logged).
         try:
-            if hasattr(self.db_helper, "execute"):
-                # Example standard DB queries
-                self.db_helper.execute("UPDATE members SET total_fine = ? WHERE member_id = ?", (new_fine, member_id))
-                self.db_helper.execute(
-                    "INSERT INTO audit_logs (action, member_id, details) VALUES (?, ?, ?)",
-                    ("FINE_WAIVER", member_id, f"Waived Rs. {waiver_amount:.2f} due to AI decision")
-                )
-            else:
-                print(f"[DB MOCK] Updated {member_id} fine to {new_fine}. Audit logged.")
+            user_email = ""
+            if self.auth and getattr(self.auth, "current_user", None):
+                user_email = self.auth.current_user.email
+            self.db_helper.save_fine_payment(db_id, waiver_amount, "Waiver", "AI Fine Waiver Judge")
+            self.db_helper.log_audit_local(
+                user_email, "fine_waiver",
+                f"Waived Rs. {waiver_amount:.2f} for member {member_id} ({res['verdict']})"
+            )
 
             QMessageBox.information(self, "Success", f"Waiver applied successfully for Member ID: {member_id}\nNew Fine: Rs. {new_fine:.2f}")
 
             # Update local UI state
             self.members_data[row]['fine'] = new_fine
             self.table.setItem(row, 2, QTableWidgetItem(f"Rs. {new_fine:.2f}"))
-            
+
             btn = self.table.cellWidget(row, 7)
             if btn: btn.setEnabled(False)
-            
+
             # Recalculate summary
             self.update_summary()
-            
+
         except Exception as e:
             QMessageBox.critical(self, "Database Error", f"Failed to apply waiver: {str(e)}")
 

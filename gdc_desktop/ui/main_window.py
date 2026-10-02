@@ -385,7 +385,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = WishlistScreen(self.fb, self.auth)
             elif key == "enterprise":
                 from ui.screens.enterprise_screen import EnterpriseFeaturesScreen
-                screen = EnterpriseFeaturesScreen(self.db, self.fb)
+                screen = EnterpriseFeaturesScreen(self.db, self.fb, self.auth)
             elif key == "college_profile":
                 from ui.screens.college_profile_screen import CollegeProfileScreen
                 screen = CollegeProfileScreen(self.db, self.fb, main_window=self)
@@ -424,7 +424,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = HeatmapScreen(self.db)
             elif key == "fine_waiver":
                 from ui.screens.fine_waiver_screen import FineWaiverScreen
-                screen = FineWaiverScreen(self.db, self.agent)
+                screen = FineWaiverScreen(self.db, self.agent, self.auth)
             elif key == "reading_goals":
                 from ui.screens.reading_goals_screen import ReadingGoalsScreen
                 screen = ReadingGoalsScreen(self.db)

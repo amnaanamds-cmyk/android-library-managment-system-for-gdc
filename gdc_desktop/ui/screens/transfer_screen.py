@@ -26,7 +26,10 @@ class TransferWorker(QThread):
         outgoing, incoming = [], []
         try:
             url = f"{config.DIRECTORATE_API_URL}/api/transfers/college/{config.COLLEGE_ID}"
-            resp = requests.get(url, timeout=10)
+            # The server now requires this college's own API key to read its
+            # transfer history — it used to accept this request from anyone.
+            headers = {"X-College-API-Key": config.DIRECTORATE_API_KEY}
+            resp = requests.get(url, headers=headers, timeout=10)
             if resp.status_code == 200:
                 all_transfers = resp.json()
                 outgoing = [t for t in all_transfers if t['from_college'] == config.COLLEGE_ID]
@@ -182,7 +185,11 @@ class TransferScreen(QWidget):
                 return
             try:
                 url = f"{config.DIRECTORATE_API_URL}/api/transfers"
-                resp = requests.post(url, json=data, timeout=10)
+                # data already carries from_college: config.COLLEGE_ID (see
+                # RequestTransferDialog.get_data()) — the server now also
+                # requires proof via this college's own API key.
+                headers = {"X-College-API-Key": config.DIRECTORATE_API_KEY}
+                resp = requests.post(url, json=data, headers=headers, timeout=10)
                 if resp.status_code == 200:
                     QMessageBox.information(self, "Success", "Transfer request sent successfully!")
                     self.refresh()
@@ -194,7 +201,10 @@ class TransferScreen(QWidget):
     def _update_status(self, transfer_id, status):
         try:
             url = f"{config.DIRECTORATE_API_URL}/api/transfers/{transfer_id}/status"
-            resp = requests.post(url, params={'status': status}, timeout=10)
+            # The server now requires proof of being a party to THIS
+            # transfer (either college involved) before changing its status.
+            headers = {"X-College-API-Key": config.DIRECTORATE_API_KEY}
+            resp = requests.post(url, params={'status': status}, headers=headers, timeout=10)
             if resp.status_code == 200:
                 self.refresh()
         except Exception as e:
