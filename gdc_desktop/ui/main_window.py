@@ -359,7 +359,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 screen = OpacScreen(self.fb, self.db)
             elif key == "digital":
                 from ui.screens.digital_library_screen import DigitalLibraryScreen
-                screen = DigitalLibraryScreen(self.db)
+                screen = DigitalLibraryScreen(self.db, self.fb)
             elif key == "marc":
                 from ui.screens.marc_catalog_screen import MarcCatalogScreen
                 screen = MarcCatalogScreen(self.db)

@@ -1,0 +1,55 @@
+rules_version = '2';
+
+// Firebase Storage rules for digital resources and institutional branding
+// assets (logos). Mirrors the tenant boundary firestore.rules already
+// enforces for every other piece of tenant data — see that file's own
+// header and the project's research paper on "client-published
+// aggregation" for why the directorate never reads a tenant's own files,
+// only counts a college chooses to publish about itself.
+//
+// The desktop app writes here through the Firebase Admin SDK
+// (services/storage_service.py), which bypasses these rules entirely —
+// the same asymmetric trust already documented for its Firestore writes.
+// These rules exist to govern a future Android/web client reading or
+// writing the same files, so they are written correctly now rather than
+// left unenforced until something other than desktop needs them.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userProfile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function belongsToCollege(collegeId) {
+      return signedIn() && userProfile().get('institutionId', '') == collegeId;
+    }
+
+    function isLibrarian() {
+      return signedIn() && userProfile().get('role', '') in [
+        'Librarian', 'Director',
+        'librarian', 'director', 'admin', 'owner', 'staff', 'college_admin'
+      ];
+    }
+
+    // Digital resources (PDF/EPUB) and branding assets, one tree per
+    // college. Read: any signed-in member of that college — never another
+    // college, never the directorate. Write: that college's own library
+    // staff, capped at 10MB per file to match
+    // services/storage_service.py's MAX_UPLOAD_MB — keep these two limits
+    // in sync if either changes.
+    match /institutions/{collegeId}/{allPaths=**} {
+      allow read: if belongsToCollege(collegeId);
+      allow write: if belongsToCollege(collegeId)
+                   && isLibrarian()
+                   && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,21 +1,60 @@
 """
 ui/screens/digital_library_screen.py — Dedicated Digital Repository & E-Book Reader.
 Supports PDF viewing, digital resource management, and rich categorization.
+
+Uploading used to be a "Simple simulation: just create a book record" —
+digitalUrl held the path to the file ON THE UPLOADER'S OWN PC, invisible to
+every other device. See services/storage_service.py for why and how that's
+now a real Firebase Storage upload instead.
 """
+import os
+import uuid
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame, QFileDialog,
-    QMessageBox, QComboBox, QSplitter, QScrollArea, QProgressBar
+    QMessageBox, QComboBox, QSplitter, QScrollArea, QProgressBar, QInputDialog
 )
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QDesktopServices
 from models import Book
+from services.storage_service import StorageService, MAX_UPLOAD_BYTES, MAX_UPLOAD_MB, looks_like_storage_path
+
+
+class DigitalUploadWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, storage: StorageService, local_path: str, dest_filename: str):
+        super().__init__()
+        self.storage = storage
+        self.local_path = local_path
+        self.dest_filename = dest_filename
+
+    def run(self):
+        ok, result = self.storage.upload(self.local_path, f"digital/{self.dest_filename}")
+        self.finished.emit(ok, result)
+
+
+class SignedUrlWorker(QThread):
+    finished = pyqtSignal(str)
+
+    def __init__(self, storage: StorageService, storage_path: str):
+        super().__init__()
+        self.storage = storage
+        self.storage_path = storage_path
+
+    def run(self):
+        self.finished.emit(self.storage.signed_url(self.storage_path) or "")
+
 
 class DigitalLibraryScreen(QWidget):
-    def __init__(self, db_helper):
+    def __init__(self, db_helper, firebase_service=None):
         super().__init__()
         self.db = db_helper
+        self.storage = StorageService(firebase_service) if firebase_service else None
         self._books = []
+        self._upload_worker = None
+        self._url_worker = None
         self._build_ui()
         self.refresh()
 
@@ -34,10 +73,10 @@ class DigitalLibraryScreen(QWidget):
         hdr.addLayout(title_v)
         hdr.addStretch()
 
-        upload_btn = QPushButton("➕ Upload New Resource")
-        upload_btn.setStyleSheet("background: #2563EB; color: white; border-radius: 8px; padding: 10px 20px; font-weight: bold;")
-        upload_btn.clicked.connect(self._upload_digital)
-        hdr.addWidget(upload_btn)
+        self.upload_btn = QPushButton("➕ Upload New Resource")
+        self.upload_btn.setStyleSheet("background: #2563EB; color: white; border-radius: 8px; padding: 10px 20px; font-weight: bold;")
+        self.upload_btn.clicked.connect(self._upload_digital)
+        hdr.addWidget(self.upload_btn)
         layout.addLayout(hdr)
 
         # Search & Filter
@@ -139,33 +178,96 @@ class DigitalLibraryScreen(QWidget):
     def _read_now(self):
         if not hasattr(self, '_selected_book'): return
         url = self._selected_book.digitalUrl
+        if not url:
+            return
+
+        if url.startswith("http"):
+            QDesktopServices.openUrl(QUrl(url))
+            return
+
+        if looks_like_storage_path(url):
+            if not self.storage:
+                QMessageBox.warning(self, "Not Available", "Cloud storage isn't connected on this device.")
+                return
+            self.read_btn.setEnabled(False)
+            self.read_btn.setText("📖 Fetching…")
+            self._url_worker = SignedUrlWorker(self.storage, url)
+            self._url_worker.finished.connect(self._on_signed_url_ready)
+            self._url_worker.start()
+            return
+
+        # Legacy records from before real upload existed: digitalUrl is a
+        # bare local path, and this only works if it happens to exist on
+        # THIS machine — the exact limitation that made the old feature
+        # effectively single-device. Left in place so those old records
+        # don't regress to "always fails" on the machine that made them.
+        if os.path.exists(url):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(url))
+        else:
+            QMessageBox.warning(self, "Not Found",
+                                 f"This resource was uploaded before cloud storage was wired up, and its file "
+                                 f"only ever existed on the PC that added it. Not found here: {url}")
+
+    def _on_signed_url_ready(self, url: str):
+        self.read_btn.setEnabled(True)
+        self.read_btn.setText("📖 READ NOW")
         if url:
-            if url.startswith("http"):
-                QDesktopServices.openUrl(QUrl(url))
-            else:
-                # Handle local path
-                import os
-                if os.path.exists(url):
-                    QDesktopServices.openUrl(QUrl.fromLocalFile(url))
-                else:
-                    QMessageBox.warning(self, "Not Found", f"Resource file not found at: {url}")
+            QDesktopServices.openUrl(QUrl(url))
+        else:
+            QMessageBox.warning(self, "Not Available",
+                                 "Couldn't generate a download link — check your internet connection and try again.")
 
     def _upload_digital(self):
+        if not self.storage:
+            QMessageBox.warning(self, "Not Available", "Cloud storage isn't connected on this device.")
+            return
+
         path, _ = QFileDialog.getOpenFileName(self, "Upload Digital Resource", "", "PDF Files (*.pdf);;EPUB (*.epub)")
-        if path:
-            # Simple simulation: just create a book record
-            from PyQt6.QtWidgets import QInputDialog
-            title, ok = QInputDialog.getText(self, "Resource Title", "Enter Title:")
-            if ok and title:
-                author, ok2 = QInputDialog.getText(self, "Author", "Enter Author:")
-                if ok2:
-                    new_b = Book(
-                        title=title,
-                        author=author,
-                        isDigital=True,
-                        digitalUrl=path,
-                        category="Digital Repository"
-                    )
-                    self.db.save_book(new_b)
-                    self.refresh()
-                    QMessageBox.information(self, "Success", "Digital resource added to institutional repository.")
+        if not path:
+            return
+
+        size = os.path.getsize(path)
+        if size > MAX_UPLOAD_BYTES:
+            QMessageBox.warning(
+                self, "File Too Large",
+                f"This file is {size / 1024 / 1024:.1f} MB. Digital resources are capped at {MAX_UPLOAD_MB} MB "
+                f"each — the free storage plan is shared across every college in the network, so one large file "
+                f"uses space every other college's uploads draw from too."
+            )
+            return
+
+        title, ok = QInputDialog.getText(self, "Resource Title", "Enter Title:")
+        if not (ok and title):
+            return
+        author, ok2 = QInputDialog.getText(self, "Author", "Enter Author:")
+        if not ok2:
+            return
+
+        self.upload_btn.setEnabled(False)
+        self.upload_btn.setText("➕ Uploading…")
+
+        ext = os.path.splitext(path)[1]
+        dest_filename = f"{uuid.uuid4()}{ext}"
+        self._pending_book = Book(title=title, author=author, isDigital=True, category="Digital Repository")
+
+        self._upload_worker = DigitalUploadWorker(self.storage, path, dest_filename)
+        self._upload_worker.finished.connect(self._on_upload_finished)
+        self._upload_worker.start()
+
+    def _on_upload_finished(self, ok: bool, result: str):
+        self.upload_btn.setEnabled(True)
+        self.upload_btn.setText("➕ Upload New Resource")
+
+        if not ok:
+            # A failed upload must not create a book record pointing at a
+            # file that was never actually stored — that would just be the
+            # same lie in a new shape.
+            QMessageBox.warning(self, "Upload Failed", f"The file was not uploaded: {result}")
+            return
+
+        self._pending_book.digitalUrl = result  # the storage path, not a public URL — see StorageService
+        self.db.save_book(self._pending_book)
+        self.refresh()
+        QMessageBox.information(self, "Success",
+                                 "Digital resource uploaded and added to the institutional repository. "
+                                 "It's now reachable from any of this college's signed-in devices.")

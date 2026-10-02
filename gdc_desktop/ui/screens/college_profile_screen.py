@@ -3,20 +3,102 @@ ui/screens/college_profile_screen.py — Institutional Branding & Configuration.
 Allows the librarian to set the College Name, Logo, and Physical Location.
 Syncs to Firestore so the mobile app also reflects the branding.
 """
+import os
+import time
+import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QFileDialog, QMessageBox, QFrame, QScrollArea
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QPixmap, QIcon
 import config
+from services.storage_service import StorageService
+
+
+class LoadProfileWorker(QThread):
+    """The one live Firestore GET this screen makes. Used to run directly
+    inside __init__ -> load_data(), so opening this screen on a slow or
+    flaky rural connection blocked the whole app until the request timed
+    out. Now it only ever carries data back; the screen is already showing
+    the cached local profile by the time this finishes."""
+    finished = pyqtSignal(dict)
+
+    def __init__(self, fb):
+        super().__init__()
+        self.fb = fb
+
+    def run(self):
+        result = {}
+        if not self.fb.mock_mode and self.fb.college_id:
+            try:
+                doc = self.fb.db.collection("institutions").document(self.fb.college_id).get()
+                if doc.exists:
+                    result = doc.to_dict() or {}
+            except Exception as e:
+                print(f"Failed to fetch cloud profile in desktop: {e}")
+        self.finished.emit(result)
+
+
+class SaveProfileWorker(QThread):
+    """The three Firestore .set() calls save_data() used to make one after
+    another on the UI thread on every click of Save."""
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, fb, profile_data):
+        super().__init__()
+        self.fb = fb
+        self.profile_data = profile_data
+
+    def run(self):
+        try:
+            cid = self.fb.college_id
+            self.fb.db.collection("institutions").document(cid).set(self.profile_data, merge=True)
+
+            self.fb.db.collection("directorate_index").document(cid).set({
+                "institutionId": cid,
+                "name": self.profile_data["name"],
+                "location": self.profile_data["location"],
+                "lastSeen": int(time.time() * 1000),
+            }, merge=True)
+
+            self.fb.db.collection("colleges").document(cid).set({
+                "collegeId": cid,
+                "collegeName": self.profile_data["name"],
+                "location": self.profile_data["location"],
+                "lastSyncAt": int(time.time() * 1000),
+            }, merge=True)
+
+            self.finished.emit(True, "")
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+
+class LogoUploadWorker(QThread):
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, storage: StorageService, local_path: str, dest_filename: str):
+        super().__init__()
+        self.storage = storage
+        self.local_path = local_path
+        self.dest_filename = dest_filename
+
+    def run(self):
+        ok, result = self.storage.upload(self.local_path, f"branding/{self.dest_filename}")
+        self.finished.emit(ok, result)
+
 
 class CollegeProfileScreen(QWidget):
     def __init__(self, db_helper, firebase_service, main_window=None):
         super().__init__()
         self.db = db_helper
         self.fb = firebase_service
+        self.storage = StorageService(firebase_service)
         self.main_window = main_window
+        self._load_worker = None
+        self._save_worker = None
+        self._logo_worker = None
+        self._pending_logo_path = None
         self._build_ui()
         self.load_data()
 
@@ -89,39 +171,46 @@ class CollegeProfileScreen(QWidget):
         return f
 
     def load_data(self):
-        # Load from Local DB (cached config)
+        # Local cache first — instant, no network, so the screen never
+        # opens blank while waiting on Firestore.
         reg = self.db.get_college_registration()
-        name = reg.get("name", config.COLLEGE_NAME)
-        loc = reg.get("location", config.COLLEGE_LOCATION)
-        email = reg.get("email", "")
-        phone = reg.get("phone", "")
-
-        # Try to pull latest cloud profile if available
-        if not self.fb.mock_mode and self.fb.college_id:
-            try:
-                doc = self.fb.db.collection("institutions").document(self.fb.college_id).get()
-                if doc.exists:
-                    cdata = doc.to_dict() or {}
-                    name = cdata.get("collegeFullName") or cdata.get("name") or name
-                    loc = cdata.get("address") or cdata.get("location") or loc
-                    email = cdata.get("email") or cdata.get("contactEmail") or email
-                    phone = cdata.get("phone") or phone
-                    # Cache back into local DB
-                    self.db.set_college_registration("name", name)
-                    self.db.set_college_registration("location", loc)
-                    self.db.set_college_registration("email", email)
-                    self.db.set_college_registration("phone", phone)
-            except Exception as e:
-                print(f"Failed to fetch cloud profile in desktop: {e}")
-
-        self.name_input.setText(name)
-        self.loc_input.setText(loc)
-        self.email_input.setText(email)
-        self.phone_input.setText(phone)
+        self._name = reg.get("name", config.COLLEGE_NAME)
+        self._loc = reg.get("location", config.COLLEGE_LOCATION)
+        self._email = reg.get("email", "")
+        self._phone = reg.get("phone", "")
+        self._apply_fields()
 
         logo_path = reg.get("logo_url")
         if logo_path:
             self.logo_lbl.setText("LOGO SET")
+
+        # Then refresh from the cloud in the background — this used to be
+        # a synchronous Firestore GET right here, blocking the screen from
+        # even opening until it returned (or timed out, on a bad rural
+        # connection).
+        self._load_worker = LoadProfileWorker(self.fb)
+        self._load_worker.finished.connect(self._on_cloud_profile_loaded)
+        self._load_worker.start()
+
+    def _apply_fields(self):
+        self.name_input.setText(self._name)
+        self.loc_input.setText(self._loc)
+        self.email_input.setText(self._email)
+        self.phone_input.setText(self._phone)
+
+    def _on_cloud_profile_loaded(self, cdata: dict):
+        if not cdata:
+            return
+        self._name = cdata.get("collegeFullName") or cdata.get("name") or self._name
+        self._loc = cdata.get("address") or cdata.get("location") or self._loc
+        self._email = cdata.get("email") or cdata.get("contactEmail") or self._email
+        self._phone = cdata.get("phone") or self._phone
+        self._apply_fields()
+
+        self.db.set_college_registration("name", self._name)
+        self.db.set_college_registration("location", self._loc)
+        self.db.set_college_registration("email", self._email)
+        self.db.set_college_registration("phone", self._phone)
 
     def save_data(self):
         name = self.name_input.text().strip()
@@ -133,7 +222,7 @@ class CollegeProfileScreen(QWidget):
             QMessageBox.warning(self, "Error", "Institution name is required.")
             return
 
-        # 1. Update Local DB
+        # 1. Update Local DB — instant, no network, always succeeds.
         self.db.set_college_registration("name", name)
         self.db.set_college_registration("location", loc)
         self.db.set_college_registration("email", email)
@@ -143,62 +232,68 @@ class CollegeProfileScreen(QWidget):
         config.COLLEGE_NAME = name
         config.COLLEGE_LOCATION = loc
 
-        # 3. Push to Firestore (Multi-Tenant & Directorate Sync)
-        if not self.fb.mock_mode and self.fb.college_id:
-            try:
-                import time
-                profile_data = {
-                    "name": name,
-                    "location": loc,
-                    "address": loc,
-                    "email": email,
-                    "contactEmail": email,
-                    "phone": phone,
-                    "collegeFullName": name, # for Android compat
-                    "collegeName": name,
-                    "tagline": "Knowledge is Power",
-                    "lastUpdated": int(time.time() * 1000),
-                    "isSetupComplete": True
-                }
-                # Update specific institution document
-                self.fb.db.collection("institutions").document(self.fb.college_id).set(profile_data, merge=True)
-
-                # Also ensure registration in a global index for the Directorate Dashboard
-                self.fb.db.collection("directorate_index").document(self.fb.college_id).set({
-                    "institutionId": self.fb.college_id,
-                    "name": name,
-                    "location": loc,
-                    "lastSeen": int(time.time() * 1000)
-                }, merge=True)
-
-                # Register in the canonical 'colleges' collection for the Web App Director Dashboard
-                self.fb.db.collection("colleges").document(self.fb.college_id).set({
-                    "collegeId": self.fb.college_id,
-                    "collegeName": name,
-                    "location": loc,
-                    "lastSyncAt": int(time.time() * 1000)
-                }, merge=True)
-
-                print(f"Cloud profile updated for {self.fb.college_id}")
-            except Exception as e:
-                print(f"Firestore update failed: {e}")
-
-        # Refresh the sidebar branding immediately — it's built once at
-        # startup and otherwise wouldn't show this change until app restart.
+        # Branding and the "saved" confirmation reflect the local save,
+        # which already succeeded — they don't wait on the network.
         if self.main_window:
             try:
                 self.main_window.refresh_branding()
             except Exception as e:
                 print(f"Failed to refresh sidebar branding: {e}")
+        QMessageBox.information(self, "Success", "College Profile updated successfully!\n\nSyncing to the Directorate and your mobile apps now.")
 
-        QMessageBox.information(self, "Success", "College Profile updated successfully!\n\nThis profile is now registered with the Directorate and synced to your mobile apps.")
+        # 3. Push to Firestore in the background — this used to be three
+        # sequential .set() calls on the UI thread on every click of Save.
+        if not self.fb.mock_mode and self.fb.college_id:
+            logo_url = self.db.get_college_registration().get("logo_url", "")
+            profile_data = {
+                "name": name,
+                "location": loc,
+                "address": loc,
+                "email": email,
+                "contactEmail": email,
+                "phone": phone,
+                "collegeFullName": name,  # for Android compat
+                "collegeName": name,
+                "tagline": "Knowledge is Power",
+                "lastUpdated": int(time.time() * 1000),
+                "isSetupComplete": True,
+            }
+            if logo_url:
+                profile_data["logoUrl"] = logo_url
+            self._save_worker = SaveProfileWorker(self.fb, profile_data)
+            self._save_worker.finished.connect(self._on_cloud_profile_saved)
+            self._save_worker.start()
+
+    def _on_cloud_profile_saved(self, ok: bool, error: str):
+        if ok:
+            print(f"Cloud profile updated for {self.fb.college_id}")
+        else:
+            print(f"Firestore update failed: {error}")
 
     def _upload_logo(self):
-        import time
         path, _ = QFileDialog.getOpenFileName(self, "Choose Logo", "", "Images (*.png *.jpg *.jpeg)")
-        if path:
-            pixmap = QPixmap(path).scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            self.logo_lbl.setPixmap(pixmap)
-            self.logo_lbl.setText("")
-            # In a real app, upload to Firebase Storage and save URL
-            QMessageBox.information(self, "Logo Uploaded", "Logo selected locally. It will be uploaded to cloud on save.")
+        if not path:
+            return
+
+        pixmap = QPixmap(path).scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self.logo_lbl.setPixmap(pixmap)
+        self.logo_lbl.setText("")
+
+        if self.fb.mock_mode or not self.fb.college_id:
+            QMessageBox.information(self, "Logo Set Locally",
+                                     "Showing this logo on this device only — not connected to the cloud right now.")
+            return
+
+        ext = os.path.splitext(path)[1] or ".png"
+        dest_filename = f"logo{ext}"  # one logo per college — overwrite, don't accumulate
+        self._logo_worker = LogoUploadWorker(self.storage, path, dest_filename)
+        self._logo_worker.finished.connect(self._on_logo_uploaded)
+        self._logo_worker.start()
+
+    def _on_logo_uploaded(self, ok: bool, result: str):
+        if ok:
+            self._pending_logo_path = result
+            self.db.set_college_registration("logo_url", result)
+            QMessageBox.information(self, "Logo Uploaded", "Logo uploaded — it will sync to the Directorate and your mobile apps.")
+        else:
+            QMessageBox.warning(self, "Upload Failed", f"The logo was not uploaded: {result}")
