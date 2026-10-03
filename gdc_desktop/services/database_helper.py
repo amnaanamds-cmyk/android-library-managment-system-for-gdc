@@ -363,6 +363,20 @@ class DatabaseHelper:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_issued_member ON issued_books(memberId)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_issued_status ON issued_books(status)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_members_memberId ON members(memberId)")
+            # .id is now a real join key (see _backfill_ids below), so index it
+            # and the one foreign-key column that referenced it without one.
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_books_id ON books(id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_members_id ON members(id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_issued_book ON issued_books(bookId)")
+
+            # One-time repair for rows saved before _backfill_ids existed —
+            # every book/member/issue/reservation ever saved by this app has
+            # id=0 (see _backfill_ids' docstring above for why). Idempotent
+            # and cheap: a no-op the moment every row already has a real id.
+            self._backfill_ids(conn, "books", None)
+            self._backfill_ids(conn, "members", None)
+            self._backfill_ids(conn, "issued_books", None)
+            self._backfill_ids(conn, "reservations", None)
 
             conn.commit()
 
@@ -375,6 +389,59 @@ class DatabaseHelper:
                 action = excluded.action,
                 timestamp = excluded.timestamp
         """, (entity_type, sync_id, action, int(time.time() * 1000)))
+
+    # ── id backfill ──────────────────────────────────────────────────────────
+    #
+    # books.id / members.id / issued_books.id / reservations.id are plain
+    # INTEGER columns — the real primary key is syncId TEXT — and nothing
+    # upstream ever gave a freshly-constructed dataclass a real one (it
+    # defaults to 0), nor does Android ever upload its own numeric id to
+    # Firestore for desktop to receive. The result: every book/member/issue/
+    # reservation this app has ever saved has id=0, so every local join that
+    # keys on `.id` (the fines ledger, the fine-waiver screen, several
+    # member/book lookups in issue_return_screen.py, run_health_check()'s
+    # orphan/ghost checks) matches every zero-id row against every other
+    # one instead of the right one, as soon as a second row of that kind
+    # exists. Confirmed directly against DatabaseHelper, no mocks.
+    #
+    # The fix: SQLite gives every rowid-table row an implicit, unique `rowid`
+    # for free, whether or not any column is declared to use it. Backfilling
+    # id = rowid wherever id is still 0 gives every LOCAL row a real, stable,
+    # locally-unique id with no schema change and no risk of colliding with
+    # anything Android assigns — because nothing Android assigns ever reaches
+    # this column today. This stays a LOCAL identifier only: it must never be
+    # compared against a number that arrived from a Firestore sync pull
+    # (Android's own local id, meaningless here) — the string fields already
+    # used for that (bookIsbn/accNo, memberMemberId) remain the right choice
+    # for any cross-device comparison, and are untouched by this.
+    def _backfill_ids(self, conn, table: str, sync_ids):
+        """Assign id = rowid to every row in `table` whose id is still 0,
+        among the given syncIds (or every row, if sync_ids is falsy — used
+        once at startup to repair rows saved before this fix existed)."""
+        if sync_ids:
+            placeholders = ",".join("?" for _ in sync_ids)
+            conn.execute(
+                f"UPDATE {table} SET id = rowid WHERE id = 0 AND syncId IN ({placeholders})",
+                list(sync_ids),
+            )
+        else:
+            conn.execute(f"UPDATE {table} SET id = rowid WHERE id = 0")
+
+    def _refresh_ids(self, conn, table: str, objs):
+        """After _backfill_ids(), copy the now-real id back onto each
+        in-memory object so the caller sees it immediately, not just on
+        the next reload."""
+        if not objs:
+            return
+        sync_ids = [o.syncId for o in objs]
+        placeholders = ",".join("?" for _ in sync_ids)
+        rows = conn.execute(
+            f"SELECT syncId, id FROM {table} WHERE syncId IN ({placeholders})", sync_ids
+        ).fetchall()
+        id_by_sync = {r[0]: r[1] for r in rows}
+        for o in objs:
+            if o.syncId in id_by_sync:
+                o.id = id_by_sync[o.syncId]
 
     # ── Local Books Operations ───────────────────────────────────────────────
     def get_books(self, include_deleted=False) -> List[Book]:
@@ -453,6 +520,8 @@ class DatabaseHelper:
                 book.marcData, book.callNumber, book.authorCutter,
                 book.lastUpdated, 1 if book.deleted else 0
             ))
+            self._backfill_ids(conn, "books", [book.syncId])
+            self._refresh_ids(conn, "books", [book])
             if not is_clean:
                 self._queue_sync(conn, "books", book.syncId, "upsert")
             conn.commit()
@@ -491,6 +560,8 @@ class DatabaseHelper:
                     ))
                     if not is_clean:
                         self._queue_sync(conn, "books", book.syncId, "upsert")
+                self._backfill_ids(conn, "books", [b.syncId for b in books])
+                self._refresh_ids(conn, "books", books)
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -562,6 +633,8 @@ class DatabaseHelper:
                 member.biometricHash, member.biometricEnrolDate, member.biometricLastVerified,
                 member.lastUpdated, 1 if member.deleted else 0
             ))
+            self._backfill_ids(conn, "members", [member.syncId])
+            self._refresh_ids(conn, "members", [member])
             if not is_clean:
                 self._queue_sync(conn, "members", member.syncId, "upsert")
             conn.commit()
@@ -604,6 +677,8 @@ class DatabaseHelper:
                     ))
                     if not is_clean:
                         self._queue_sync(conn, "members", member.syncId, "upsert")
+                self._backfill_ids(conn, "members", [m.syncId for m in members])
+                self._refresh_ids(conn, "members", members)
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -643,6 +718,8 @@ class DatabaseHelper:
                 record.issueTimestamp, record.lastUpdated,
                 1 if record.deleted else 0
             ))
+            self._backfill_ids(conn, "issued_books", [record.syncId])
+            self._refresh_ids(conn, "issued_books", [record])
             if not is_clean:
                 self._queue_sync(conn, "issued_books", record.syncId, "upsert")
             conn.commit()
@@ -676,6 +753,8 @@ class DatabaseHelper:
                     ))
                     if not is_clean:
                         self._queue_sync(conn, "issued_books", record.syncId, "upsert")
+                self._backfill_ids(conn, "issued_books", [r.syncId for r in records])
+                self._refresh_ids(conn, "issued_books", records)
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -709,6 +788,8 @@ class DatabaseHelper:
                 res.syncId, res.id, res.bookId, res.bookTitle, res.memberId, res.memberName,
                 res.reservedDate, res.status, res.notifiedDate, res.lastUpdated, 1 if res.deleted else 0
             ))
+            self._backfill_ids(conn, "reservations", [res.syncId])
+            self._refresh_ids(conn, "reservations", [res])
             if not is_clean:
                 self._queue_sync(conn, "reservations", res.syncId, "upsert")
             conn.commit()
@@ -736,6 +817,8 @@ class DatabaseHelper:
                     ))
                     if not is_clean:
                         self._queue_sync(conn, "reservations", res.syncId, "upsert")
+                self._backfill_ids(conn, "reservations", [r.syncId for r in reservations])
+                self._refresh_ids(conn, "reservations", reservations)
                 conn.commit()
             except Exception:
                 conn.rollback()

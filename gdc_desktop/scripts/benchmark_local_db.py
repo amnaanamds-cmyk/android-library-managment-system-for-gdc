@@ -81,15 +81,13 @@ def build_dataset(db, n_books, n_members, n_issues):
 
     t0 = time.perf_counter()
     books = [
-        # id=i+1 explicitly: DatabaseHelper never assigns a real row id on
-        # its own (books.id is a plain, non-autoincrementing INTEGER column —
-        # see the PRODUCTION BUG note at the bottom of this file). Without
-        # this, every synthetic book defaults to id=0 and every issue record
-        # below collapses onto one one bogus "member 0 / book 0", which is
-        # what actually caused this benchmark to hang for 5+ minutes the
-        # first time it was run at this scale.
+        # No explicit id: save_books_batch() now assigns a real, distinct
+        # local id to every row itself (see the FIXED PRODUCTION BUG note at
+        # the bottom of this file). Before that fix, every one of these
+        # defaulted to id=0 and every issue record below collapsed onto one
+        # bogus "member 0 / book 0", which is what caused this benchmark to
+        # hang for 5+ minutes the first time it was run at this scale.
         Book(
-            id=i + 1,
             isbn=f"978{i:010d}", accNo=f"ACC{i:07d}", title=f"Book Title {i}",
             author=f"Author {i % 2000}", publisher=f"Publisher {i % 100}",
             category=random.choice(categories), status=random.choice(statuses_books),
@@ -104,7 +102,6 @@ def build_dataset(db, n_books, n_members, n_issues):
     t0 = time.perf_counter()
     members = [
         Member(
-            id=i + 1,  # see the id=i+1 note above — same issue on members.id
             memberId=f"STU{i:06d}", name=f"Student {i}", email=f"student{i}@gdc.edu.pk",
             phone=f"03{i % 10}{i:08d}"[:11], department=f"Dept {i % 20}",
             memberType="Student" if i % 5 else "Faculty", booksIssued=i % 6,
@@ -258,62 +255,68 @@ if __name__ == "__main__":
     main()
 
 
-# ── PRODUCTION BUG, found by this script, not fully fixed by it ─────────────
+# ── PRODUCTION BUG this script found — now fixed (both sides) ──────────────
 #
 # Two separate bugs stacked on top of each other, both around books.id /
-# members.id (plain INTEGER columns — the real primary key is syncId TEXT):
+# members.id / issued_books.id / reservations.id (plain INTEGER columns —
+# the real primary key on every one of those tables is syncId TEXT):
 #
-# 1. READ-SIDE (fixed this session, in models/book.py, models/member.py,
-#    models/issue_record.py, models/reservation.py): from_dict() on all four
-#    models built a fresh dataclass without ever passing id=d.get("id"), so
-#    EVERY object built from a database row — via get_books(), get_members(),
-#    their paginated/search variants, everything — got id=0 in memory no
-#    matter what was actually stored in that row. A pure round-trip bug:
-#    save something with a real id, read it back, the id is gone.
+# 1. READ-SIDE: from_dict() on all four models built a fresh dataclass
+#    without ever passing id=d.get("id"), so EVERY object built from a
+#    database row — via get_books(), get_members(), their paginated/search
+#    variants, everything — got id=0 in memory no matter what was actually
+#    stored in that row. A pure round-trip bug: save something with a real
+#    id, read it back, the id is gone. Fixed in models/book.py,
+#    models/member.py, models/issue_record.py, models/reservation.py.
 #
-# 2. WRITE-SIDE (NOT fixed here — see below): nothing ever gives a new
-#    desktop-created Book()/Member() a real id to begin with. Confirmed
-#    directly, with #1 already fixed:
+# 2. WRITE-SIDE: nothing ever gave a new desktop-created Book()/Member() a
+#    real id to begin with — confirmed directly, with #1 already fixed:
 #
 #      b1, b2 = Book(title="One"), Book(title="Two")
 #      db.save_book(b1); db.save_book(b2)
-#      [b.id for b in db.get_books()]   # -> [0, 0], not [1, 2]
+#      [b.id for b in db.get_books()]   # was [0, 0] before this fix
 #
-#    and it is worse than "desktop-only colleges are affected": Android
+#    and it was worse than "desktop-only colleges are affected": Android
 #    never uploads its own numeric id to Firestore at all (confirmed against
 #    FirestoreService.kt — no "id" field in the book/member document shape),
-#    so fixing #1 alone does not give a synced-down record a real id either.
-#    Right now, #2 means EVERY college's books/members have id=0, full stop
-#    — #1 was a real bug worth fixing regardless, but on its own it changes
-#    nothing observable yet, because nothing today ever writes a non-zero id
-#    for either fix to actually preserve.
+#    so #1 alone never gave a synced-down record a real id either. Every
+#    college's books/members had id=0, full stop.
+#
+#    Fixed via DatabaseHelper._backfill_ids()/_refresh_ids(): every
+#    save_*()/save_*_batch() now assigns id = SQLite's own implicit rowid to
+#    any row whose id is still 0, right after the insert/upsert, and copies
+#    it back onto the in-memory object. A one-time pass in _init_db() does
+#    the same for every row an EXISTING database already had at id=0 before
+#    this fix shipped, so already-deployed data gets repaired the moment it
+#    is next opened, not just new rows going forward. This id stays a LOCAL
+#    identifier only — it is never compared against a number that arrived
+#    from a Firestore sync pull (Android's own local id, meaningless here);
+#    the string fields already used for that (bookIsbn/accNo, memberMemberId)
+#    remain the right choice for any cross-device comparison and are
+#    untouched by this fix.
 #
 # This script hit the combination the hard way: building synthetic Book/
 # Member objects with no explicit id (matching exactly what BooksScreen's
 # and MembersScreen's own "Add" dialogs do) put everything on "book 0 /
 # member 0", and the fine-waiver scan below went quadratic (8,000 members
 # each re-scanning the same 250,000-issue bucket instead of its own ~31) —
-# a 300+ second hang, not a slow query. Explicitly passing id=i+1 when
-# building the synthetic dataset below sidesteps #2 so this script measures
-# real per-member cost rather than the worst case of everyone colliding.
+# a 300+ second hang, not a slow query.
 #
-# Real code already keys on `.id` for exactly this kind of join:
-# members_screen.py's fines ledger (`i.memberId == m.id`), issue_return_
-# screen.py's several `m.id == record.memberId` lookups, run_health_check()'s
-# orphan/ghost/stuck-returns joins, and fine_waiver_screen.py's balance
-# computation (fixed earlier this session). With #2 unfixed, every one of
-# those currently matches every member/book against every other one, not
-# just the right one, as soon as a second record of either kind exists in a
-# college's database — which is every real database, not an edge case. It
-# doesn't need "large data" to trigger, just a second Add Member click; it
+# Real code keys on `.id` for exactly this kind of join: members_screen.py's
+# fines ledger (`i.memberId == m.id`), issue_return_screen.py's several
+# `m.id == record.memberId` lookups, run_health_check()'s orphan/ghost/
+# stuck-returns joins, and fine_waiver_screen.py's balance computation
+# (fixed in the session before this fix). Before this fix, every one of
+# those matched every member/book against every other one, not just the
+# right one, as soon as a second record of either kind existed in a
+# college's database — which was every real database, not an edge case. It
+# didn't need "large data" to trigger, just a second Add Member click; it
 # took a large synthetic run to actually *notice*, because manual QA
 # naturally tends to test with one member, or never scrutinizes which
 # member a stray fine landed on.
 #
-# Not fixed here: #2 needs a schema migration backfilling a real unique id
-# for every existing zero-id row in every already-deployed college's
-# database (the data is already affected today, not just future writes),
-# touches every save path (save_book/save_member and their batch variants),
-# and needs auditing every consumer of `.id` for an assumption that breaks
-# once ids stop being uniformly 0 — a larger, separate change from "write a
-# load test," flagged for a decision rather than made unilaterally.
+# Verified (see the conversation this fix shipped in): distinct ids on
+# single-save and batch-save; a pre-existing database with id=0 rows gets
+# them repaired on next open; a multi-member fines ledger attributes each
+# fine to the right member instead of merging them; the full file/model
+# suite and the directorate_server security suite still pass.
