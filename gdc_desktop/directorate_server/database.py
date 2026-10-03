@@ -2,7 +2,11 @@ import sqlite3
 import os
 import time
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "central_directorate.db")
+# Overridable so a subprocess-launched server (load_test.py) can point at an
+# isolated throwaway file instead of the real central_directorate.db. In-process
+# tests (test_security.py) set database.DB_PATH directly instead, since they
+# share this module's memory; a subprocess does not.
+DB_PATH = os.getenv("DIRECTORATE_DB_PATH") or os.path.join(os.path.dirname(__file__), "central_directorate.db")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
