@@ -47,6 +47,7 @@ class Reservation:
     def from_dict(d: dict) -> "Reservation":
         return Reservation(
             syncId=d.get("syncId") or "",
+            id=int(d.get("id") or 0),
             bookId=int(d.get("bookId") or 0),
             bookTitle=d.get("bookTitle") or "",
             memberId=int(d.get("memberId") or 0),

@@ -74,6 +74,7 @@ class Member:
     def from_dict(d: dict) -> "Member":
         return Member(
             syncId=d.get("syncId") or "",
+            id=int(d.get("id") or 0),
             memberId=d.get("memberId") or "",
             name=d.get("name") or "",
             email=d.get("email") or "",

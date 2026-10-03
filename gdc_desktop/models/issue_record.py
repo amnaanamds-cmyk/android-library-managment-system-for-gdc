@@ -67,6 +67,7 @@ class IssueRecord:
     def from_dict(d: dict) -> "IssueRecord":
         return IssueRecord(
             syncId=d.get("syncId") or "",
+            id=int(d.get("id") or 0),
             bookId=int(d.get("bookId") or 0),
             bookTitle=d.get("bookTitle") or "",
             bookIsbn=d.get("bookIsbn") or "",

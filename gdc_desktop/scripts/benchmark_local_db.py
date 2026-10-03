@@ -258,45 +258,62 @@ if __name__ == "__main__":
     main()
 
 
-# ── PRODUCTION BUG, found by this script, not benchmarked by design ─────────
+# ── PRODUCTION BUG, found by this script, not fully fixed by it ─────────────
 #
-# books.id and members.id are plain INTEGER columns (the real primary key is
-# syncId TEXT) and nothing in save_book()/save_member()/their batch variants
-# ever assigns them a real value — a freshly-constructed Book()/Member() has
-# id=0 by dataclass default, and that 0 is written to the database as-is.
-# Confirmed directly against DatabaseHelper, no mocks:
+# Two separate bugs stacked on top of each other, both around books.id /
+# members.id (plain INTEGER columns — the real primary key is syncId TEXT):
 #
-#   b1, b2 = Book(title="One"), Book(title="Two")
-#   db.save_book(b1); db.save_book(b2)
-#   # both b1.id and b2.id are 0, before AND after save
+# 1. READ-SIDE (fixed this session, in models/book.py, models/member.py,
+#    models/issue_record.py, models/reservation.py): from_dict() on all four
+#    models built a fresh dataclass without ever passing id=d.get("id"), so
+#    EVERY object built from a database row — via get_books(), get_members(),
+#    their paginated/search variants, everything — got id=0 in memory no
+#    matter what was actually stored in that row. A pure round-trip bug:
+#    save something with a real id, read it back, the id is gone.
 #
-# This script originally hit it the hard way: constructing synthetic Book/
-# Member objects without an explicit id (matching exactly what BooksScreen's
-# and MembersScreen's own "Add" dialogs do) gave every one of them id=0, so
-# every synthetic issue record collapsed onto "book 0 / member 0" and the
-# fine-waiver scan below went quadratic (8,000 members each re-scanning the
-# same 250,000-issue bucket) instead of linear — a 300+ second hang, not a
-# slow query.
+# 2. WRITE-SIDE (NOT fixed here — see below): nothing ever gives a new
+#    desktop-created Book()/Member() a real id to begin with. Confirmed
+#    directly, with #1 already fixed:
 #
-# The id column only ever gets a real, non-zero value today via a sync pull
-# from Android, where Room/SQLDelight's own autoincrement assigns it. On any
-# college that is desktop-only — plausible for a long time after rollout,
-# since Android adoption will lag — every book and every member added
-# through the desktop app keeps id=0 forever. Several real code paths key
-# on that: members_screen.py's fines ledger (`i.memberId == m.id`),
-# issue_return_screen.py's several `m.id == record.memberId` lookups,
-# run_health_check()'s orphan/ghost/stuck-returns joins, and
-# fine_waiver_screen.py's balance computation (fixed earlier this session).
-# On a desktop-only college, all of those joins match EVERY member/book
-# against each other, not just the right one, as soon as a second record
-# of either kind exists — this does not need "large data" to trigger, just
-# a second Add Member click, but it took a large synthetic run to actually
-# notice since manual QA naturally tends to test with one member or a
-# database descended from a sync pull (which assigns real ids and masks it).
+#      b1, b2 = Book(title="One"), Book(title="Two")
+#      db.save_book(b1); db.save_book(b2)
+#      [b.id for b in db.get_books()]   # -> [0, 0], not [1, 2]
 #
-# Not fixed here: a real fix needs a schema migration backfilling a real
-# unique id for every existing zero-id row (existing desktop-only colleges'
-# data is already affected), not just a code change for new rows, and
-# touches every save path above plus every consumer of `.id` — a larger,
-# separate change from "write a load test," flagged for a decision rather
-# than made unilaterally.
+#    and it is worse than "desktop-only colleges are affected": Android
+#    never uploads its own numeric id to Firestore at all (confirmed against
+#    FirestoreService.kt — no "id" field in the book/member document shape),
+#    so fixing #1 alone does not give a synced-down record a real id either.
+#    Right now, #2 means EVERY college's books/members have id=0, full stop
+#    — #1 was a real bug worth fixing regardless, but on its own it changes
+#    nothing observable yet, because nothing today ever writes a non-zero id
+#    for either fix to actually preserve.
+#
+# This script hit the combination the hard way: building synthetic Book/
+# Member objects with no explicit id (matching exactly what BooksScreen's
+# and MembersScreen's own "Add" dialogs do) put everything on "book 0 /
+# member 0", and the fine-waiver scan below went quadratic (8,000 members
+# each re-scanning the same 250,000-issue bucket instead of its own ~31) —
+# a 300+ second hang, not a slow query. Explicitly passing id=i+1 when
+# building the synthetic dataset below sidesteps #2 so this script measures
+# real per-member cost rather than the worst case of everyone colliding.
+#
+# Real code already keys on `.id` for exactly this kind of join:
+# members_screen.py's fines ledger (`i.memberId == m.id`), issue_return_
+# screen.py's several `m.id == record.memberId` lookups, run_health_check()'s
+# orphan/ghost/stuck-returns joins, and fine_waiver_screen.py's balance
+# computation (fixed earlier this session). With #2 unfixed, every one of
+# those currently matches every member/book against every other one, not
+# just the right one, as soon as a second record of either kind exists in a
+# college's database — which is every real database, not an edge case. It
+# doesn't need "large data" to trigger, just a second Add Member click; it
+# took a large synthetic run to actually *notice*, because manual QA
+# naturally tends to test with one member, or never scrutinizes which
+# member a stray fine landed on.
+#
+# Not fixed here: #2 needs a schema migration backfilling a real unique id
+# for every existing zero-id row in every already-deployed college's
+# database (the data is already affected today, not just future writes),
+# touches every save path (save_book/save_member and their batch variants),
+# and needs auditing every consumer of `.id` for an assumption that breaks
+# once ids stop being uniformly 0 — a larger, separate change from "write a
+# load test," flagged for a decision rather than made unilaterally.
