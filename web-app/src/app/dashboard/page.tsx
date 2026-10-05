@@ -23,6 +23,20 @@ export default function DashboardOverview() {
   // counted as active and the figure only ever grew.
   const activeIssues = useMemo(() => issues.filter(isActiveIssue), [issues]);
   const overdueIssues = useMemo(() => issues.filter((i) => isOverdue(i)), [issues]);
+  // .fine is only ever assigned at return time (see issue_return_screen.py's
+  // ReturnWorker on desktop, the platform that writes it), so an active
+  // loan's fine is 0 in virtually every real case — summing over activeIssues
+  // below used to make finesOutstanding structurally near-zero regardless of
+  // what a college actually had uncollected. The real figure is what's been
+  // assessed on RETURNED loans. This still overstates by whatever has
+  // already been paid or waived on desktop: fine payments are local-SQLite
+  // -only there today (services/database_helper.py's fine_payments table),
+  // never synced to Firestore, so there is nothing here yet to net them
+  // against — a smaller, known gap, not something this fix claims to close.
+  const returnedWithFine = useMemo(
+    () => issues.filter((i) => !i.deleted && i.status === "Returned" && (Number(i.fine) || 0) > 0),
+    [issues],
+  );
 
   const totalBooks = books.length;
   const totalMembers = members.length;
@@ -51,7 +65,7 @@ export default function DashboardOverview() {
         activeLoans,
         overdueCount: overdueIssues.length,
         reservationsCount: reservations.length,
-        finesOutstanding: activeIssues.reduce((sum, i) => sum + (Number(i.fine) || 0), 0),
+        finesOutstanding: returnedWithFine.reduce((sum, i) => sum + (Number(i.fine) || 0), 0),
       },
       "web",
     );
@@ -64,7 +78,7 @@ export default function DashboardOverview() {
     ebooks.length,
     reservations.length,
     overdueIssues.length,
-    activeIssues,
+    returnedWithFine,
   ]);
 
   const overdueRate = activeLoans > 0 ? (overdueIssues.length / activeLoans) * 100 : 0;

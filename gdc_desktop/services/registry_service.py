@@ -72,6 +72,27 @@ class RegistryService:
         printed = [b for b in books if not b.deleted and not b.isDigital]
         digital = [b for b in books if not b.deleted and b.isDigital]
 
+        # finesOutstanding used to sum .fine over ACTIVE (still-issued) loans
+        # — but .fine is only ever assigned at return time (see
+        # issue_return_screen.py's ReturnWorker), so an active loan's fine is
+        # 0.0 in virtually every real case. The figure this produced was
+        # structurally near-zero regardless of how much a college actually
+        # had outstanding, which is also why alerts.py-equivalent logic
+        # keyed off a >10,000 threshold on this never had anything to catch.
+        # The real outstanding balance, matching the fines ledger in
+        # members_screen.py and the fine_waiver_screen.py fix from last
+        # session, is what's been assessed on RETURNED loans minus what's
+        # actually been paid or waived.
+        returned_with_fine = [
+            i for i in issues if i.status == "Returned" and not i.deleted and (i.fine or 0) > 0
+        ]
+        total_assessed = sum(i.fine or 0.0 for i in returned_with_fine)
+        try:
+            total_paid = sum(p.get("amount", 0.0) for p in self.db.get_fine_payments())
+        except Exception:
+            total_paid = 0.0
+        fines_outstanding = round(max(0.0, total_assessed - total_paid), 2)
+
         return {
             "booksCount": len(printed),
             "ebooksCount": len(digital),
@@ -81,7 +102,7 @@ class RegistryService:
             "reservationsCount": len(
                 [r for r in reservations if not r.deleted and r.status == "Pending"]
             ),
-            "finesOutstanding": round(sum(i.fine or 0.0 for i in active), 2),
+            "finesOutstanding": fines_outstanding,
             # Category counts only — no titles, no patron data. This is what
             # lets the directorate answer "which colleges are understocked
             # in Science" from the registry alone, without ever reading a

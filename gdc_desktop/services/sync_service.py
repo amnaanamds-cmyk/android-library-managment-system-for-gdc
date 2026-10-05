@@ -204,7 +204,21 @@ class RealtimeSyncService(QThread):
         self.registry.publish()
 
     def _check_overdue_reminders(self):
-        """Automatically check for overdue books and log reminders once a day."""
+        """Detect overdue books once a day and log a count, no more.
+
+        Used to call every overdue book an "Auto-Reminder" in the audit
+        log and claimed Twilio/WhatsApp integration "in a real app" —
+        nothing was ever sent, only logged, so the audit trail read as if
+        notifications had gone out when none had. Firing real WhatsApp
+        links automatically from a background QThread with no user
+        present would also pop one browser tab per overdue member with no
+        chance to review them first — reports_screen.py's own "1-Click
+        Send All Overdue Reminders via WhatsApp" is the real, honest
+        mechanism for this (it opens a wa.me link per selected patron,
+        with the librarian choosing who to send to), so this just detects
+        and logs a daily count for that screen's own benefit, rather than
+        duplicating or faking a send here.
+        """
         today = time.strftime("%Y-%m-%d")
         last_check = self.db.get_last_sync_timestamp("overdue_reminder_check")
 
@@ -213,16 +227,17 @@ class RealtimeSyncService(QThread):
             return
 
         issues = self.db.get_issues()
-        overdue_count = 0
-        for i in issues:
-            if i.status == "Issued" and i.dueDate and i.dueDate < today:
-                # Mock: In a real app, integrate with Twilio/WhatsApp API here
-                self.db.log_audit_local("SYSTEM", "auto_overdue_reminder",
-                                       f"Auto-Reminder: {i.memberName} is overdue for '{i.bookTitle}'")
-                overdue_count += 1
+        overdue_count = sum(
+            1 for i in issues
+            if i.status == "Issued" and not i.deleted and i.dueDate and i.dueDate < today
+        )
 
         if overdue_count > 0:
-            print(f"DEBUG: Processed {overdue_count} auto-reminders.")
+            self.db.log_audit_local(
+                "SYSTEM", "overdue_detected",
+                f"{overdue_count} book(s) overdue as of {today}. No reminder sent automatically — "
+                "use Reports > Send Overdue Reminders to notify patrons via WhatsApp.",
+            )
 
         self.db.set_last_sync_timestamp("overdue_reminder_check", int(time.time() * 1000))
 
