@@ -18,6 +18,7 @@ from PyQt6.QtGui import QColor, QKeyEvent, QPainter, QFont, QTextDocument
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
 from models import IssueRecord
 from services.advanced_service import AdvancedService
+from services.operations_service import OperationsService
 
 
 def days_diff(due_date_str: str) -> int:
@@ -104,12 +105,18 @@ class ReturnWorker(QThread):
 
 
 class IssueDialog(QDialog):
-    def __init__(self, members, books, parent=None):
+    def __init__(self, members, books, parent=None, ops=None):
         super().__init__(parent)
         self.setWindowTitle("Issue Book")
         self.setMinimumWidth(480)
         self._members = members
         self._books   = [b for b in books if b.status == "Available"]
+        # Optional OperationsService — when given, selecting a book that is
+        # on an active course reserve (see course_reserves_screen.py) swaps
+        # the default due date to that reserve's shorter loan period instead
+        # of the normal +14 days, with a visible label. None (the default)
+        # just means no reserve lookup happens — behaves exactly as before.
+        self._ops = ops
         self._build()
 
     def _build(self):
@@ -126,14 +133,21 @@ class IssueDialog(QDialog):
         self.book_cb = QComboBox()
         self.book_cb.addItems([f"[{b.accNo}]  {b.title}" for b in self._books])
         self.book_cb.setEditable(True)
+        self.book_cb.currentIndexChanged.connect(self._on_book_changed)
 
         self.due_date = QDateEdit(QDate.currentDate().addDays(14))
         self.due_date.setCalendarPopup(True)
         self.due_date.setDisplayFormat("yyyy-MM-dd")
 
+        self.reserve_lbl = QLabel("")
+        self.reserve_lbl.setStyleSheet("color:#F59E0B;font-size:12px;font-weight:600;")
+        self.reserve_lbl.setWordWrap(True)
+        self.reserve_lbl.setVisible(False)
+
         form.addRow("Member *", self.member_cb)
         form.addRow("Book (Available) *", self.book_cb)
         form.addRow("Due Date *", self.due_date)
+        form.addRow("", self.reserve_lbl)
         lay.addLayout(form)
 
         btn_row = QHBoxLayout(); btn_row.addStretch()
@@ -143,6 +157,26 @@ class IssueDialog(QDialog):
         issue.clicked.connect(self._issue)
         btn_row.addWidget(cancel); btn_row.addWidget(issue)
         lay.addLayout(btn_row)
+
+        self._on_book_changed(self.book_cb.currentIndex())
+
+    def _on_book_changed(self, idx: int):
+        self.reserve_lbl.setVisible(False)
+        if self._ops is None or idx < 0 or idx >= len(self._books):
+            return
+        book = self._books[idx]
+        try:
+            reserve = self._ops.active_reserve_for_book(book.id, book.isbn)
+        except Exception:
+            reserve = None
+        if reserve:
+            self.due_date.setDate(QDate.currentDate().addDays(int(reserve.get("loanDays") or 1)))
+            course = f"{reserve.get('courseCode') or ''} {reserve.get('courseName') or ''}".strip()
+            self.reserve_lbl.setText(
+                f"📚 On Course Reserve for {course or 'a course'} — "
+                f"due date set to the reserve's {reserve.get('loanDays')}-day loan period."
+            )
+            self.reserve_lbl.setVisible(True)
 
     def _issue(self):
         m_idx = self.member_cb.currentIndex()
@@ -212,6 +246,7 @@ class IssueReturnScreen(QWidget):
         self.db   = db_helper
         self.auth = auth_service
         self.adv  = AdvancedService(db_helper)
+        self.ops  = OperationsService(firebase_service)
         self._issues  = []
         self._history = []
         self._all_members = []
@@ -401,7 +436,7 @@ class IssueReturnScreen(QWidget):
         if not [b for b in self._all_books if b.status == "Available"]:
             QMessageBox.warning(self, "No Books", "No available books."); return
 
-        dlg = IssueDialog(self._all_members, self._all_books, parent=self)
+        dlg = IssueDialog(self._all_members, self._all_books, parent=self, ops=self.ops)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             member, book, due = dlg.get_data()
             record = IssueRecord(
@@ -701,7 +736,7 @@ class IssueReturnScreen(QWidget):
                         self._log("⚠️ No members in database to assign issue.", "#F59E0B")
                         return
                     dlg = IssueDialog(
-                        members, [book], parent=self
+                        members, [book], parent=self, ops=screen.ops
                     )
                     if dlg.exec() == QDialog.DialogCode.Accepted:
                         member, bk, due = dlg.get_data()

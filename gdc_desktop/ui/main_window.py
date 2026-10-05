@@ -66,6 +66,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ("💰", "Acquisitions",     "acquisitions"),
             ("📰", "Serials",          "serials"),
             ("⭐", "Wishlist",         "wishlist"),
+            ("📚", "Course Reserves",  "course_reserves"),
         ]),
         ("Patron Management", [
             ("👥", "Members",          "members"),
@@ -383,6 +384,9 @@ class MainWindow(QtWidgets.QMainWindow):
             elif key == "wishlist":
                 from ui.screens.wishlist_screen import WishlistScreen
                 screen = WishlistScreen(self.fb, self.auth)
+            elif key == "course_reserves":
+                from ui.screens.course_reserves_screen import CourseReservesScreen
+                screen = CourseReservesScreen(self.fb, self.db, self.auth)
             elif key == "enterprise":
                 from ui.screens.enterprise_screen import EnterpriseFeaturesScreen
                 screen = EnterpriseFeaturesScreen(self.db, self.fb, self.auth)

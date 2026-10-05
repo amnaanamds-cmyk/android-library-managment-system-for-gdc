@@ -37,13 +37,18 @@ WISHLIST = "wishlist"
 READING_ROOM = "reading_room"
 LOST_FOUND = "lost_found"
 EVENTS = "library_events"
+COURSE_RESERVES = "course_reserves"
 
 ALL_COLLECTIONS = [
     VISITOR_LOG, PURCHASE_ORDERS, BOOK_TRANSFERS, SERIALS,
-    ILL_REQUESTS, WISHLIST, READING_ROOM, LOST_FOUND, EVENTS,
+    ILL_REQUESTS, WISHLIST, READING_ROOM, LOST_FOUND, EVENTS, COURSE_RESERVES,
 ]
 
 # ─── Status vocabularies, matching the Kotlin companion objects ──────────────
+#
+# COURSE_RESERVE_STATUSES is the one exception: there is no matching Kotlin
+# model for it yet (see the Course Reserves section below), so it is desktop
+# -only for now rather than mirroring something Android already has.
 
 PO_STATUSES = ["Pending", "Approved", "Ordered", "Shipped", "Received", "Cancelled"]
 TRANSFER_STATUSES = ["requested", "approved", "dispatched", "received", "rejected"]
@@ -53,6 +58,7 @@ ILL_STATUSES = ["Pending", "Approved", "Dispatched", "Fulfilled", "Returned", "R
 WISHLIST_STATUSES = ["Requested", "UnderReview", "Approved", "Ordered", "Declined"]
 LOST_FOUND_STATUSES = ["Lost", "Found", "Claimed", "Disposed"]
 EVENT_STATUSES = ["Planned", "Ongoing", "Completed", "Cancelled"]
+COURSE_RESERVE_STATUSES = ["Active", "Ended"]
 
 
 def now_ms() -> int:
@@ -438,6 +444,62 @@ class OperationsService:
             key=lambda r: r.get("eventDate") or "",
             reverse=True,
         )
+
+    # ── Course Reserves ───────────────────────────────────────────────────────
+    #
+    # Koha-style course reserves: a book stays in normal circulation (its own
+    # status is untouched here) but while it is listed for a course it loans
+    # for a much shorter period than the institution's normal
+    # borrowDurationDays — any student checking it out, not just ones enrolled
+    # in the course, since NEXLIB has no course-enrollment data to restrict
+    # against. issue_return_screen.py's IssueDialog looks up
+    # active_reserve_for_book() when a book is selected and uses its loanDays
+    # for the due date instead of the global default, with a visible label so
+    # the librarian knows why. Desktop-only for now — there is no matching
+    # Kotlin model yet, so Android keeps using normal loan terms for reserved
+    # books until that catches up; this is additive, not a change to the
+    # shared LibrarySettings fine/due-date contract every platform already
+    # agrees on, so it carries no risk of the cross-platform disagreement
+    # that contract exists to prevent.
+
+    def add_course_reserve(self, course_code: str, course_name: str, instructor: str,
+                           term: str, book_id: int, book_title: str, book_isbn: str,
+                           loan_days: int, fine_rate: float = 0.0) -> Optional[str]:
+        return self.save(COURSE_RESERVES, {
+            "courseCode": course_code,
+            "courseName": course_name,
+            "instructor": instructor,
+            "term": term,
+            "bookId": int(book_id),
+            "bookTitle": book_title,
+            "bookIsbn": book_isbn,
+            "loanDays": int(loan_days),
+            "fineRate": float(fine_rate),
+            "status": "Active",
+            "addedAt": now_ms(),
+            "endedAt": None,
+        })
+
+    def end_course_reserve(self, sync_id: str) -> bool:
+        return self.update(COURSE_RESERVES, sync_id, {"status": "Ended", "endedAt": now_ms()})
+
+    def course_reserves(self) -> List[Dict[str, Any]]:
+        return sorted(self.list(COURSE_RESERVES), key=lambda r: r.get("addedAt") or 0, reverse=True)
+
+    def active_reserve_for_book(self, book_id: int, book_isbn: str = "") -> Optional[Dict[str, Any]]:
+        """The active course reserve for this book, if any. Matches by bookId
+        first; falls back to ISBN so a reserve still resolves correctly for a
+        book whose local id was 0 before this session's id-backfill fix, or
+        for any other id mismatch — the same defensive fallback
+        issue_return_screen.py's own book-matching already uses elsewhere."""
+        for r in self.list(COURSE_RESERVES):
+            if r.get("status") != "Active":
+                continue
+            if int(r.get("bookId") or 0) == int(book_id) and int(book_id) != 0:
+                return r
+            if book_isbn and r.get("bookIsbn") and r.get("bookIsbn") == book_isbn:
+                return r
+        return None
 
     # ── One-time migration from the old local-only tables ────────────────────
 
