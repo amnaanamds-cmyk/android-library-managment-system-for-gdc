@@ -897,6 +897,30 @@ class DatabaseHelper:
             """, (f"last_sync_{entity}", str(ts)))
             conn.commit()
 
+    # ── AI daily briefing ──────────────────────────────────────────────────
+    # Reuses this same generic key/val table rather than a new one — one
+    # short text value, overwritten once a day, never queried by anything
+    # but its own getter.
+    def save_ai_briefing(self, text: str, generated_at_ms: int):
+        with self._get_conn() as conn:
+            conn.execute("""
+                INSERT INTO sync_metadata (key, val) VALUES ('ai_daily_briefing', ?)
+                ON CONFLICT(key) DO UPDATE SET val = excluded.val
+            """, (text,))
+            conn.execute("""
+                INSERT INTO sync_metadata (key, val) VALUES ('ai_daily_briefing_at', ?)
+                ON CONFLICT(key) DO UPDATE SET val = excluded.val
+            """, (str(generated_at_ms),))
+            conn.commit()
+
+    def get_ai_briefing(self) -> Optional[Dict[str, Any]]:
+        with self._get_conn() as conn:
+            text_row = conn.execute("SELECT val FROM sync_metadata WHERE key = 'ai_daily_briefing'").fetchone()
+            at_row = conn.execute("SELECT val FROM sync_metadata WHERE key = 'ai_daily_briefing_at'").fetchone()
+            if not text_row:
+                return None
+            return {"text": text_row["val"], "generatedAt": int(at_row["val"]) if at_row else 0}
+
     def execute(self, query, params=()):
         """Execute a raw query and return the cursor (for AI/OPAC)."""
         conn = self._get_conn()

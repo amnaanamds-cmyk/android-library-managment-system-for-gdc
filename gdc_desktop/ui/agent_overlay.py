@@ -95,6 +95,21 @@ class AgentOverlay(QFrame):
         layout.addLayout(input_row)
 
         self.chat_history.append("<span style='color:#3B82F6'><b>Agent:</b></span> Welcome! I'm your AI Librarian. Ask me to search books, analyze stats, or explain policies.")
+        self._show_daily_briefing()
+
+    def _show_daily_briefing(self):
+        """The real briefing sync_service.py's background thread generates
+        once a day (see RealtimeSyncService._check_daily_briefing) — shown
+        here, not regenerated here, so opening this panel twice in a row
+        never costs a second LLM call."""
+        try:
+            briefing = self.agent.db.get_ai_briefing()
+        except Exception:
+            briefing = None
+        if briefing and briefing.get("text"):
+            self.chat_history.append(
+                f"<br><span style='color:#C8A84B'><b>📋 Today's Briefing:</b></span> {briefing['text']}"
+            )
 
     def send_message(self):
         text = self.input_field.text().strip()

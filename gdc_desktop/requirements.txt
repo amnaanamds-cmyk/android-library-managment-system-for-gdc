@@ -12,3 +12,4 @@ python-barcode
 qrcode
 pymarc
 google-genai
+anthropic

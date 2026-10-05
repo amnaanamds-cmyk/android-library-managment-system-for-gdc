@@ -10,7 +10,11 @@ from firebase_admin import firestore
 from services.database_helper import DatabaseHelper
 from services.firebase_service import FirebaseService
 from services.registry_service import RegistryService
+from services.agent_service import LibraryAgent
 from models import Book, Member, IssueRecord, Reservation
+
+# Daily AI briefing: once every 24h, same cadence as the overdue check below.
+BRIEFING_INTERVAL_MS = 24 * 60 * 60 * 1000
 
 # How often to republish this college's aggregate snapshot for the directorate.
 REGISTRY_PUBLISH_INTERVAL_MS = 10 * 60 * 1000  # 10 minutes
@@ -33,6 +37,10 @@ class RealtimeSyncService(QThread):
         self._listeners = []
         self.registry = RegistryService(db_helper, fb_service)
         self._last_registry_publish = 0
+        # No auth_service: a background briefing is a SYSTEM action, not
+        # attributed to whichever user happens to be signed in when the
+        # 24h timer fires.
+        self._agent = LibraryAgent(db_helper, firebase_service=fb_service)
 
     def force_reconnect(self):
         self.sync_status.emit("Force Syncing...")
@@ -77,6 +85,11 @@ class RealtimeSyncService(QThread):
 
                 # Feature 2: Overdue Auto-Reminder Scheduler
                 self._check_overdue_reminders()
+
+                # AI daily briefing — a real summary from real numbers,
+                # generated once every 24h regardless of whether an LLM key
+                # is configured (see LibraryAgent.generate_daily_briefing()).
+                self._check_daily_briefing()
 
                 # 3. Publish this college's aggregate snapshot for the
                 #    directorate portal. The Spark plan has no Cloud Functions,
@@ -240,6 +253,24 @@ class RealtimeSyncService(QThread):
             )
 
         self.db.set_last_sync_timestamp("overdue_reminder_check", int(time.time() * 1000))
+
+    def _check_daily_briefing(self):
+        """Generate and store a short daily briefing, once every 24h.
+
+        Delegates the actual text to LibraryAgent.generate_daily_briefing(),
+        which uses whichever provider (Claude/Gemini/templated) is
+        configured — this method only owns the once-a-day throttle and
+        persistence, the same pattern _check_overdue_reminders uses.
+        """
+        last_check = self.db.get_last_sync_timestamp("ai_briefing_check")
+        if int(time.time() * 1000) - last_check < BRIEFING_INTERVAL_MS:
+            return
+        try:
+            text = self._agent.generate_daily_briefing()
+            self.db.save_ai_briefing(text, int(time.time() * 1000))
+        except Exception as e:
+            print(f"AI daily briefing generation failed: {e}")
+        self.db.set_last_sync_timestamp("ai_briefing_check", int(time.time() * 1000))
 
     def _setup_listeners(self):
         self._listeners.append(self.fb.listen_books(self._on_books_changed))

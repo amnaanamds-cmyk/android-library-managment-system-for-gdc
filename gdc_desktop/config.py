@@ -37,6 +37,14 @@ FIREBASE_WEB_API_KEY: str = os.getenv("FIREBASE_WEB_API_KEY", "")
 # ─── Google Generative AI ────────────────────────────────────────────────────
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
+# ─── Anthropic (Claude) ──────────────────────────────────────────────────────
+# Preferred provider for the AI Assistant (services/agent_service.py) when
+# set — the desktop app reads this directly from its own local .env, the
+# same trust model GEMINI_API_KEY already uses: a librarian's own machine,
+# not a browser or a shared server, so there is nowhere for this key to leak
+# to that GEMINI_API_KEY doesn't already leak to today.
+ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
+
 # ─── Institution ─────────────────────────────────────────────────────────────
 # Deliberately EMPTY by default. A college's identity is established by the
 # person who signs in — auth_service sets this from users/{uid}.institutionId,
