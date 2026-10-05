@@ -979,7 +979,12 @@ class DatabaseHelper:
         available_books = sum(1 for b in books if b.status == "Available")
         issued_books = sum(1 for b in books if b.status == "Issued")
         overdue_count = sum(1 for i in issues if i.status == "Issued" and i.dueDate and i.dueDate < today)
-        total_fines = sum(i.fine for i in issues if i.status == "Returned" and i.fine > 0)
+        total_assessed = sum(i.fine for i in issues if i.status == "Returned" and i.fine > 0)
+        try:
+            total_paid = sum(p.get("amount", 0.0) for p in self.get_fine_payments())
+        except Exception:
+            total_paid = 0.0
+        total_fines = round(max(0.0, total_assessed - total_paid), 2)
 
         # Top borrowed books
         from collections import Counter
