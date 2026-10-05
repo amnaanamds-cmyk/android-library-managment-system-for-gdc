@@ -1,13 +1,90 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useDirectorateNetwork } from "@/lib/directorate";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
+import { useDirectorateNetwork, DirectorateSnapshot } from "@/lib/directorate";
+import { MIS_COLLECTIONS } from "@/lib/schema";
 import { computeAlerts, rollupByDistrict } from "@/lib/analytics";
 import { useFollowups } from "@/lib/registry-admin";
 import { useAuditLog } from "@/lib/audit";
 import { PageHeader, StatTile, Card, SectionTitle, Badge, Spinner, relativeTime, numberFmt } from "@/components/ui";
-import { IconAlert, IconDistrict, IconAudit, IconFollowup } from "@/components/icons";
+import { IconAlert, IconDistrict, IconAudit, IconFollowup, IconAssistant } from "@/components/icons";
+
+function todayDateId(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Today's network briefing. Generated once per calendar date, by whichever
+ * directorate admin opens this page first that day — there is no Cloud
+ * Functions plan behind this project (see firestore.rules), so "whichever
+ * admin opens the portal next" stands in for a nightly cron. The
+ * directorate_ai_briefings/{date} document is the throttle: once it exists,
+ * every later admin that day just reads it.
+ */
+function useDailyBriefing(colleges: DirectorateSnapshot[], ready: boolean) {
+  const { user } = useAuth();
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ready || !user) {
+      setLoading(false);
+      return;
+    }
+    if (colleges.length === 0) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+
+    (async () => {
+      const ref = doc(db, MIS_COLLECTIONS.aiBriefings, todayDateId());
+      try {
+        const existing = await getDoc(ref);
+        if (existing.exists()) {
+          if (!cancelled) setText(existing.data().text as string);
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const res = await fetch("/api/agent/nightly-briefing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ colleges }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (!cancelled) setError(data.error || "Could not generate today's briefing.");
+          return;
+        }
+        if (!cancelled) setText(data.text);
+        // Best-effort: if another admin opened the page at the same moment
+        // and already wrote today's doc, this simply overwrites it — the
+        // rule allows that by design (see firestore.rules), so there is
+        // nothing to reconcile.
+        await setDoc(ref, { text: data.text, generatedByUid: user.uid, generatedAt: Date.now() });
+      } catch {
+        if (!cancelled) setError("Could not reach the assistant to generate today's briefing.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // colleges is refetched live; only its size (any data at all vs. none)
+    // should re-trigger this, not every row update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, colleges.length]);
+
+  return { text, loading, error };
+}
 
 /**
  * Executive summary. Deliberately shallow — every figure here links to the
@@ -20,6 +97,7 @@ export default function Overview() {
   const districts = rollupByDistrict(colleges);
   const { items: followups } = useFollowups();
   const { entries: recentAudit } = useAuditLog(6);
+  const briefing = useDailyBriefing(colleges, !loading);
 
   if (loading) return <Spinner label="Loading network data…" />;
 
@@ -45,6 +123,31 @@ export default function Overview() {
           <p className="mt-1 text-xs text-amber-200/70">
             Showing the institution registry. Counts appear once each college&apos;s app completes a sync.
           </p>
+        </Card>
+      )}
+
+      {briefing.error && (
+        <Card className="mb-6 border-red-900/60 bg-red-500/5">
+          <p className="text-sm text-red-300/80">{briefing.error}</p>
+        </Card>
+      )}
+      {(briefing.loading || briefing.text) && !briefing.error && (
+        <Card className="mb-6 border-amber-900/40 bg-amber-500/5">
+          <SectionTitle
+            icon={<IconAssistant className="h-4 w-4" />}
+            action={
+              <Link href="/assistant" className="text-xs font-semibold text-amber-400 hover:text-amber-300">
+                Ask a follow-up →
+              </Link>
+            }
+          >
+            Today&apos;s briefing
+          </SectionTitle>
+          {briefing.loading ? (
+            <p className="text-xs text-slate-500">Generating today&apos;s briefing…</p>
+          ) : (
+            <p className="text-sm leading-relaxed text-slate-300">{briefing.text}</p>
+          )}
         </Card>
       )}
 

@@ -29,6 +29,7 @@ export const COLLECTIONS = {
   lostFound: "lost_found",
   events: "library_events",
   settings: "settings",
+  aiBriefings: "ai_briefings",
 } as const;
 
 /** Status vocabularies, matching the Kotlin companion objects and the Python

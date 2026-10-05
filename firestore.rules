@@ -8,6 +8,11 @@ rules_version = '2';
 //   /users/{uid}                          global profile: role + institutionId
 //   /institutions/{collegeId}             tenant metadata (name, inviteCode, ...)
 //   /institutions/{collegeId}/{col}/{doc} ALL tenant data (books, members, ...)
+//   /institutions/{collegeId}/ai_briefings/{dateId}
+//                                          one AI-generated daily digest per date,
+//                                          covered by the tenant catch-all below —
+//                                          same membership rule as every other
+//                                          tenant collection, no special-casing
 //   /directorate_index/{collegeId}        aggregate-only snapshot for directors
 //   /directorate_staff/{uid}              directorate portal access tier
 //   /directorate_audit_log/{id}           append-only: every directorate action
@@ -17,6 +22,7 @@ rules_version = '2';
 //   /directorate_documents/{id}           policy repository (write: directorate; read: any signed-in)
 //   /directorate_inspections/{id}         site visit scheduling and reports
 //   /directorate_snapshots_history/{id}   manually captured totals, for trend charts
+//   /directorate_ai_briefings/{dateId}    one AI-generated daily network summary per date
 //   /colleges/{collegeId}                 LEGACY mirror, read-only compatibility
 //
 // Two rules below are load-bearing and were the cause of the cross-platform
@@ -314,6 +320,25 @@ service cloud.firestore {
       allow create: if isDirectorateAdmin()
                     && request.resource.data.capturedByUid == request.auth.uid;
       allow update, delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // AI daily briefing — same "no Cloud Functions, so no true cron" model
+    // as directorate_snapshots_history just above: whichever directorate
+    // user opens the Overview page next generates that day's briefing (an
+    // API route calls Claude over data that user's own client already
+    // legitimately fetched — see directorate-app/src/lib/agent-tools.ts),
+    // and this document is the throttle: if today's doc already exists,
+    // nobody regenerates it. One doc per calendar date, overwritable by
+    // any directorate admin (not create-only like the history above) so a
+    // second admin opening the page the same day can't create a duplicate
+    // under a different id.
+    // -------------------------------------------------------------
+
+    match /directorate_ai_briefings/{dateId} {
+      allow read: if isDirectorateAdmin();
+      allow write: if isDirectorateAdmin()
+                   && request.resource.data.generatedByUid == request.auth.uid;
     }
 
     // -------------------------------------------------------------

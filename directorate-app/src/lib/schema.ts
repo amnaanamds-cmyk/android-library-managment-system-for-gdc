@@ -35,4 +35,5 @@ export const MIS_COLLECTIONS = {
   documents: "directorate_documents",
   inspections: "directorate_inspections",
   snapshotsHistory: "directorate_snapshots_history",
+  aiBriefings: "directorate_ai_briefings",
 } as const;

@@ -75,7 +75,7 @@ await check("staff can write reservations", () =>
   assertSucceeds(setDoc(doc(staff, "institutions/GDC-ZIAM/reservations/r1"), { status: "Pending", deleted: false })));
 
 console.log("\n── Collections that previously had NO rule (default deny) ──");
-for (const c of ["audit_log", "visitor_log", "purchase_orders", "book_transfers", "ill_requests", "ebooks", "_sync"]) {
+for (const c of ["audit_log", "visitor_log", "purchase_orders", "book_transfers", "ill_requests", "ebooks", "_sync", "ai_briefings"]) {
   await check(`staff can write ${c}`, () =>
     assertSucceeds(setDoc(doc(staff, `institutions/GDC-ZIAM/${c}/x1`), { v: 1 })));
 }
@@ -89,6 +89,8 @@ await check("outsider CANNOT read another college's loans", () =>
   assertFails(getDoc(doc(outsider, "institutions/GDC-ZIAM/issued_books/i1"))));
 await check("outsider CANNOT write another college's audit log", () =>
   assertFails(setDoc(doc(outsider, "institutions/GDC-ZIAM/audit_log/evil"), { v: 1 })));
+await check("outsider CANNOT read another college's AI briefing", () =>
+  assertFails(getDoc(doc(outsider, "institutions/GDC-ZIAM/ai_briefings/2026-01-01"))));
 await check("anonymous CANNOT write books", () =>
   assertFails(setDoc(doc(anon, "institutions/GDC-ZIAM/books/evil"), { title: "hack" })));
 
@@ -162,6 +164,7 @@ console.log("\n── Directorate MIS collections: isolation from tenant account
 const directorateOnlyCollections = [
   "directorate_staff", "directorate_audit_log", "directorate_notes",
   "directorate_followups", "directorate_inspections", "directorate_snapshots_history",
+  "directorate_ai_briefings",
 ];
 for (const col of directorateOnlyCollections) {
   await check(`outsider CANNOT read ${col}`, () =>
@@ -216,6 +219,17 @@ await check("directorate_admin CAN capture a snapshot naming themselves", () =>
     { capturedByUid: "diradmin1", at: 1, totals: {} })));
 await check("directorate_admin CANNOT edit a captured snapshot", () =>
   assertFails(updateDoc(doc(directorateAdmin, "directorate_snapshots_history/s1"), { totals: { books: 999999 } })));
+
+console.log("\n── AI daily briefing: writer must name themselves, but IS updatable ──");
+await check("directorate_admin CAN write a briefing naming themselves", () =>
+  assertSucceeds(setDoc(doc(directorateAdmin, "directorate_ai_briefings/2026-01-01"),
+    { text: "All quiet.", generatedAt: 1, generatedByUid: "diradmin1" })));
+await check("directorate_admin CANNOT forge a briefing as someone else", () =>
+  assertFails(setDoc(doc(directorateAdmin, "directorate_ai_briefings/2026-01-02"),
+    { text: "Forged.", generatedAt: 1, generatedByUid: "diranalyst1" })));
+await check("a second, different directorate account CAN overwrite today's briefing (unlike snapshot history, this is NOT immutable)", () =>
+  assertSucceeds(setDoc(doc(directorateAnalyst, "directorate_ai_briefings/2026-01-01"),
+    { text: "Updated by someone else opening the dashboard.", generatedAt: 2, generatedByUid: "diranalyst1" })));
 
 await testEnv.cleanup();
 console.log(`\n${pass} passed, ${fail} failed`);

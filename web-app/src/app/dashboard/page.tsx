@@ -1,14 +1,92 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useTenantCollection } from "@/lib/firestore-hooks";
 import { useAuth } from "@/lib/auth-context";
 import { publishSnapshot } from "@/lib/directorate";
-import { COLLECTIONS, isActiveIssue, isOverdue } from "@/lib/schema";
+import { COLLECTIONS, ROOT_COLLECTIONS, isActiveIssue, isOverdue } from "@/lib/schema";
 import { StatCard } from "@/components/stat-card";
 
 /** Republish the directorate snapshot at most this often per session. */
 const PUBLISH_THROTTLE_MS = 5 * 60 * 1000;
+
+function todayDateId(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Today's library digest. Generated once per calendar date, by whichever
+ * staff member opens this dashboard first that day — there is no Cloud
+ * Functions plan behind this project (see firestore.rules), so "whichever
+ * staff member opens it next" stands in for a nightly cron. The
+ * institutions/{id}/ai_briefings/{date} document is the throttle: once it
+ * exists, every later visit that day just reads it.
+ */
+function useDailyDigest(
+  institutionId: string | undefined,
+  data: { books: unknown[]; members: unknown[]; issues: unknown[]; reservations: unknown[]; ebooks: unknown[] },
+  ready: boolean,
+) {
+  const { user } = useAuth();
+  const [text, setText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ready || !user || !institutionId) {
+      setLoading(false);
+      return;
+    }
+    if (data.books.length === 0 && data.members.length === 0) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+
+    (async () => {
+      const ref = doc(db, ROOT_COLLECTIONS.institutions, institutionId, COLLECTIONS.aiBriefings, todayDateId());
+      try {
+        const existing = await getDoc(ref);
+        if (existing.exists()) {
+          if (!cancelled) setText(existing.data().text as string);
+          return;
+        }
+
+        const token = await user.getIdToken();
+        const res = await fetch("/api/agent/daily-digest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(data),
+        });
+        const resData = await res.json();
+        if (!res.ok) {
+          if (!cancelled) setError(resData.error || "Could not generate today's digest.");
+          return;
+        }
+        if (!cancelled) setText(resData.text);
+        // Best-effort: any other staff member opening the dashboard at the
+        // same moment just overwrites the same doc — tenant data has no
+        // forgery concern here the way the directorate's cross-college
+        // briefing does, since every writer is already this one college's
+        // own staff.
+        await setDoc(ref, { text: resData.text, generatedByUid: user.uid, generatedAt: Date.now() });
+      } catch {
+        if (!cancelled) setError("Could not reach the assistant to generate today's digest.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, user, institutionId, data.books.length, data.members.length]);
+
+  return { text, loading, error };
+}
 
 export default function DashboardOverview() {
   const { profile } = useAuth();
@@ -83,6 +161,12 @@ export default function DashboardOverview() {
 
   const overdueRate = activeLoans > 0 ? (overdueIssues.length / activeLoans) * 100 : 0;
 
+  const digest = useDailyDigest(
+    profile?.institutionId,
+    { books, members, issues, reservations, ebooks },
+    !loading,
+  );
+
   const stats: Array<{
     name: string;
     value: number;
@@ -121,6 +205,22 @@ export default function DashboardOverview() {
             trying to open, or the current <span className="font-mono">firestore.rules</span> have
             not been deployed.
           </p>
+        </div>
+      )}
+
+      {digest.error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">{digest.error}</div>
+      )}
+      {(digest.loading || digest.text) && !digest.error && (
+        <div className="rounded-xl border border-[#C8A84B]/30 bg-[#C8A84B]/5 p-6 shadow-xl">
+          <h3 className="mb-2 flex items-center gap-2 text-lg font-bold text-white">
+            <span>💬</span> Today&apos;s Digest
+          </h3>
+          {digest.loading ? (
+            <p className="text-xs text-slate-500">Generating today&apos;s digest…</p>
+          ) : (
+            <p className="text-sm leading-relaxed text-slate-300">{digest.text}</p>
+          )}
         </div>
       )}
 

@@ -50,6 +50,7 @@ export const IconX = (p: IconProps) => base(<path d="M18 6L6 18M6 6l12 12" />, p
 export const IconPlus = (p: IconProps) => base(<path d="M12 5v14M5 12h14" />, p);
 export const IconDownload = (p: IconProps) => base(<><path d="M12 3v13" /><path d="M7 11l5 5 5-5" /><path d="M4 20h16" /></>, p);
 export const IconBuilding = (p: IconProps) => base(<><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1" /></>, p);
+export const IconAssistant = (p: IconProps) => base(<><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 20l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" /></>, p);
 export const IconSpinner = (p: IconProps) => (
   <svg viewBox="0 0 24 24" fill="none" {...p}>
     <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />

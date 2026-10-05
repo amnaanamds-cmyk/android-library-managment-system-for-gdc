@@ -71,6 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     {
       title: "Analytics & Intelligence",
       items: [
+        { name: "AI Assistant", path: "/dashboard/ai-assistant", icon: "💬" },
         { name: "OPAC Monitor", path: "/dashboard/opac", icon: "🔍" },
         { name: "Reports", path: "/dashboard/reports", icon: "📊" },
         { name: "AI Recommender", path: "/dashboard/ai-recommender", icon: "🤖" },
