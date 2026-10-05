@@ -55,26 +55,44 @@ export interface RankedCollege {
   percentile: number; // 0-100, higher is better
 }
 
-export function rankBy(
-  colleges: DirectorateSnapshot[],
-  key: "booksCount" | "activeLoans" | "membersCount",
-): RankedCollege[] {
-  const sorted = [...colleges].sort((a, b) => a[key] - b[key]);
+/** A rank key is either a raw numeric field on the snapshot, or a function
+ *  deriving one — e.g. booksAvailablePct below, which is not itself stored
+ *  anywhere and has to be computed from two fields that are. */
+export type RankAccessor =
+  | "booksCount"
+  | "activeLoans"
+  | "membersCount"
+  | ((c: DirectorateSnapshot) => number);
+
+function accessorValue(c: DirectorateSnapshot, accessor: RankAccessor): number {
+  return typeof accessor === "function" ? accessor(c) : c[accessor];
+}
+
+/** Percentage of a college's printed books currently on the shelf rather
+ *  than out on loan. 0 for a college reporting zero books, rather than
+ *  NaN/Infinity, so it sorts to the bottom instead of breaking the sort. */
+export function booksAvailablePct(c: DirectorateSnapshot): number {
+  if (c.booksCount <= 0) return 0;
+  return Math.round(((c.booksCount - c.activeLoans) / c.booksCount) * 100);
+}
+
+export function rankBy(colleges: DirectorateSnapshot[], key: RankAccessor): RankedCollege[] {
+  const sorted = [...colleges].sort((a, b) => accessorValue(a, key) - accessorValue(b, key));
   const n = sorted.length;
   return sorted
     .map((c, i) => ({
       docId: c.docId,
       institutionId: c.institutionId,
       name: c.name,
-      value: c[key],
+      value: accessorValue(c, key),
       percentile: n <= 1 ? 100 : Math.round((i / (n - 1)) * 100),
     }))
     .sort((a, b) => b.value - a.value);
 }
 
-export function networkAverage(colleges: DirectorateSnapshot[], key: "booksCount" | "activeLoans" | "membersCount"): number {
+export function networkAverage(colleges: DirectorateSnapshot[], key: RankAccessor): number {
   if (colleges.length === 0) return 0;
-  return colleges.reduce((n, c) => n + c[key], 0) / colleges.length;
+  return colleges.reduce((n, c) => n + accessorValue(c, key), 0) / colleges.length;
 }
 
 // ── Compliance scorecard ────────────────────────────────────────────────

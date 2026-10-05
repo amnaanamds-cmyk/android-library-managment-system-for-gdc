@@ -3,24 +3,43 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useDirectorateNetwork } from "@/lib/directorate";
-import { rankBy, networkAverage, scoreCompliance } from "@/lib/analytics";
+import { rankBy, networkAverage, scoreCompliance, booksAvailablePct, RankAccessor } from "@/lib/analytics";
 import { PageHeader, Card, SectionTitle, Meter, Badge, Select, Spinner, EmptyState, numberFmt } from "@/components/ui";
 import { IconBench } from "@/components/icons";
 
-type RankKey = "booksCount" | "activeLoans" | "membersCount";
+type RankKey = "booksCount" | "activeLoans" | "membersCount" | "availablePct";
 
 const KEY_LABEL: Record<RankKey, string> = {
   booksCount: "Books",
   activeLoans: "Active loans",
   membersCount: "Members",
+  availablePct: "Books available %",
+};
+
+// availablePct is derived (booksCount - activeLoans) / booksCount, not a
+// field stored on the snapshot itself — see booksAvailablePct in analytics.ts.
+const KEY_ACCESSOR: Record<RankKey, RankAccessor> = {
+  booksCount: "booksCount",
+  activeLoans: "activeLoans",
+  membersCount: "membersCount",
+  availablePct: booksAvailablePct,
+};
+
+const IS_PERCENT: Record<RankKey, boolean> = {
+  booksCount: false,
+  activeLoans: false,
+  membersCount: false,
+  availablePct: true,
 };
 
 export default function Benchmarking() {
   const { colleges, loading } = useDirectorateNetwork();
   const [key, setKey] = useState<RankKey>("booksCount");
-  const ranked = rankBy(colleges, key);
-  const avg = networkAverage(colleges, key);
+  const accessor = KEY_ACCESSOR[key];
+  const ranked = rankBy(colleges, accessor);
+  const avg = networkAverage(colleges, accessor);
   const compliance = colleges.map(scoreCompliance).sort((a, b) => a.score - b.score);
+  const fmt = (n: number) => (IS_PERCENT[key] ? `${Math.round(n)}%` : numberFmt.format(n));
 
   if (loading) return <Spinner label="Loading benchmarks…" />;
   if (colleges.length === 0) return <EmptyState icon={<IconBench className="h-8 w-8" />} title="No institutions to benchmark yet" />;
@@ -45,7 +64,7 @@ export default function Benchmarking() {
             Ranked by {KEY_LABEL[key].toLowerCase()}
           </SectionTitle>
           <p className="mb-4 text-xs text-slate-500">
-            Network average: <span className="font-semibold text-slate-300">{numberFmt.format(Math.round(avg))}</span>
+            Network average: <span className="font-semibold text-slate-300">{fmt(avg)}</span>
           </p>
           <div className="space-y-3">
             {ranked.map((r, i) => (
@@ -56,7 +75,7 @@ export default function Benchmarking() {
                     {r.name}
                   </span>
                   <span className="text-slate-500">
-                    {numberFmt.format(r.value)} · P{r.percentile}
+                    {fmt(r.value)} · P{r.percentile}
                   </span>
                 </div>
                 <Meter pct={r.percentile} tone={r.value >= avg ? "emerald" : "amber"} />
